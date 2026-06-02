@@ -1,21 +1,26 @@
 "use client";
 
-import React, { useState } from 'react';
-import Link from 'next/link'; // <-- เพิ่มบรรทัดนี้ด้านบนสุด
-import { InsurancePolicy } from '../types';
-import { CheckCircle2, AlertCircle, XCircle, Search, Filter } from 'lucide-react'; // <-- เพิ่ม icon Filter
+import React, { useState, useRef } from 'react';
+import Link from 'next/link';
+import { CheckCircle2, AlertCircle, XCircle, Search, Filter, Upload } from 'lucide-react'; // <-- นำเข้า Upload
+import * as XLSX from 'xlsx'; // <-- นำเข้าไลบรารีอ่าน Excel
 
-// จำลองข้อมูล พ.ร.บ. ในระบบ
-const mockPolicies: InsurancePolicy[] = [
+// จำลองข้อมูลเริ่มต้น
+const initialPolicies = [
   { policyNo: '2510193259582', licenseNo: '1กข 1234', vehicleMake: 'TOYOTA', endDate: '2026-10-15', premiumAmount: 645.21, status: 'ACTIVE' },
   { policyNo: '6226553319803', licenseNo: '2กค 5678', vehicleMake: 'HONDA', endDate: '2026-06-15', premiumAmount: 645.21, status: 'WARNING' },
   { policyNo: '6192133380070', licenseNo: '3กง 9012', vehicleMake: 'ISUZU', endDate: '2026-05-10', premiumAmount: 900.00, status: 'EXPIRED' },
 ];
 
 export default function PolicyTable() {
+  // 1. เปลี่ยนข้อมูลตารางมาเก็บใน State เพื่อให้มันอัปเดตหน้าจอได้เมื่ออัปโหลด Excel
+  const [policies, setPolicies] = useState(initialPolicies);
+  
   const [searchQuery, setSearchQuery] = useState('');
-  // 1. เพิ่ม State สำหรับเก็บค่า Dropdown สถานะ (ค่าเริ่มต้นคือ ALL)
   const [statusFilter, setStatusFilter] = useState('ALL');
+  
+  // 2. ใช้ useRef เพื่อใช้แทนการกดปุ่ม input type="file" แบบซ่อนไว้
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -30,15 +35,66 @@ export default function PolicyTable() {
     }
   };
 
-  // 2. ปรับปรุงการกรอง ให้เช็กทั้งช่องค้นหา และ Dropdown ไปพร้อมกัน
-  const filteredPolicies = mockPolicies.filter((policy) => {
-    // เช็กช่องค้นหา
+  // 3. ฟังก์ชันจัดการเมื่อผู้ใช้เลือกไฟล์ Excel สำเร็จ
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const bstr = evt.target?.result;
+      const wb = XLSX.read(bstr, { type: 'binary' }); // อ่านไฟล์ Excel
+      const wsname = wb.SheetNames[0]; // ดึงข้อมูลชีทแรก
+      const ws = wb.Sheets[wsname];
+      // แปลงข้อมูลจาก Excel เป็น Array
+      const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][]; 
+      
+      // 👉 จุดที่แก้ไข: ประกาศ Type ให้ชัดเจนว่ากล่องนี้เก็บอะไรบ้าง
+      type ImportedPolicy = {
+        licenseNo: string;
+        vehicleMake: string;
+        policyNo: string;
+        endDate: string;
+        premiumAmount: number;
+        status: string;
+      };
+      
+      const newImportedPolicies: ImportedPolicy[] = []; // บังคับ Type ทันที
+      
+      // ลูปดึงข้อมูล (เริ่มที่ i = 1 เพื่อข้ามหัวตารางแถวแรก)
+      for (let i = 1; i < data.length; i++) {
+         const row = data[i];
+         // ถ้าแถวว่าง ให้ข้าม
+         if (!row || row.length === 0 || !row[0]) continue;
+         
+         newImportedPolicies.push({
+           licenseNo: String(row[0] || ''),
+           vehicleMake: String(row[1] || ''),
+           policyNo: String(row[2] || ''),
+           endDate: String(row[3] || ''), 
+           premiumAmount: Number(row[4] || 0),
+           status: 'ACTIVE' // ตั้งค่าจำลองเริ่มต้นให้รถนำเข้าใหม่เป็น "คุ้มครอง"
+         });
+      }
+      
+      if (newImportedPolicies.length > 0) {
+        // อัปเดตข้อมูลตารางเดิม + ข้อมูลใหม่เข้าไป
+        setPolicies(prev => [...newImportedPolicies, ...prev]);
+        alert(`🎉 นำเข้าข้อมูลสำเร็จ ${newImportedPolicies.length} รายการ!`);
+      } else {
+        alert('ไม่พบข้อมูลในไฟล์ Excel ครับ');
+      }
+    };
+    reader.readAsBinaryString(file);
+    
+    // เคลียร์ค่าไฟล์ที่อัปโหลดไปแล้ว เผื่อต้องการอัปโหลดไฟล์เดิมซ้ำ
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const filteredPolicies = policies.filter((policy) => {
     const query = searchQuery.toLowerCase();
-    const matchesSearch = policy.licenseNo.toLowerCase().includes(query) || policy.policyNo.toLowerCase().includes(query);
-    
-    // เช็ก Dropdown
+    const matchesSearch = policy.licenseNo.toLowerCase().includes(query) || policy.policyNo.toLowerCase().includes(query) || policy.vehicleMake.toLowerCase().includes(query);
     const matchesStatus = statusFilter === 'ALL' || policy.status === statusFilter;
-    
     return matchesSearch && matchesStatus;
   });
 
@@ -50,19 +106,17 @@ export default function PolicyTable() {
         
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
           
-          {/* ช่องค้นหา */}
           <div className="relative flex-1 w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input 
               type="text" 
-              placeholder="ค้นหาทะเบียน, เลขกรมธรรม์..." 
+              placeholder="ค้นหาทะเบียน, ยี่ห้อ, เลขกรมธรรม์..." 
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
-          {/* 3. เพิ่ม Dropdown สำหรับเลือกสถานะ */}
           <div className="relative w-full sm:w-auto">
             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">
               <Filter size={16} />
@@ -72,23 +126,45 @@ export default function PolicyTable() {
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
-              <option value="ALL">All</option>
+              <option value="ALL">ทุกสถานะ</option>
               <option value="ACTIVE">คุ้มครอง</option>
               <option value="WARNING">ใกล้หมดอายุ</option>
               <option value="EXPIRED">ขาดต่ออายุ</option>
             </select>
           </div>
 
+          {/* ซ่อน Input File ไว้ด้านหลัง */}
+          <input 
+            type="file" 
+            accept=".xlsx, .xls, .csv" 
+            className="hidden" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+          />
+
+          {/* ปุ่มสีเทา: นำเข้าข้อมูล */}
+          <button 
+            onClick={() => fileInputRef.current?.click()} 
+            className="w-full sm:w-auto bg-white text-gray-700 border border-gray-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition shrink-0 flex items-center justify-center gap-2"
+          >
+            <Upload size={16} />
+            นำเข้าข้อมูล
+          </button>
+
+          {/* ปุ่มสีน้ำเงิน: เพิ่มเอกสาร (ไปหน้าฟอร์ม) */}
           <Link href="/add-policy" className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition shrink-0 text-center">
             + เพิ่มเอกสาร
           </Link>
         </div>
       </div>
       
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-gray-50 text-gray-500 text-sm border-b border-gray-200">
+      {/* 1. ล็อคความสูงสูงสุดไว้ที่ประมาณ 400px (หรือ max-h-96) และเปิดให้เลื่อนแนวตั้งได้ (overflow-y-auto) */}
+      <div className="overflow-x-auto overflow-y-auto max-h-96">
+        {/* 2. เพิ่ม relative เข้าไปที่ table */}
+        <table className="w-full text-left border-collapse relative">
+          {/* 3. ทำให้ thead ติดอยู่ด้านบนเสมอ (sticky top-0) และใส่ z-index กันข้อมูลข้างล่างลอยทับ */}
+          <thead className="sticky top-0 z-10 bg-gray-50 shadow-[0_1px_0_0_#e5e7eb]">
+            <tr className="text-gray-500 text-sm">
               <th className="p-4 font-medium">ทะเบียนรถ</th>
               <th className="p-4 font-medium">ยี่ห้อ</th>
               <th className="p-4 font-medium">เลขที่กรมธรรม์</th>
@@ -101,13 +177,13 @@ export default function PolicyTable() {
           <tbody className="divide-y divide-gray-200">
             
             {filteredPolicies.length > 0 ? (
-              filteredPolicies.map((policy) => (
-                <tr key={policy.policyNo} className="hover:bg-gray-50 transition">
+              filteredPolicies.map((policy, index) => (
+                <tr key={`${policy.policyNo}-${index}`} className="hover:bg-gray-50 transition">
                   <td className="p-4 font-semibold text-gray-800">{policy.licenseNo}</td>
                   <td className="p-4 text-gray-600">{policy.vehicleMake}</td>
                   <td className="p-4 text-gray-600">{policy.policyNo}</td>
                   <td className="p-4 text-gray-600">{policy.endDate}</td>
-                  <td className="p-4 text-gray-600">{policy.premiumAmount.toFixed(2)}</td>
+                  <td className="p-4 text-gray-600">{Number(policy.premiumAmount).toFixed(2)}</td>
                   <td className="p-4">{getStatusBadge(policy.status)}</td>
                   <td className="p-4">
                     <button className="text-blue-600 hover:underline text-sm font-medium">รายละเอียด</button>
