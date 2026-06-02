@@ -15,9 +15,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      {/* เพิ่ม text-gray-900 เข้าไปตรงนี้ครับ */}
+    <html lang="en" className="bg-gray-50">
       <body className={`${inter.className} bg-gray-50 text-gray-900 min-h-screen`}>
+        {/* จัดให้เนื้อหาหลักอยู่กึ่งกลางและมีความกว้างสูงสุดที่เหมาะสม */}
         <main className="max-w-7xl mx-auto w-full">
           {children}
         </main>
