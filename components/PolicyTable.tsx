@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import Link from 'next/link'; // <-- เพิ่มบรรทัดนี้ด้านบนสุด
 import { InsurancePolicy } from '../types';
 import { CheckCircle2, AlertCircle, XCircle, Search, Filter } from 'lucide-react'; // <-- เพิ่ม icon Filter
 
@@ -78,9 +79,9 @@ export default function PolicyTable() {
             </select>
           </div>
 
-          <button className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition shrink-0">
+          <Link href="/add-policy" className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition shrink-0 text-center">
             + เพิ่มเอกสาร
-          </button>
+          </Link>
         </div>
       </div>
       
