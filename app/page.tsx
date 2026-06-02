@@ -1,5 +1,8 @@
 import React from 'react';
 import { ShieldCheck, AlertTriangle, ShieldX, Wallet } from 'lucide-react';
+import PolicyTable from '../components/PolicyTable';
+import PremiumChart from '../components/PremiumChart';
+import RecentAlerts from '../components/RecentAlerts';
 
 export default function DashboardOverview() {
   return (
@@ -52,22 +55,32 @@ export default function DashboardOverview() {
           </div>
           <div>
             <p className="text-sm text-gray-500 font-medium">ค่าใช้จ่าย พ.ร.บ. ปีนี้</p>
-            <h3 className="text-2xl font-bold text-gray-800">฿85,420</h3>
+            <h3 className="text-2xl font-bold text-gray-800">85,420฿</h3>
           </div>
         </div>
 
       </div>
 
-      {/* พื้นที่สำหรับใส่กราฟและตารางในขั้นตอนต่อไป */}
+      {/* พื้นที่สำหรับใส่กราฟและการแจ้งเตือน */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm h-80 flex items-center justify-center text-gray-400">
-          [ พื้นที่สำหรับ Recharts ]
+        
+        {/* กล่องซ้าย: กราฟ */}
+        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm p-6 h-96 flex items-center justify-center">
+          <PremiumChart />
         </div>
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm h-80 flex items-center justify-center text-gray-400">
-          [ พื้นที่สำหรับแจ้งเตือน Recent Actions ]
+        
+        {/* กล่องขวา: การแจ้งเตือน */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 h-96 flex flex-col">
+          <RecentAlerts />
         </div>
+
       </div>
       
+      {/* พื้นที่ตาราง */}
+      <div className="mt-8">
+        <PolicyTable />
+      </div>
+
     </div>
   );
 }
