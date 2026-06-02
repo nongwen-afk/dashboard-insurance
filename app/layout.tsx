@@ -16,8 +16,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-gray-50 min-h-screen`}>
-        {/* จัดให้เนื้อหาหลักอยู่กึ่งกลางและมีความกว้างสูงสุดที่เหมาะสม */}
+      {/* เพิ่ม text-gray-900 เข้าไปตรงนี้ครับ */}
+      <body className={`${inter.className} bg-gray-50 text-gray-900 min-h-screen`}>
         <main className="max-w-7xl mx-auto w-full">
           {children}
         </main>
