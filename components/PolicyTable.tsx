@@ -1,41 +1,70 @@
 "use client";
 
 import React, { useState, useRef } from 'react';
-import Link from 'next/link';
-import { CheckCircle2, AlertCircle, XCircle, Search, Filter, Upload } from 'lucide-react'; // <-- นำเข้า Upload
-import * as XLSX from 'xlsx'; // <-- นำเข้าไลบรารีอ่าน Excel
+import { Search, Filter, FileSpreadsheet } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
-// จำลองข้อมูลเริ่มต้น
-const initialPolicies = [
-  { policyNo: '2510193259582', licenseNo: '1กข 1234', vehicleMake: 'TOYOTA', endDate: '2026-10-15', premiumAmount: 645.21, status: 'ACTIVE' },
-  { policyNo: '6226553319803', licenseNo: '2กค 5678', vehicleMake: 'HONDA', endDate: '2026-06-15', premiumAmount: 645.21, status: 'WARNING' },
-  { policyNo: '6192133380070', licenseNo: '3กง 9012', vehicleMake: 'ISUZU', endDate: '2026-05-10', premiumAmount: 900.00, status: 'EXPIRED' },
-];
+// กำหนดประเภทของเอกสารที่ระบบรองรับ
+type VehicleDocType = 'act' | 'tax' | 'insurance' | 'inspection' | 'registration_book';
 
-export default function PolicyTable() {
-  // 1. เปลี่ยนข้อมูลตารางมาเก็บใน State เพื่อให้มันอัปเดตหน้าจอได้เมื่ออัปโหลด Excel
-  const [policies, setPolicies] = useState(initialPolicies);
-  
+// โครงสร้างข้อมูลสำหรับเอกสารรถยนต์ 1 รายการ
+interface VehicleDocument {
+  chassis: string;
+  licensePlate?: string;
+  project?: string;
+  docType: VehicleDocType;
+  issuer?: string;
+  docNumber?: string;
+  issuedDate?: string;
+  expiryDate?: string;
+  note?: string;
+}
+
+// กำหนด Props สำหรับรับข้อมูลและฟังก์ชันอัปเดตข้อมูลจาก Component หลัก
+interface PolicyTableProps {
+  documents: VehicleDocument[];
+  setDocuments: React.Dispatch<React.SetStateAction<VehicleDocument[]>>;
+}
+
+export default function PolicyTable({ documents, setDocuments }: PolicyTableProps) {
+  // State สำหรับเก็บข้อความค้นหาในช่อง Search
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
   
-  // 2. ใช้ useRef เพื่อใช้แทนการกดปุ่ม input type="file" แบบซ่อนไว้
+  // Reference สำหรับอ้างอิงถึง input file ที่ถูกซ่อนไว้สำหรับอัปโหลด Excel
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'ACTIVE':
-        return <span className="flex items-center gap-1 text-sm font-medium text-green-700 bg-green-100 px-3 py-1 rounded-full"><CheckCircle2 size={16}/> คุ้มครอง</span>;
-      case 'WARNING':
-        return <span className="flex items-center gap-1 text-sm font-medium text-yellow-700 bg-yellow-100 px-3 py-1 rounded-full"><AlertCircle size={16}/> ใกล้หมดอายุ</span>;
-      case 'EXPIRED':
-        return <span className="flex items-center gap-1 text-sm font-medium text-red-700 bg-red-100 px-3 py-1 rounded-full"><XCircle size={16}/> ขาดต่ออายุ</span>;
-      default:
-        return null;
-    }
+  // ฟังก์ชันแปลงรูปแบบวันที่ (YYYY-MM-DD) ให้เป็นภาษาไทยแบบเดือนย่อ
+  const formatThaiDate = (dateString?: string) => {
+    if (!dateString) return '-';
+    
+    const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+    const d = new Date(dateString);
+    
+    // ตรวจสอบว่าวันที่ถูกต้องหรือไม่ หากไม่ถูกต้องให้คืนค่าเดิม
+    if (isNaN(d.getTime())) return dateString;
+    
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
   };
 
-  // 3. ฟังก์ชันจัดการเมื่อผู้ใช้เลือกไฟล์ Excel สำเร็จ
+  // ฟังก์ชันคำนวณสถานะของเอกสารเทียบกับวันที่ปัจจุบัน
+  const getDocumentStatus = (expiryDate?: string) => {
+    if (!expiryDate) return 'NO_EXPIRY'; 
+    
+    // คำนวณหาจำนวนวันที่เหลือ
+    const diffDays = Math.ceil((new Date(expiryDate).getTime() - new Date().setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return 'EXPIRED';
+    if (diffDays <= 30) return 'WARNING';
+    return 'ACTIVE';
+  };
+
+  // ฟังก์ชันแปลงรหัสประเภทเอกสารเป็นชื่อภาษาไทยสำหรับแสดงผล
+  const getDocTypeName = (type: VehicleDocType) => {
+    const types: Record<string, string> = { act: 'พ.ร.บ.', tax: 'ภาษี', insurance: 'ประกันภัย', inspection: 'ตรอ.', registration_book: 'เล่มทะเบียน' };
+    return types[type] || type;
+  };
+
+  // ฟังก์ชันจัดการกระบวนการอ่านและนำเข้าข้อมูลจากไฟล์ Excel
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -43,161 +72,143 @@ export default function PolicyTable() {
     const reader = new FileReader();
     reader.onload = (evt) => {
       const bstr = evt.target?.result;
-      const wb = XLSX.read(bstr, { type: 'binary' }); // อ่านไฟล์ Excel
-      const wsname = wb.SheetNames[0]; // ดึงข้อมูลชีทแรก
+      const wb = XLSX.read(bstr, { type: 'binary' });
+      const wsname = wb.SheetNames[0];
       const ws = wb.Sheets[wsname];
-      // แปลงข้อมูลจาก Excel เป็น Array
-      const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][]; 
       
-      // 👉 จุดที่แก้ไข: ประกาศ Type ให้ชัดเจนว่ากล่องนี้เก็บอะไรบ้าง
-      type ImportedPolicy = {
-        licenseNo: string;
-        vehicleMake: string;
-        policyNo: string;
-        endDate: string;
-        premiumAmount: number;
-        status: string;
-      };
+      // แปลงข้อมูลจาก Sheet เป็น Array
+      const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as (string | number | undefined)[][]; 
       
-      const newImportedPolicies: ImportedPolicy[] = []; // บังคับ Type ทันที
+      const newImportedDocs: VehicleDocument[] = [];
       
-      // ลูปดึงข้อมูล (เริ่มที่ i = 1 เพื่อข้ามหัวตารางแถวแรก)
+      // ข้ามแถวแรก (Header) และวนลูปอ่านข้อมูลแถวที่เหลือ
       for (let i = 1; i < data.length; i++) {
          const row = data[i];
-         // ถ้าแถวว่าง ให้ข้าม
          if (!row || row.length === 0 || !row[0]) continue;
          
-         newImportedPolicies.push({
-           licenseNo: String(row[0] || ''),
-           vehicleMake: String(row[1] || ''),
-           policyNo: String(row[2] || ''),
-           endDate: String(row[3] || ''), 
-           premiumAmount: Number(row[4] || 0),
-           status: 'ACTIVE' // ตั้งค่าจำลองเริ่มต้นให้รถนำเข้าใหม่เป็น "คุ้มครอง"
+         // แมปปิ้งข้อมูลจากแต่ละคอลัมน์ใน Excel เข้าสู่ Object
+         newImportedDocs.push({
+           chassis: String(row[0] || `CHAS-GEN-${Date.now()}-${i}`),
+           licensePlate: String(row[1] || ''),
+           project: String(row[2] || ''),
+           docType: (String(row[3] || 'act').toLowerCase()) as VehicleDocType,
+           issuer: String(row[4] || ''),
+           docNumber: String(row[5] || ''),
+           expiryDate: row[6] ? String(row[6]) : undefined,
          });
       }
       
-      if (newImportedPolicies.length > 0) {
-        // อัปเดตข้อมูลตารางเดิม + ข้อมูลใหม่เข้าไป
-        setPolicies(prev => [...newImportedPolicies, ...prev]);
-        alert(`🎉 นำเข้าข้อมูลสำเร็จ ${newImportedPolicies.length} รายการ!`);
+      // อัปเดตข้อมูลเข้าสู่ State หลัก
+      if (newImportedDocs.length > 0) {
+        setDocuments(prev => [...newImportedDocs, ...prev]);
+        alert(`นำเข้าข้อมูลสำเร็จ ${newImportedDocs.length} รายการ`);
       } else {
-        alert('ไม่พบข้อมูลในไฟล์ Excel ครับ');
+        alert('ไม่พบข้อมูลในไฟล์ Excel');
       }
     };
     reader.readAsBinaryString(file);
     
-    // เคลียร์ค่าไฟล์ที่อัปโหลดไปแล้ว เผื่อต้องการอัปโหลดไฟล์เดิมซ้ำ
+    // เคลียร์ค่า input file เพื่อให้สามารถอัปโหลดไฟล์เดิมซ้ำได้ในครั้งต่อไป
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const filteredPolicies = policies.filter((policy) => {
+  // กรองเอกสารตามคำค้นหา (ค้นหาจากเลขตัวถัง หรือ ทะเบียนรถ)
+  const filteredDocs = documents.filter((doc) => {
     const query = searchQuery.toLowerCase();
-    const matchesSearch = policy.licenseNo.toLowerCase().includes(query) || policy.policyNo.toLowerCase().includes(query) || policy.vehicleMake.toLowerCase().includes(query);
-    const matchesStatus = statusFilter === 'ALL' || policy.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    return doc.chassis.toLowerCase().includes(query) || (doc.licensePlate?.toLowerCase() || '').includes(query);
   });
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    // คอนเทนเนอร์หลักของตาราง
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-6">
       
-      <div className="p-5 border-b border-gray-200 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
-        <h3 className="text-lg font-bold text-gray-800 shrink-0">รายการ พ.ร.บ. ล่าสุด</h3>
+      {/* ส่วนหัวของตาราง: ค้นหาและปุ่มจัดการ */}
+      <div className="p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
         
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
-          
-          <div className="relative flex-1 w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input 
-              type="text" 
-              placeholder="ค้นหาทะเบียน, ยี่ห้อ, เลขกรมธรรม์..." 
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          <div className="relative w-full sm:w-auto">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">
-              <Filter size={16} />
-            </div>
-            <select 
-              className="w-full sm:w-auto pl-9 pr-8 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition cursor-pointer"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="ALL">ทุกสถานะ</option>
-              <option value="ACTIVE">คุ้มครอง</option>
-              <option value="WARNING">ใกล้หมดอายุ</option>
-              <option value="EXPIRED">ขาดต่ออายุ</option>
-            </select>
-          </div>
-
-          {/* ซ่อน Input File ไว้ด้านหลัง */}
+        {/* ช่องกรอกข้อความค้นหา */}
+        <div className="relative w-full sm:w-80">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input 
-            type="file" 
-            accept=".xlsx, .xls, .csv" 
-            className="hidden" 
-            ref={fileInputRef} 
-            onChange={handleFileUpload} 
+            type="text" 
+            placeholder="ค้นหาทะเบียนรถ, เลขตัวถัง..." 
+            className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
+        </div>
 
-          {/* ปุ่มสีเทา: นำเข้าข้อมูล */}
-          <button 
-            onClick={() => fileInputRef.current?.click()} 
-            className="w-full sm:w-auto bg-white text-gray-700 border border-gray-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition shrink-0 flex items-center justify-center gap-2"
-          >
-            <Upload size={16} />
-            นำเข้าข้อมูล
+        {/* กลุ่มปุ่มคำสั่งด้านขวา */}
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          {/* ปุ่มตัวกรอง */}
+          <button className="flex items-center gap-2 px-4 py-2.5 text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium shadow-sm">
+            <Filter size={16} />
+            ตัวกรอง
           </button>
-
-          {/* ปุ่มสีน้ำเงิน: เพิ่มเอกสาร (ไปหน้าฟอร์ม) */}
-          <Link href="/add-policy" className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition shrink-0 text-center">
-            + เพิ่มเอกสาร
-          </Link>
+          
+          {/* input ซ่อนสำหรับเลือกไฟล์ Excel */}
+          <input type="file" accept=".xlsx, .xls, .csv" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
+          
+          {/* ปุ่มเรียกคำสั่งนำเข้า Excel */}
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-2 px-4 py-2.5 text-white bg-green-600 border border-transparent rounded-xl hover:bg-green-700 transition-colors text-sm font-medium shadow-sm shadow-green-600/20"
+          >
+            <FileSpreadsheet size={16} />
+            นำเข้า Excel
+          </button>
         </div>
       </div>
-      
-      {/* 1. ล็อคความสูงสูงสุดไว้ที่ประมาณ 400px (หรือ max-h-96) และเปิดให้เลื่อนแนวตั้งได้ (overflow-y-auto) */}
-      <div className="overflow-x-auto overflow-y-auto max-h-96">
-        {/* 2. เพิ่ม relative เข้าไปที่ table */}
-        <table className="w-full text-left border-collapse relative">
-          {/* 3. ทำให้ thead ติดอยู่ด้านบนเสมอ (sticky top-0) และใส่ z-index กันข้อมูลข้างล่างลอยทับ */}
-          <thead className="sticky top-0 z-10 bg-gray-50 shadow-[0_1px_0_0_#e5e7eb]">
-            <tr className="text-gray-500 text-sm">
-              <th className="p-4 font-medium">ทะเบียนรถ</th>
-              <th className="p-4 font-medium">ยี่ห้อ</th>
-              <th className="p-4 font-medium">เลขที่กรมธรรม์</th>
-              <th className="p-4 font-medium">วันสิ้นสุด</th>
-              <th className="p-4 font-medium">เบี้ยประกัน (฿)</th>
-              <th className="p-4 font-medium">สถานะ</th>
-              <th className="p-4 font-medium">จัดการ</th>
+
+      {/* โครงสร้างตารางแสดงข้อมูล */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse">
+          {/* หัวตาราง */}
+          <thead className="bg-gray-50/50 border-y border-gray-100">
+            <tr className="text-gray-500 text-xs uppercase tracking-wider">
+              <th className="px-6 py-4 font-semibold">ประเภทเอกสาร</th>
+              <th className="px-6 py-4 font-semibold">เลขตัวถัง</th>
+              <th className="px-6 py-4 font-semibold">ทะเบียนรถ</th>
+              <th className="px-6 py-4 font-semibold">บริษัทประกัน/ผู้ออก</th>
+              <th className="px-6 py-4 font-semibold">วันหมดอายุ</th>
+              <th className="px-6 py-4 font-semibold">สถานะ</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
-            
-            {filteredPolicies.length > 0 ? (
-              filteredPolicies.map((policy, index) => (
-                <tr key={`${policy.policyNo}-${index}`} className="hover:bg-gray-50 transition">
-                  <td className="p-4 font-semibold text-gray-800">{policy.licenseNo}</td>
-                  <td className="p-4 text-gray-600">{policy.vehicleMake}</td>
-                  <td className="p-4 text-gray-600">{policy.policyNo}</td>
-                  <td className="p-4 text-gray-600">{policy.endDate}</td>
-                  <td className="p-4 text-gray-600">{Number(policy.premiumAmount).toFixed(2)}</td>
-                  <td className="p-4">{getStatusBadge(policy.status)}</td>
-                  <td className="p-4">
-                    <button className="text-blue-600 hover:underline text-sm font-medium">รายละเอียด</button>
+          
+          {/* ข้อมูลตาราง */}
+          <tbody className="divide-y divide-gray-100 text-sm">
+            {filteredDocs.map((doc, index) => {
+              // คำนวณสถานะก่อนเรนเดอร์ในแต่ละแถว
+              const currentStatus = getDocumentStatus(doc.expiryDate);
+              
+              return (
+                <tr key={index} className="hover:bg-gray-50/50 transition-colors">
+                  {/* ข้อมูลประเภทเอกสาร */}
+                  <td className="px-6 py-4 font-medium text-gray-700">{getDocTypeName(doc.docType)}</td>
+                  
+                  {/* ข้อมูลเลขตัวถัง */}
+                  <td className="px-6 py-4 text-gray-500 font-mono text-xs">{doc.chassis}</td>
+
+                  {/* ข้อมูลทะเบียนรถ */}
+                  <td className="px-6 py-4">
+                    <span className="font-bold text-gray-800">{doc.licensePlate || '-'}</span>
+                  </td>
+                  
+                  {/* ข้อมูลผู้ออกเอกสาร */}
+                  <td className="px-6 py-4 text-gray-600">{doc.issuer || '-'}</td>
+                  
+                  {/* ข้อมูลวันหมดอายุ */}
+                  <td className="px-6 py-4 text-gray-700 font-medium">{formatThaiDate(doc.expiryDate)}</td>
+                  
+                  {/* ป้ายแสดงสถานะ */}
+                  <td className="px-6 py-4">
+                    {currentStatus === 'ACTIVE' && <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-green-100 text-green-700">ปกติ</span>}
+                    {currentStatus === 'WARNING' && <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-yellow-100 text-yellow-700">ใกล้หมด</span>}
+                    {currentStatus === 'EXPIRED' && <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-red-100 text-red-700">หมดอายุ</span>}
+                    {currentStatus === 'NO_EXPIRY' && <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-gray-100 text-gray-600">ถาวร</span>}
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={7} className="p-8 text-center text-gray-500">
-                  ไม่พบข้อมูลที่ตรงกับเงื่อนไขการค้นหา
-                </td>
-              </tr>
-            )}
-
+              );
+            })}
           </tbody>
         </table>
       </div>
