@@ -17,6 +17,43 @@ interface PolicyTableProps {
   setDocuments: React.Dispatch<React.SetStateAction<VehicleDocument[]>>;
 }
 
+// แปลงสถานะจาก helper ให้เป็นข้อความและสีสำหรับคอลัมน์สถานะในตาราง
+const getStatusBadge = (status: DocStatus, days: number) => {
+  if (status === 'EXPIRED') {
+    return {
+      label: 'หมดอายุแล้ว',
+      detail: `เลยกำหนดมาแล้ว ${Math.abs(days)} วัน`,
+      className: 'bg-red-50 text-red-700 border-red-100',
+      detailClassName: 'text-red-600',
+    };
+  }
+
+  if (status === 'WARNING') {
+    return {
+      label: 'ใกล้หมดอายุ',
+      detail: `เหลืออีก ${days} วัน`,
+      className: 'bg-orange-50 text-orange-700 border-orange-100',
+      detailClassName: 'text-orange-600',
+    };
+  }
+
+  if (status === 'NO_EXPIRY') {
+    return {
+      label: 'ไม่มีวันหมดอายุ',
+      detail: 'ตรวจสอบตามรอบเอกสาร',
+      className: 'bg-slate-50 text-slate-600 border-slate-200',
+      detailClassName: 'text-slate-500',
+    };
+  }
+
+  return {
+    label: 'ใช้งานได้',
+    detail: 'ยังไม่ถึงกำหนด',
+    className: 'bg-green-50 text-green-700 border-green-100',
+    detailClassName: 'text-green-600',
+  };
+};
+
 export default function PolicyTable({ documents, setDocuments }: PolicyTableProps) {
   // searchInput คือค่าที่พิมพ์อยู่ ส่วน activeSearch คือค่าที่ debounce แล้วจึงนำไปกรองจริง
   const [searchInput, setSearchInput] = useState('');     
@@ -170,39 +207,40 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
     <>
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-6">
       
-      <div className="p-6 flex flex-col sm:flex-row justify-between items-center gap-4 relative z-20">
-        <div className="relative w-full sm:w-80">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input 
-            type="text" 
-            placeholder="ค้นหาทะเบียน, ประเภทเอกสาร..." 
-            className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a4d2e] transition-all"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-          />
-        </div>
+      <div className="p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 relative z-20">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full lg:flex-1">
+          <div className="relative w-full sm:max-w-sm lg:w-80">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <input
+              type="text"
+              placeholder="ค้นหาทะเบียน, ประเภทเอกสาร..."
+              className="h-11 w-full pl-11 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a4d2e] transition-all"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
+          </div>
 
-        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2">
           
-          <div className="relative">
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsFilterOpen(!isFilterOpen);
-                setIsSortOpen(false); 
-              }}
-              className={`relative flex items-center gap-2 px-4 py-2.5 bg-white border rounded-xl transition-colors text-sm font-medium shadow-sm ${isFilterOpen ? 'border-[#1a4d2e] text-[#1a4d2e]' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-            >
-              <Filter size={16} /> ตัวกรอง
-              {hasActiveFilters && (
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
-              )}
-            </button>
+            <div className="relative">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsFilterOpen(!isFilterOpen);
+                  setIsSortOpen(false);
+                }}
+                className={`relative flex h-11 items-center gap-2 px-4 bg-white border rounded-xl transition-colors text-sm font-medium shadow-sm ${isFilterOpen ? 'border-[#1a4d2e] text-[#1a4d2e]' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+              >
+                <Filter size={16} /> ตัวกรอง
+                {hasActiveFilters && (
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
+                )}
+              </button>
 
             {isFilterOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setIsFilterOpen(false)}></div>
-                <div className="absolute right-0 top-12 w-64 bg-white rounded-xl shadow-xl border border-gray-100 z-20 p-5 flex flex-col gap-4 animate-in fade-in slide-in-from-top-2">
+                <div className="absolute left-0 top-12 w-64 bg-white rounded-xl shadow-xl border border-gray-100 z-20 p-5 flex flex-col gap-4 animate-in fade-in slide-in-from-top-2">
                   <div className="flex justify-between items-center pb-3 border-b border-gray-100">
                     <h4 className="font-bold text-gray-800">ตัวกรองข้อมูล</h4>
                     <button onClick={() => setIsFilterOpen(false)} className="text-gray-400 hover:text-gray-600"><X size={16}/></button>
@@ -238,24 +276,24 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
                 </div>
               </>
             )}
-          </div>
+            </div>
 
-          <div className="relative">
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsSortOpen(!isSortOpen);
-                setIsFilterOpen(false); 
-              }}
-              className={`relative flex items-center gap-2 px-4 py-2.5 bg-white border rounded-xl transition-colors text-sm font-medium shadow-sm ${isSortOpen ? 'border-[#1a4d2e] text-[#1a4d2e]' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-            >
-              <ArrowUpDown size={16} /> จัดเรียง
-            </button>
+            <div className="relative">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsSortOpen(!isSortOpen);
+                  setIsFilterOpen(false);
+                }}
+                className={`relative flex h-11 items-center gap-2 px-4 bg-white border rounded-xl transition-colors text-sm font-medium shadow-sm ${isSortOpen ? 'border-[#1a4d2e] text-[#1a4d2e]' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+              >
+                <ArrowUpDown size={16} /> จัดเรียง
+              </button>
 
             {isSortOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setIsSortOpen(false)}></div>
-                <div className="absolute right-0 top-12 w-64 bg-white rounded-xl shadow-xl border border-gray-100 z-20 p-5 flex flex-col gap-4 animate-in fade-in slide-in-from-top-2">
+                <div className="absolute left-0 top-12 w-64 bg-white rounded-xl shadow-xl border border-gray-100 z-20 p-5 flex flex-col gap-4 animate-in fade-in slide-in-from-top-2">
                   <div className="flex justify-between items-center pb-3 border-b border-gray-100">
                     <h4 className="font-bold text-gray-800">จัดเรียงข้อมูล</h4>
                     <button onClick={() => setIsSortOpen(false)} className="text-gray-400 hover:text-gray-600"><X size={16}/></button>
@@ -283,55 +321,78 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
                 </div>
               </>
             )}
+            </div>
           </div>
+        </div>
 
+        <div className="flex w-full sm:w-auto lg:ml-4">
           <input type="file" accept=".xlsx, .xls, .csv" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
           <button 
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 px-4 py-2.5 text-white bg-[#1a4d2e] border border-transparent rounded-xl hover:bg-[#123620] transition-colors text-sm font-medium shadow-sm shadow-[#1a4d2e]/20"
+            className="flex h-11 w-full sm:w-auto items-center justify-center gap-2 px-5 text-white bg-[#1a4d2e] border border-transparent rounded-xl hover:bg-[#123620] transition-colors text-sm font-medium shadow-sm shadow-[#1a4d2e]/20"
           >
-            <FileSpreadsheet size={16} /> นำเข้า Excel
+            <FileSpreadsheet size={16} /> นำเข้าข้อมูล
           </button>
         </div>
       </div>
 
       <div className="overflow-x-auto min-h-[500px]">
-        <table className="w-full text-left border-collapse">
+        <table className="w-full min-w-[1120px] table-fixed text-left border-collapse">
+          <colgroup>
+            <col className="w-[13%]" />
+            <col className="w-[13%]" />
+            <col className="w-[13%]" />
+            <col className="w-[14%]" />
+            <col className="w-[14%]" />
+            <col className="w-[16%]" />
+            <col className="w-[8%]" />
+            <col className="w-[6%]" />
+          </colgroup>
           <thead className="bg-gray-50/50 border-y border-gray-100">
             <tr className="text-gray-500 text-xs uppercase tracking-wider">
-              <th className="px-6 py-4 font-semibold">ประเภทเอกสาร</th>
-              <th className="px-6 py-4 font-semibold">เลขตัวถัง</th>
-              <th className="px-6 py-4 font-semibold">ทะเบียนรถ</th>
-              <th className="px-6 py-4 font-semibold">วันที่มีผล</th>
-              <th className="px-6 py-4 font-semibold">วันหมดอายุ</th>
-              <th className="px-6 py-4 font-semibold text-center">ไฟล์แนบ</th>
-              <th className="px-6 py-4 font-semibold text-right"></th>
+              <th className="px-5 py-3.5 font-semibold">ประเภทเอกสาร</th>
+              <th className="px-5 py-3.5 font-semibold">เลขตัวถัง</th>
+              <th className="px-5 py-3.5 font-semibold">ทะเบียนรถ</th>
+              <th className="px-5 py-3.5 font-semibold">วันที่มีผล</th>
+              <th className="px-5 py-3.5 font-semibold">วันหมดอายุ</th>
+              <th className="px-5 py-3.5 font-semibold">สถานะ</th>
+              <th className="px-5 py-3.5 font-semibold text-center">ไฟล์แนบ</th>
+              <th className="px-5 py-3.5 font-semibold text-right"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 text-sm">
             {currentDocs.length > 0 ? (
               currentDocs.map((doc, index) => {
                 const { status, days } = getDocumentStatus(doc.expiryDate);
+                const statusBadge = getStatusBadge(status, days);
                 return (
                   <tr key={index} className="hover:bg-gray-50/50 transition-colors group relative">
-                    <td className="px-6 py-4 font-medium text-gray-700">{getDocTypeName(doc.docType)}</td>
-                    <td className="px-6 py-4 text-gray-500 font-mono text-xs">{doc.chassis}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-5 py-4 font-medium text-gray-700">{getDocTypeName(doc.docType)}</td>
+                    <td className="px-5 py-4 text-gray-500 font-mono text-xs">{doc.chassis}</td>
+                    <td className="px-5 py-4">
                       <span className="font-bold text-gray-800">{doc.licensePlate || '-'}</span>
                     </td>
                     
-                    <td className="px-6 py-4">
+                    <td className="px-5 py-4">
                       <span className="text-gray-600">{formatThaiDate(doc.issuedDate)}</span>
                     </td>
                     
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col">
-                        <span className="text-gray-700 font-medium">{formatThaiDate(doc.expiryDate)}</span>
-                        {status === 'WARNING' && <span className="text-[10px] text-yellow-600 font-bold mt-0.5">เหลืออีก {days} วัน</span>}
-                        {status === 'EXPIRED' && <span className="text-[10px] text-red-600 font-bold mt-0.5">เลยกำหนดมาแล้ว {Math.abs(days)} วัน</span>}
+                    <td className="px-5 py-4">
+                      <span className="text-gray-700 font-medium">{formatThaiDate(doc.expiryDate)}</span>
+                    </td>
+
+                    <td className="px-5 py-4">
+                      <div className="inline-flex flex-col items-start gap-1">
+                        <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold ${statusBadge.className}`}>
+                          {statusBadge.label}
+                        </span>
+                        <span className={`text-[11px] font-semibold ${statusBadge.detailClassName}`}>
+                          {statusBadge.detail}
+                        </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-center">
+
+                    <td className="px-5 py-4 text-center">
                       {doc.hasAttachment ? (
                         <button className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-lg transition-colors inline-flex" title="ดูไฟล์แนบ">
                           <Paperclip size={18} />
@@ -341,7 +402,7 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
                       )}
                     </td>
                     
-                    <td className="px-6 py-4 text-right relative">
+                    <td className="px-5 py-4 text-right relative">
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
@@ -410,7 +471,7 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
               })
             ) : (
               <tr>
-                <td colSpan={7} className="px-6 py-12 text-center text-gray-400 flex-col items-center justify-center">
+                <td colSpan={8} className="px-6 py-12 text-center text-gray-400 flex-col items-center justify-center">
                   <p className="font-medium text-gray-500">ไม่พบข้อมูลที่คุณค้นหา หรือ ไม่ตรงกับตัวกรอง</p>
                 </td>
               </tr>
