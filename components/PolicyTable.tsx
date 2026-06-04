@@ -3,8 +3,8 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { 
   Search, Filter, FileSpreadsheet, Paperclip, MoreHorizontal, 
-  User, ChevronLeft, ChevronRight, X, ArrowUpDown, 
-  Eye, RefreshCw, Trash2, CheckCircle 
+  ChevronLeft, ChevronRight, X, ArrowUpDown, 
+  Eye, RefreshCw, Trash2, CheckCircle, Car, CalendarDays, FileText, User, Building2 
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import toast from 'react-hot-toast';
@@ -47,15 +47,18 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('RELEVANCE'); 
 
-  // State สำหรับเปิด/ปิด เมนูจัดการ
   const [openActionMenuIndex, setOpenActionMenuIndex] = useState<number | null>(null);
+
+  // 📍 State สำหรับเปิด/ปิด Popup รายละเอียด และเก็บข้อมูลรถคันที่กดดู
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedDocForDetail, setSelectedDocForDetail] = useState<VehicleDocument | null>(null);
 
   const formatThaiDate = (dateString?: string) => {
     if (!dateString) return '-';
     const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
     const d = new Date(dateString);
     if (isNaN(d.getTime())) return dateString;
-    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear() + 543}`;
   };
 
   const getDocumentStatus = (expiryDate?: string): { status: DocStatus; days: number } => {
@@ -89,8 +92,6 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
               const matchSearch = 
                   doc.chassis.toLowerCase().includes(query) || 
                   (doc.licensePlate?.toLowerCase() || '').includes(query) ||
-                  (doc.driverName?.toLowerCase() || '').includes(query) ||
-                  (doc.issuer?.toLowerCase() || '').includes(query) ||
                   docTypeName.includes(query);
 
               const matchDocType = docTypeFilter === 'ALL' || doc.docType === docTypeFilter;
@@ -141,8 +142,8 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
              docType: (String(row[3] || 'act').toLowerCase()) as VehicleDocType,
              issuer: String(row[4] || ''),
              docNumber: String(row[5] || ''),
-             expiryDate: row[6] ? String(row[6]) : undefined,
-             driverName: i % 2 === 0 ? 'สมชาย ใจดี' : 'สมศรี รักงาน',
+             issuedDate: row[6] ? String(row[6]) : undefined,
+             expiryDate: row[7] ? String(row[7]) : undefined,
              hasAttachment: i % 3 !== 0, 
            });
         }
@@ -170,8 +171,6 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
       const matchSearch = 
           doc.chassis.toLowerCase().includes(query) || 
           (doc.licensePlate?.toLowerCase() || '').includes(query) ||
-          (doc.driverName?.toLowerCase() || '').includes(query) ||
-          (doc.issuer?.toLowerCase() || '').includes(query) ||
           docTypeName.includes(query);
       
       const matchDocType = docTypeFilter === 'ALL' || doc.docType === docTypeFilter;
@@ -220,16 +219,15 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
     }
   }, [totalPages, currentPage]);
 
-  // คลิกพื้นที่อื่นเพื่อปิดเมนู Action
   useEffect(() => {
-    const handleClickOutside = () => {
+    const handleClickOutside = (event: MouseEvent) => {
       if (openActionMenuIndex !== null) {
         setOpenActionMenuIndex(null);
       }
     };
-    document.addEventListener("click", handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener("click", handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [openActionMenuIndex]);
 
@@ -243,7 +241,7 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input 
             type="text" 
-            placeholder="ค้นหาทะเบียน, ประเภทเอกสาร, บริษัท..." 
+            placeholder="ค้นหาทะเบียน, ประเภทเอกสาร..." 
             className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a4d2e] transition-all"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
@@ -370,11 +368,10 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
               <th className="px-6 py-4 font-semibold">ประเภทเอกสาร</th>
               <th className="px-6 py-4 font-semibold">เลขตัวถัง</th>
               <th className="px-6 py-4 font-semibold">ทะเบียนรถ</th>
-              <th className="px-6 py-4 font-semibold">ผู้รับผิดชอบ</th>
-              <th className="px-6 py-4 font-semibold">บริษัทประกัน/ผู้ออก</th>
+              <th className="px-6 py-4 font-semibold">วันที่มีผล</th>
               <th className="px-6 py-4 font-semibold">วันหมดอายุ</th>
               <th className="px-6 py-4 font-semibold text-center">ไฟล์แนบ</th>
-              <th className="px-6 py-4 font-semibold text-right">จัดการ</th>
+              <th className="px-6 py-4 font-semibold text-right"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 text-sm">
@@ -382,23 +379,17 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
               currentDocs.map((doc, index) => {
                 const { status, days } = getDocumentStatus(doc.expiryDate);
                 return (
-                  <tr key={index} className="hover:bg-gray-50/50 transition-colors group">
+                  <tr key={index} className="hover:bg-gray-50/50 transition-colors group relative">
                     <td className="px-6 py-4 font-medium text-gray-700">{getDocTypeName(doc.docType)}</td>
                     <td className="px-6 py-4 text-gray-500 font-mono text-xs">{doc.chassis}</td>
                     <td className="px-6 py-4">
                       <span className="font-bold text-gray-800">{doc.licensePlate || '-'}</span>
                     </td>
+                    
                     <td className="px-6 py-4">
-                      {doc.driverName ? (
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <div className="bg-gray-100 p-1.5 rounded-full"><User size={14} /></div>
-                          <span className="text-sm">{doc.driverName}</span>
-                        </div>
-                      ) : (
-                        <span className="text-gray-400 text-xs">-</span>
-                      )}
+                      <span className="text-gray-600">{formatThaiDate(doc.issuedDate)}</span>
                     </td>
-                    <td className="px-6 py-4 text-gray-600">{doc.issuer || '-'}</td>
+                    
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
                         <span className="text-gray-700 font-medium">{formatThaiDate(doc.expiryDate)}</span>
@@ -416,7 +407,6 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
                       )}
                     </td>
                     
-                    {/* 📍 ส่วนปุ่ม Action */}
                     <td className="px-6 py-4 text-right relative">
                       <button 
                         onClick={(e) => {
@@ -443,10 +433,12 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
                             <RefreshCw size={14} /> ซิงค์ข้อมูลล่าสุด
                           </button>
                           
+                          {/* 📍 ปรับปุ่มดูรายละเอียด ให้เซ็ตข้อมูลลง State เพื่อเปิด Popup */}
                           <button 
                             className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors"
                             onClick={() => { 
-                              toast(`กำลังดูรายละเอียด ${doc.licensePlate || doc.chassis}`, { icon: 'ℹ️' }); 
+                              setSelectedDocForDetail(doc);
+                              setIsDetailModalOpen(true);
                               setOpenActionMenuIndex(null); 
                             }}
                           >
@@ -484,7 +476,7 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
               })
             ) : (
               <tr>
-                <td colSpan={8} className="px-6 py-12 text-center text-gray-400 flex-col items-center justify-center">
+                <td colSpan={7} className="px-6 py-12 text-center text-gray-400 flex-col items-center justify-center">
                   <p className="font-medium text-gray-500">ไม่พบข้อมูลที่คุณค้นหา หรือ ไม่ตรงกับตัวกรอง</p>
                 </td>
               </tr>
@@ -536,6 +528,108 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
           </div>
         </div>
       )}
+
+      {/* ===================== Popup แสดงรายละเอียดเอกสารแบบเต็ม ===================== */}
+      {isDetailModalOpen && selectedDocForDetail && (
+        <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl border border-slate-100 animate-in zoom-in duration-200">
+            
+            <div className="flex justify-between items-center p-5 border-b bg-gray-50/50">
+              <div className="flex items-center gap-3">
+                <div className="bg-[#e8f0eb] p-2.5 rounded-xl text-[#1a4d2e]">
+                  <FileText size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-800 text-lg">รายละเอียดข้อมูลเอกสาร</h3>
+                  <p className="text-xs text-gray-500">ประเภท: {getDocTypeName(selectedDocForDetail.docType)}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsDetailModalOpen(false)} 
+                className="text-gray-400 hover:text-gray-700 bg-white hover:bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center transition-colors border border-gray-200"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
+              {/* ส่วนข้อมูลรถ */}
+              <div>
+                <h4 className="text-sm font-bold text-[#1a4d2e] mb-3 flex items-center gap-2">
+                  <Car size={16} /> ข้อมูลยานพาหนะ
+                </h4>
+                <div className="bg-gray-50 rounded-xl p-4 grid grid-cols-2 gap-y-4 gap-x-6 border border-gray-100">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">ทะเบียนรถ</p>
+                    <p className="font-bold text-gray-800 text-base">{selectedDocForDetail.licensePlate || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">เลขตัวถัง / Chassis</p>
+                    <p className="font-mono text-gray-700 font-medium">{selectedDocForDetail.chassis || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">โครงการ / Project</p>
+                    <p className="font-medium text-gray-700">{selectedDocForDetail.project || 'ไม่ระบุ'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <hr className="border-gray-100" />
+
+              {/* ส่วนข้อมูลเอกสาร และข้อมูลที่ถูกซ่อนไปจากตาราง */}
+              <div>
+                <h4 className="text-sm font-bold text-[#1a4d2e] mb-3 flex items-center gap-2">
+                  <CalendarDays size={16} /> ข้อมูลเอกสารและความคุ้มครอง
+                </h4>
+                <div className="grid grid-cols-2 gap-y-4 gap-x-6 px-2">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">วันที่มีผล (Issued Date)</p>
+                    <p className="font-medium text-gray-800">{formatThaiDate(selectedDocForDetail.issuedDate)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">วันหมดอายุ (Expiry Date)</p>
+                    <p className="font-medium text-gray-800">{formatThaiDate(selectedDocForDetail.expiryDate)}</p>
+                  </div>
+                  
+                  {/* 📍 ข้อมูลที่ซ่อนจากตารางหลัก นำมาแสดงตรงนี้ */}
+                  <div className="col-span-2 bg-blue-50/50 p-3 rounded-lg border border-blue-100">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-blue-600 font-semibold flex items-center gap-1 mb-1">
+                          <User size={12} /> ผู้รับผิดชอบ (Driver)
+                        </p>
+                        <p className="font-medium text-gray-800">{selectedDocForDetail.driverName || 'ไม่ระบุ'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-blue-600 font-semibold flex items-center gap-1 mb-1">
+                          <Building2 size={12} /> บริษัทประกัน/ผู้ออกเอกสาร
+                        </p>
+                        <p className="font-medium text-gray-800">{selectedDocForDetail.issuer || 'ไม่ระบุ'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="col-span-2">
+                    <p className="text-xs text-gray-500 mb-1">หมายเลขเอกสาร/กรมธรรม์</p>
+                    <p className="font-medium text-gray-800">{selectedDocForDetail.docNumber || 'ไม่มีข้อมูล'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-5 border-t bg-gray-50 flex justify-end">
+              <button 
+                onClick={() => setIsDetailModalOpen(false)} 
+                className="px-6 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:text-gray-900 font-bold transition-all shadow-sm"
+              >
+                ปิดหน้าต่าง
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
