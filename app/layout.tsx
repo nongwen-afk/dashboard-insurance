@@ -13,8 +13,7 @@ const notoSansThai = Noto_Sans_Thai({
 });
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  // 📍 เปลี่ยนค่าเริ่มต้นจาก true เป็น false
-  // ทำให้เมื่อ Refresh หน้าเว็บ Sidebar จะถูกซ่อนไว้ก่อน
+  // คุม sidebar จาก layout เพื่อให้ Header และ Sidebar ใช้ state เปิด/ปิดชุดเดียวกันทุกหน้า
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
@@ -36,6 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Toaster 
           position="top-right" 
           containerStyle={{ zIndex: 99999 }}
+          // toast ต้องอยู่เหนือ modal/backdrop เพื่อให้ผู้ใช้เห็น feedback หลัง action ทันที
           toastOptions={{ 
             style: { 
               fontFamily: 'inherit',

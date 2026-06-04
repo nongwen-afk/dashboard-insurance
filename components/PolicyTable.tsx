@@ -4,30 +4,13 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { 
   Search, Filter, FileSpreadsheet, Paperclip, MoreHorizontal, 
   ChevronLeft, ChevronRight, X, ArrowUpDown, 
-  Eye, RefreshCw, Trash2, CheckCircle, Car, CalendarDays, FileText, User, Building2 
+  Eye, RefreshCw, Trash2, CheckCircle
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
 import toast from 'react-hot-toast';
-
-type VehicleDocType = 'act' | 'tax' | 'insurance' | 'inspection' | 'registration_book';
-
-interface VehicleDocument {
-  chassis: string;
-  licensePlate?: string;
-  project?: string;
-  docType: VehicleDocType;
-  issuer?: string;
-  docNumber?: string;
-  issuedDate?: string;
-  expiryDate?: string;
-  note?: string;
-  driverName?: string;
-  hasAttachment?: boolean;
-}
-
-type DocStatus = 'EXPIRED' | 'WARNING' | 'ACTIVE' | 'NO_EXPIRY';
-type SortOption = 'RELEVANCE' | 'DATE_ASC' | 'DATE_DESC';
-type SpreadsheetCell = string | number | Date | undefined;
+import DocumentDetailModal from '@/components/DocumentDetailModal';
+import type { DocStatus, SortOption, VehicleDocument } from '@/types';
+import { formatThaiDate, getDocTypeName, getDocumentStatus } from '@/utils/documentUtils';
+import { parseVehicleDocumentsFromFile } from '@/utils/importVehicleDocuments';
 
 interface PolicyTableProps {
   documents: VehicleDocument[];
@@ -35,6 +18,7 @@ interface PolicyTableProps {
 }
 
 export default function PolicyTable({ documents, setDocuments }: PolicyTableProps) {
+  // searchInput คือค่าที่พิมพ์อยู่ ส่วน activeSearch คือค่าที่ debounce แล้วจึงนำไปกรองจริง
   const [searchInput, setSearchInput] = useState('');     
   const [activeSearch, setActiveSearch] = useState('');   
   
@@ -50,139 +34,9 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
 
   const [openActionMenuIndex, setOpenActionMenuIndex] = useState<number | null>(null);
 
-  // 📍 State สำหรับเปิด/ปิด Popup รายละเอียด และเก็บข้อมูลรถคันที่กดดู
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedDocForDetail, setSelectedDocForDetail] = useState<VehicleDocument | null>(null);
 
-  const formatThaiDate = (dateString?: string) => {
-    if (!dateString) return '-';
-    const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-    const d = new Date(dateString);
-    if (isNaN(d.getTime())) return dateString;
-    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear() + 543}`;
-  };
-
-  const getDocumentStatus = (expiryDate?: string): { status: DocStatus; days: number } => {
-    if (!expiryDate) return { status: 'NO_EXPIRY', days: 0 }; 
-    const diffDays = Math.ceil((new Date(expiryDate).getTime() - new Date().setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays < 0) return { status: 'EXPIRED', days: diffDays };
-    if (diffDays <= 30) return { status: 'WARNING', days: diffDays };
-    return { status: 'ACTIVE', days: diffDays };
-  };
-
-  const getDocTypeName = (type: VehicleDocType) => {
-    const types: Record<string, string> = { act: 'พ.ร.บ.', tax: 'ภาษี', insurance: 'ประกันภัย', inspection: 'ตรอ.', registration_book: 'เล่มทะเบียน' };
-    return types[type] || type;
-  };
-
-  const normalizeDateValue = (value?: SpreadsheetCell) => {
-    if (value === undefined || value === null || value === '') return undefined;
-
-    const toIsoDate = (year: number, month: number, day: number) => {
-      const normalizedYear = year > 2400 ? year - 543 : year;
-      const date = new Date(normalizedYear, month - 1, day);
-      if (Number.isNaN(date.getTime())) return undefined;
-      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-    };
-
-    if (value instanceof Date) {
-      return toIsoDate(value.getFullYear(), value.getMonth() + 1, value.getDate());
-    }
-
-    if (typeof value === 'number') {
-      const parsed = XLSX.SSF.parse_date_code(value);
-      return parsed ? toIsoDate(parsed.y, parsed.m, parsed.d) : undefined;
-    }
-
-    const raw = String(value).trim();
-    if (!raw) return undefined;
-
-    if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(raw)) {
-      const [year, month, day] = raw.split('-').map(Number);
-      return toIsoDate(year, month, day);
-    }
-
-    if (/^\d+(\.\d+)?$/.test(raw)) {
-      const serial = Number(raw);
-      if (serial > 20000 && serial < 80000) {
-        const parsed = XLSX.SSF.parse_date_code(serial);
-        return parsed ? toIsoDate(parsed.y, parsed.m, parsed.d) : undefined;
-      }
-    }
-
-    const slashMatch = raw.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/);
-    if (slashMatch) {
-      const first = Number(slashMatch[1]);
-      const second = Number(slashMatch[2]);
-      const year = Number(slashMatch[3].length === 2 ? `20${slashMatch[3]}` : slashMatch[3]);
-      return first > 12 ? toIsoDate(year, second, first) : toIsoDate(year, first, second);
-    }
-
-    const parsed = new Date(raw);
-    if (!Number.isNaN(parsed.getTime())) {
-      return toIsoDate(parsed.getFullYear(), parsed.getMonth() + 1, parsed.getDate());
-    }
-
-    return raw;
-  };
-
-  const normalizeDocType = (value?: SpreadsheetCell): VehicleDocType => {
-    const raw = String(value || 'act').trim().toLowerCase();
-    const compact = raw.replace(/\s|\./g, '');
-
-    if (['act', 'พรบ', 'พ.ร.บ'].includes(compact)) return 'act';
-    if (['tax', 'ภาษี', 'ภาษรถ'].includes(compact)) return 'tax';
-    if (['insurance', 'ประกัน', 'ประกันภัย'].includes(compact)) return 'insurance';
-    if (['inspection', 'ตรอ', 'ตรวจสภาพ'].includes(compact)) return 'inspection';
-    if (['registration_book', 'registrationbook', 'เล่มทะเบียน', 'ทะเบียน'].includes(compact)) return 'registration_book';
-
-    return 'act';
-  };
-
-  const getImportColumns = (headerRow?: SpreadsheetCell[]) => {
-    const normalizeHeader = (value?: SpreadsheetCell) => String(value || '')
-      .toLowerCase()
-      .replace(/[\s*_()./-]/g, '');
-
-    const headers = (headerRow || []).map(normalizeHeader);
-    const findColumn = (candidates: string[]) => {
-      const normalizedCandidates = candidates.map((candidate) => normalizeHeader(candidate));
-      return headers.findIndex((header) => normalizedCandidates.some((candidate) => header.includes(candidate)));
-    };
-
-    const detected = {
-      chassis: findColumn(['เลขตัวถัง', 'chassis']),
-      licensePlate: findColumn(['ทะเบียนรถ', 'licenseplate', 'license']),
-      project: findColumn(['โครงการ', 'project']),
-      docType: findColumn(['ประเภทเอกสาร', 'doctype', 'documenttype']),
-      issuer: findColumn(['บริษัทประกัน', 'ผู้ออก', 'issuer']),
-      docNumber: findColumn(['เลขที่กรมธรรม์', 'หมายเลขเอกสาร', 'docnumber', 'policy']),
-      issuedDate: findColumn(['วันที่มีผล', 'วันเริ่ม', 'issueddate', 'startdate']),
-      expiryDate: findColumn(['วันหมดอายุ', 'expirydate', 'expiredate', 'enddate']),
-      driverName: findColumn(['ผู้รับผิดชอบ', 'driver', 'คนขับ']),
-      note: findColumn(['หมายเหตุ', 'note']),
-    };
-
-    const hasRecognizedHeaders = Object.values(detected).some((index) => index >= 0);
-    if (hasRecognizedHeaders) return detected;
-
-    return {
-      chassis: 0,
-      licensePlate: 1,
-      project: 2,
-      docType: 3,
-      issuer: 4,
-      docNumber: 5,
-      issuedDate: 6,
-      expiryDate: 7,
-      driverName: 8,
-      note: 9,
-    };
-  };
-
-  const getCellValue = (row: SpreadsheetCell[], index: number) => index >= 0 ? row[index] : undefined;
-
+  // หน่วงการค้นหาเล็กน้อยเพื่อลด toast ถี่เกินไปและไม่กรองข้อมูลทุก key stroke ทันที
   useEffect(() => {
     const searchToastId = 'search-toast';
 
@@ -219,58 +73,31 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
     return () => clearTimeout(timer);
   }, [searchInput, activeSearch, documents, docTypeFilter]);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ให้ utility แปลงไฟล์เป็น VehicleDocument[] แล้ว component รับผิดชอบแค่ update state และแจ้งผล
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const loadingToast = toast.loading('กำลังประมวลผลไฟล์...');
 
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      try {
-        const bstr = evt.target?.result;
-        const wb = XLSX.read(bstr, { type: 'binary', cellDates: true });
-        const wsname = wb.SheetNames[0];
-        const ws = wb.Sheets[wsname];
-        const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as SpreadsheetCell[][]; 
-        const columns = getImportColumns(data[0]);
-        
-        const newImportedDocs: VehicleDocument[] = [];
-        for (let i = 1; i < data.length; i++) {
-           const row = data[i];
-           const chassis = getCellValue(row, columns.chassis);
-           if (!row || row.length === 0 || !chassis) continue;
-           
-           newImportedDocs.push({
-             chassis: String(chassis || `CHAS-${Date.now()}-${i}`),
-             licensePlate: String(getCellValue(row, columns.licensePlate) || ''),
-             project: String(getCellValue(row, columns.project) || ''),
-             docType: normalizeDocType(getCellValue(row, columns.docType)),
-             issuer: String(getCellValue(row, columns.issuer) || ''),
-             docNumber: String(getCellValue(row, columns.docNumber) || ''),
-             issuedDate: normalizeDateValue(getCellValue(row, columns.issuedDate)),
-             expiryDate: normalizeDateValue(getCellValue(row, columns.expiryDate)),
-             driverName: getCellValue(row, columns.driverName) ? String(getCellValue(row, columns.driverName)) : undefined,
-             note: getCellValue(row, columns.note) ? String(getCellValue(row, columns.note)) : undefined,
-             hasAttachment: i % 3 !== 0, 
-           });
-        }
-        
-        if (newImportedDocs.length > 0) {
-          setDocuments(prev => [...newImportedDocs, ...prev]);
-          setCurrentPage(1); 
-          toast.success(`นำเข้าข้อมูลสำเร็จ ${newImportedDocs.length} รายการ`, { id: loadingToast });
-        } else {
-          toast.error('ไม่พบข้อมูลในไฟล์ Excel', { id: loadingToast });
-        }
-      } catch {
-        toast.error('เกิดข้อผิดพลาดในการอ่านไฟล์', { id: loadingToast });
+    try {
+      const newImportedDocs = await parseVehicleDocumentsFromFile(file);
+
+      if (newImportedDocs.length > 0) {
+        setDocuments(prev => [...newImportedDocs, ...prev]);
+        setCurrentPage(1);
+        toast.success(`นำเข้าข้อมูลสำเร็จ ${newImportedDocs.length} รายการ`, { id: loadingToast });
+      } else {
+        toast.error('ไม่พบข้อมูลในไฟล์ Excel', { id: loadingToast });
       }
-    };
-    reader.readAsBinaryString(file);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch {
+      toast.error('เกิดข้อผิดพลาดในการอ่านไฟล์', { id: loadingToast });
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
+  // รวมการค้นหา กรองประเภท และจัดเรียงไว้ใน memo เพื่อให้ตารางคำนวณใหม่เฉพาะตอนข้อมูลหรือ filter เปลี่ยน
   const filteredDocs = useMemo(() => {
     const query = activeSearch.toLowerCase();
     
@@ -290,6 +117,7 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
       if (sortBy === 'RELEVANCE') {
         const statusA = getDocumentStatus(a.expiryDate);
         const statusB = getDocumentStatus(b.expiryDate);
+        // ความเกี่ยวข้องให้เอกสารหมดอายุมาก่อน ตามด้วยใกล้หมดอายุ เพื่อให้งานด่วนอยู่บนสุด
         const priority: Record<DocStatus, number> = { EXPIRED: 3, WARNING: 2, ACTIVE: 1, NO_EXPIRY: 0 };
         
         if (priority[statusA.status] !== priority[statusB.status]) {
@@ -317,11 +145,13 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
   const totalPages = Math.ceil(filteredDocs.length / itemsPerPage);
   const safeCurrentPage = totalPages > 0 ? Math.min(currentPage, totalPages) : 1;
   
+  // แยกข้อมูลเฉพาะหน้าปัจจุบันหลังจาก filter/sort เสร็จแล้ว
   const currentDocs = useMemo(() => {
     const startIndex = (safeCurrentPage - 1) * itemsPerPage;
     return filteredDocs.slice(startIndex, startIndex + itemsPerPage);
   }, [filteredDocs, safeCurrentPage]);
 
+  // ปิด action menu เมื่อคลิกนอกเมนู เพื่อไม่ให้ dropdown ค้างหลังเลือกงานอื่น
   useEffect(() => {
     const handleClickOutside = () => {
       if (openActionMenuIndex !== null) {
@@ -538,12 +368,10 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
                             <RefreshCw size={14} /> ซิงค์ข้อมูลล่าสุด
                           </button>
                           
-                          {/* 📍 ปรับปุ่มดูรายละเอียด ให้เซ็ตข้อมูลลง State เพื่อเปิด Popup */}
                           <button 
                             className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors"
                             onClick={() => { 
                               setSelectedDocForDetail(doc);
-                              setIsDetailModalOpen(true);
                               toast.success(`เปิดรายละเอียด ${doc.licensePlate || doc.chassis}`, { duration: 1800 });
                               setOpenActionMenuIndex(null); 
                             }}
@@ -636,114 +464,10 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
       )}
     </div>
 
-      {/* ===================== Popup แสดงรายละเอียดเอกสารแบบเต็ม ===================== */}
-      {isDetailModalOpen && selectedDocForDetail && (
-        <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-[9998] p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl w-full max-w-xl max-h-[90vh] overflow-hidden shadow-2xl border border-slate-100 animate-in zoom-in duration-200 flex flex-col">
-            
-            <div className="flex justify-between items-center p-5 border-b bg-gray-50/50 shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="bg-[#e8f0eb] p-2.5 rounded-xl text-[#1a4d2e]">
-                  <FileText size={20} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-gray-800 text-lg">รายละเอียดข้อมูลเอกสาร</h3>
-                  <p className="text-xs text-gray-500">ประเภท: {getDocTypeName(selectedDocForDetail.docType)}</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setIsDetailModalOpen(false)} 
-                className="text-gray-400 hover:text-gray-700 bg-white hover:bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center transition-colors border border-gray-200"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            
-            <div className="p-6 space-y-6 overflow-y-auto flex-1 min-h-0">
-              {/* ส่วนข้อมูลรถ */}
-              <div>
-                <h4 className="text-sm font-bold text-[#1a4d2e] mb-3 flex items-center gap-2">
-                  <Car size={16} /> ข้อมูลยานพาหนะ
-                </h4>
-                <div className="bg-gray-50 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 border border-gray-100">
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">ทะเบียนรถ</p>
-                    <p className="font-bold text-gray-800 text-base">{selectedDocForDetail.licensePlate || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">เลขตัวถัง / Chassis</p>
-                    <p className="font-mono text-gray-700 font-medium">{selectedDocForDetail.chassis || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">โครงการ / Project</p>
-                    <p className="font-medium text-gray-700">{selectedDocForDetail.project || 'ไม่ระบุ'}</p>
-                  </div>
-                </div>
-              </div>
-
-              <hr className="border-gray-100" />
-
-              {/* ส่วนข้อมูลเอกสาร และข้อมูลที่ถูกซ่อนไปจากตาราง */}
-              <div>
-                <h4 className="text-sm font-bold text-[#1a4d2e] mb-3 flex items-center gap-2">
-                  <CalendarDays size={16} /> ข้อมูลเอกสารและความคุ้มครอง
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 px-2">
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">วันที่มีผล (Issued Date)</p>
-                    <p className="font-medium text-gray-800">{formatThaiDate(selectedDocForDetail.issuedDate)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">วันหมดอายุ (Expiry Date)</p>
-                    <p className="font-medium text-gray-800">{formatThaiDate(selectedDocForDetail.expiryDate)}</p>
-                  </div>
-                  
-                  {/* 📍 ข้อมูลที่ซ่อนจากตารางหลัก นำมาแสดงตรงนี้ */}
-                  <div className="sm:col-span-2 bg-blue-50/50 p-3 rounded-lg border border-blue-100">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-xs text-blue-600 font-semibold flex items-center gap-1 mb-1">
-                          <User size={12} /> ผู้รับผิดชอบ (Driver)
-                        </p>
-                        <p className="font-medium text-gray-800">{selectedDocForDetail.driverName || 'ไม่ระบุ'}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-blue-600 font-semibold flex items-center gap-1 mb-1">
-                          <Building2 size={12} /> บริษัทประกัน/ผู้ออกเอกสาร
-                        </p>
-                        <p className="font-medium text-gray-800">{selectedDocForDetail.issuer || 'ไม่ระบุ'}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="sm:col-span-2">
-                    <p className="text-xs text-gray-500 mb-1">หมายเลขเอกสาร/กรมธรรม์</p>
-                    <p className="font-medium text-gray-800">{selectedDocForDetail.docNumber || 'ไม่มีข้อมูล'}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">ไฟล์แนบ</p>
-                    <p className="font-medium text-gray-800">{selectedDocForDetail.hasAttachment ? 'มีไฟล์แนบในระบบ' : 'ไม่มีไฟล์แนบ'}</p>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <p className="text-xs text-gray-500 mb-1">หมายเหตุ</p>
-                    <p className="font-medium text-gray-800">{selectedDocForDetail.note || 'ไม่มีหมายเหตุ'}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="px-6 pt-5 pb-8 border-t bg-gray-50 flex items-center justify-end shrink-0">
-              <button 
-                onClick={() => setIsDetailModalOpen(false)} 
-                className="min-w-24 h-11 px-6 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:text-gray-900 font-bold transition-all shadow-sm shrink-0"
-              >
-                ปิด
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
+      <DocumentDetailModal
+        document={selectedDocForDetail}
+        onClose={() => setSelectedDocForDetail(null)}
+      />
 
     </>
   );

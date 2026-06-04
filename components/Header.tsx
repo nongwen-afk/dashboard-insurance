@@ -9,7 +9,7 @@ interface HeaderProps {
 
 export default function Header({ toggleSidebar }: HeaderProps) {
   return (
-    // 📍 เปลี่ยนเป็น w-full fixed top-0 left-0 เพื่อให้ล็อกติดขอบบนกว้างเต็มจอ (z-50 ให้อยู่ชั้นบนสุด)
+    // Header อยู่ fixed ด้านบน และส่งคำสั่ง toggle sidebar กลับไปให้ layout จัด state กลาง
     <header className="h-[70px] w-full bg-white border-b border-gray-100 flex items-center justify-between px-6 fixed top-0 left-0 z-50">
       
       <div className="flex items-center">
