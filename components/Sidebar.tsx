@@ -13,6 +13,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
+  // เก็บเมนูย่อยที่กำลังเปิด เพื่อให้ navigation ฝั่งซ้ายขยายได้ทีละหมวด
   const [openMenu, setOpenMenu] = useState<string | null>('vehicle');
 
   const toggleMenu = (menuName: string) => {
@@ -20,14 +21,13 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   };
 
   return (
-    // 📍 ปรับแก้คลาสตรงนี้ เพื่อให้แน่ใจว่าเนื้อหาข้างในไม่หายเวลาสไลด์
+    // translate-x ใช้ซ่อน sidebar โดยไม่ unmount ทำให้สถานะเมนูย่อยยังอยู่ครบเมื่อเปิดกลับมา
     <aside 
       className={`bg-white border-r border-gray-200 fixed left-0 top-[70px] h-[calc(100vh-70px)] flex flex-col z-40 transition-all duration-300 ease-in-out
         ${isOpen ? 'w-[280px] translate-x-0 opacity-100' : 'w-[280px] -translate-x-full opacity-0 pointer-events-none'}
       `}
     >
       
-      {/* ส่วนของเมนู ตรงนี้ต้องอยู่ครบเหมือนเดิมครับ */}
       <nav className="flex-1 overflow-y-auto p-4 space-y-2 mt-4">
         
         <Link href="/" className="flex items-center gap-4 px-3 py-3 text-[#1a4d2e] font-bold hover:bg-gray-50 rounded-xl transition-all">
@@ -87,7 +87,6 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         </div>
       </nav>
 
-      {/* ปุ่มย่อเมนู */}
       <div className="p-4 border-t border-gray-100">
         <button 
           onClick={() => setIsOpen(false)}
