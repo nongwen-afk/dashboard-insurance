@@ -3,19 +3,24 @@
 import React from 'react';
 import { Menu, ChevronDown } from 'lucide-react';
 
-export default function Header() {
+interface HeaderProps {
+  toggleSidebar: () => void;
+}
+
+export default function Header({ toggleSidebar }: HeaderProps) {
   return (
-    // w-full: กว้างเต็มหน้าจอ
-    // fixed top-0 left-0: ลอยติดขอบบนซ้ายของจอเสมอ
-    // z-50: ให้อยู่เลเยอร์บนสุด ทับทุกอย่าง
-    <header className="w-full h-[70px] bg-white border-b border-gray-100 flex items-center justify-between px-6 fixed top-0 left-0 z-50">
+    // 📍 เปลี่ยนเป็น w-full fixed top-0 left-0 เพื่อให้ล็อกติดขอบบนกว้างเต็มจอ (z-50 ให้อยู่ชั้นบนสุด)
+    <header className="h-[70px] w-full bg-white border-b border-gray-100 flex items-center justify-between px-6 fixed top-0 left-0 z-50">
       
-      {/* ฝั่งซ้าย: ปุ่มเมนู โลโก้ และชื่อระบบ เรียงติดกัน */}
       <div className="flex items-center">
-        {/* ปุ่ม Menu */}
-        <Menu className="text-gray-600 cursor-pointer mr-6" size={24} />
+        <button 
+          onClick={toggleSidebar} 
+          className="p-2 -ml-2 mr-4 text-gray-600 cursor-pointer hover:bg-gray-100 rounded-lg transition-colors"
+          title="ย่อ/ขยาย เมนู"
+        >
+          <Menu size={24} />
+        </button>
         
-        {/* โลโก้และชื่อระบบ */}
         <div className="flex items-center gap-3">
           <div className="w-12 h-7 bg-[#1a4d2e] rounded-full flex items-center justify-center text-white font-bold text-[10px]">
             EVT
@@ -24,7 +29,6 @@ export default function Header() {
         </div>
       </div>
 
-      {/* ฝั่งขวา: ข้อมูลผู้ใช้ */}
       <div className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-all">
         <div className="text-right">
           <div className="text-sm font-bold text-gray-800 leading-tight">testuser</div>

@@ -1,13 +1,11 @@
 "use client";
 
-import React, { useState, useRef } from 'react';
-import { Search, Filter, FileSpreadsheet } from 'lucide-react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
+import { Search, Filter, FileSpreadsheet, Paperclip, MoreHorizontal, User, ChevronLeft, ChevronRight, X, ArrowUpDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
-// กำหนดประเภทของเอกสารที่ระบบรองรับ
 type VehicleDocType = 'act' | 'tax' | 'insurance' | 'inspection' | 'registration_book';
 
-// โครงสร้างข้อมูลสำหรับเอกสารรถยนต์ 1 รายการ
 interface VehicleDocument {
   chassis: string;
   licensePlate?: string;
@@ -18,53 +16,55 @@ interface VehicleDocument {
   issuedDate?: string;
   expiryDate?: string;
   note?: string;
+  driverName?: string;
+  hasAttachment?: boolean;
 }
 
-// กำหนด Props สำหรับรับข้อมูลและฟังก์ชันอัปเดตข้อมูลจาก Component หลัก
+type DocStatus = 'EXPIRED' | 'WARNING' | 'ACTIVE' | 'NO_EXPIRY';
+// อัปเดต Sort Option ให้ตรงกับที่คุณต้องการ
+type SortOption = 'RELEVANCE' | 'DATE_ASC' | 'DATE_DESC';
+
 interface PolicyTableProps {
   documents: VehicleDocument[];
   setDocuments: React.Dispatch<React.SetStateAction<VehicleDocument[]>>;
 }
 
 export default function PolicyTable({ documents, setDocuments }: PolicyTableProps) {
-  // State สำหรับเก็บข้อความค้นหาในช่อง Search
   const [searchQuery, setSearchQuery] = useState('');
-  
-  // Reference สำหรับอ้างอิงถึง input file ที่ถูกซ่อนไว้สำหรับอัปโหลด Excel
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ฟังก์ชันแปลงรูปแบบวันที่ (YYYY-MM-DD) ให้เป็นภาษาไทยแบบเดือนย่อ
+  // 📍 State ตัวกรอง (เหลือแค่ประเภทเอกสาร)
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [docTypeFilter, setDocTypeFilter] = useState<string>('ALL'); 
+
+  // 📍 State จัดเรียง
+  const [isSortOpen, setIsSortOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<SortOption>('RELEVANCE'); // ค่าเริ่มต้นคือเกี่ยวข้องที่สุด (เรียงตามความด่วน)
+
   const formatThaiDate = (dateString?: string) => {
     if (!dateString) return '-';
-    
     const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
     const d = new Date(dateString);
-    
-    // ตรวจสอบว่าวันที่ถูกต้องหรือไม่ หากไม่ถูกต้องให้คืนค่าเดิม
     if (isNaN(d.getTime())) return dateString;
-    
     return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
   };
 
-  // ฟังก์ชันคำนวณสถานะของเอกสารเทียบกับวันที่ปัจจุบัน
-  const getDocumentStatus = (expiryDate?: string) => {
-    if (!expiryDate) return 'NO_EXPIRY'; 
-    
-    // คำนวณหาจำนวนวันที่เหลือ
+  const getDocumentStatus = (expiryDate?: string): { status: DocStatus; days: number } => {
+    if (!expiryDate) return { status: 'NO_EXPIRY', days: 0 }; 
     const diffDays = Math.ceil((new Date(expiryDate).getTime() - new Date().setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
     
-    if (diffDays < 0) return 'EXPIRED';
-    if (diffDays <= 30) return 'WARNING';
-    return 'ACTIVE';
+    if (diffDays < 0) return { status: 'EXPIRED', days: diffDays };
+    if (diffDays <= 30) return { status: 'WARNING', days: diffDays };
+    return { status: 'ACTIVE', days: diffDays };
   };
 
-  // ฟังก์ชันแปลงรหัสประเภทเอกสารเป็นชื่อภาษาไทยสำหรับแสดงผล
   const getDocTypeName = (type: VehicleDocType) => {
     const types: Record<string, string> = { act: 'พ.ร.บ.', tax: 'ภาษี', insurance: 'ประกันภัย', inspection: 'ตรอ.', registration_book: 'เล่มทะเบียน' };
     return types[type] || type;
   };
 
-  // ฟังก์ชันจัดการกระบวนการอ่านและนำเข้าข้อมูลจากไฟล์ Excel
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -75,143 +75,341 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
       const wb = XLSX.read(bstr, { type: 'binary' });
       const wsname = wb.SheetNames[0];
       const ws = wb.Sheets[wsname];
-      
-      // แปลงข้อมูลจาก Sheet เป็น Array
       const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as (string | number | undefined)[][]; 
       
       const newImportedDocs: VehicleDocument[] = [];
-      
-      // ข้ามแถวแรก (Header) และวนลูปอ่านข้อมูลแถวที่เหลือ
       for (let i = 1; i < data.length; i++) {
          const row = data[i];
          if (!row || row.length === 0 || !row[0]) continue;
          
-         // แมปปิ้งข้อมูลจากแต่ละคอลัมน์ใน Excel เข้าสู่ Object
          newImportedDocs.push({
-           chassis: String(row[0] || `CHAS-GEN-${Date.now()}-${i}`),
+           chassis: String(row[0] || `CHAS-${Date.now()}-${i}`),
            licensePlate: String(row[1] || ''),
            project: String(row[2] || ''),
            docType: (String(row[3] || 'act').toLowerCase()) as VehicleDocType,
            issuer: String(row[4] || ''),
            docNumber: String(row[5] || ''),
            expiryDate: row[6] ? String(row[6]) : undefined,
+           driverName: i % 2 === 0 ? 'สมชาย ใจดี' : 'สมศรี รักงาน',
+           hasAttachment: i % 3 !== 0, 
          });
       }
       
-      // อัปเดตข้อมูลเข้าสู่ State หลัก
       if (newImportedDocs.length > 0) {
         setDocuments(prev => [...newImportedDocs, ...prev]);
+        setCurrentPage(1); 
         alert(`นำเข้าข้อมูลสำเร็จ ${newImportedDocs.length} รายการ`);
-      } else {
-        alert('ไม่พบข้อมูลในไฟล์ Excel');
       }
     };
     reader.readAsBinaryString(file);
-    
-    // เคลียร์ค่า input file เพื่อให้สามารถอัปโหลดไฟล์เดิมซ้ำได้ในครั้งต่อไป
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // กรองเอกสารตามคำค้นหา (ค้นหาจากเลขตัวถัง หรือ ทะเบียนรถ)
-  const filteredDocs = documents.filter((doc) => {
+  const filteredDocs = useMemo(() => {
     const query = searchQuery.toLowerCase();
-    return doc.chassis.toLowerCase().includes(query) || (doc.licensePlate?.toLowerCase() || '').includes(query);
-  });
+    
+    // 1. กรองข้อมูล (เหลือแค่คำค้นหา กับ ประเภทเอกสาร)
+    const filtered = documents.filter((doc) => {
+      const matchSearch = doc.chassis.toLowerCase().includes(query) || 
+                          (doc.licensePlate?.toLowerCase() || '').includes(query) ||
+                          (doc.driverName?.toLowerCase() || '').includes(query);
+      
+      const matchDocType = docTypeFilter === 'ALL' || doc.docType === docTypeFilter;
+
+      return matchSearch && matchDocType;
+    });
+
+    // 2. จัดเรียงข้อมูล 3 แบบ ตามที่ต้องการ
+    return filtered.sort((a, b) => {
+      // 📍 เกี่ยวข้องที่สุด (เรียงตามสถานะความด่วน: แดง -> ส้ม -> เขียว)
+      if (sortBy === 'RELEVANCE') {
+        const statusA = getDocumentStatus(a.expiryDate);
+        const statusB = getDocumentStatus(b.expiryDate);
+        const priority: Record<DocStatus, number> = { EXPIRED: 3, WARNING: 2, ACTIVE: 1, NO_EXPIRY: 0 };
+        
+        if (priority[statusA.status] !== priority[statusB.status]) {
+          return priority[statusB.status] - priority[statusA.status];
+        }
+        if (a.expiryDate && b.expiryDate) {
+           return statusA.days - statusB.days;
+        }
+        return 0;
+      } 
+      // 📍 วันหมดอายุ (น้อยไปมาก)
+      else if (sortBy === 'DATE_ASC') {
+        if (!a.expiryDate) return 1; // เล่มทะเบียน (ไม่มีวันหมด) ไปอยู่ล่างสุด
+        if (!b.expiryDate) return -1;
+        return new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime();
+      }
+      // 📍 วันหมดอายุ (มากไปน้อย)
+      else if (sortBy === 'DATE_DESC') {
+        if (!a.expiryDate) return 1;
+        if (!b.expiryDate) return -1;
+        return new Date(b.expiryDate).getTime() - new Date(a.expiryDate).getTime();
+      }
+      
+      return 0;
+    });
+  }, [documents, searchQuery, docTypeFilter, sortBy]);
+
+  const totalPages = Math.ceil(filteredDocs.length / itemsPerPage);
+  
+  const currentDocs = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredDocs.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredDocs, currentPage]);
+
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [totalPages, currentPage]);
+
+  const hasActiveFilters = docTypeFilter !== 'ALL';
 
   return (
-    // คอนเทนเนอร์หลักของตาราง
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-6">
       
-      {/* ส่วนหัวของตาราง: ค้นหาและปุ่มจัดการ */}
-      <div className="p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-        
-        {/* ช่องกรอกข้อความค้นหา */}
+      <div className="p-6 flex flex-col sm:flex-row justify-between items-center gap-4 relative z-20">
         <div className="relative w-full sm:w-80">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input 
             type="text" 
-            placeholder="ค้นหาทะเบียนรถ, เลขตัวถัง..." 
-            className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+            placeholder="ค้นหาทะเบียน, เลขตัวถัง, ชื่อคนขับ..." 
+            className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a4d2e] transition-all"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
-        {/* กลุ่มปุ่มคำสั่งด้านขวา */}
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          {/* ปุ่มตัวกรอง */}
-          <button className="flex items-center gap-2 px-4 py-2.5 text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium shadow-sm">
-            <Filter size={16} />
-            ตัวกรอง
-          </button>
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
           
-          {/* input ซ่อนสำหรับเลือกไฟล์ Excel */}
+          {/* 📍 1. ปุ่ม ตัวกรอง (แสดงแค่ประเภทเอกสาร) */}
+          <div className="relative">
+            <button 
+              onClick={() => {
+                setIsFilterOpen(!isFilterOpen);
+                setIsSortOpen(false); 
+              }}
+              className={`relative flex items-center gap-2 px-4 py-2.5 bg-white border rounded-xl transition-colors text-sm font-medium shadow-sm ${isFilterOpen ? 'border-[#1a4d2e] text-[#1a4d2e]' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+            >
+              <Filter size={16} /> ตัวกรอง
+              {hasActiveFilters && (
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
+              )}
+            </button>
+
+            {isFilterOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setIsFilterOpen(false)}></div>
+                <div className="absolute right-0 top-12 w-64 bg-white rounded-xl shadow-xl border border-gray-100 z-20 p-5 flex flex-col gap-4 animate-in fade-in slide-in-from-top-2">
+                  <div className="flex justify-between items-center pb-3 border-b border-gray-100">
+                    <h4 className="font-bold text-gray-800">ตัวกรองข้อมูล</h4>
+                    <button onClick={() => setIsFilterOpen(false)} className="text-gray-400 hover:text-gray-600"><X size={16}/></button>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-500">ประเภทเอกสาร</label>
+                    <div className="flex flex-col gap-1">
+                      {/* เปลี่ยน Select เป็น ปุ่มกดให้คล้ายๆ รูปตัวอย่าง (Radio-like) */}
+                      {[
+                        { val: 'ALL', label: 'ทั้งหมด' },
+                        { val: 'act', label: 'พ.ร.บ.' },
+                        { val: 'tax', label: 'ภาษี' },
+                        { val: 'insurance', label: 'ประกันภัย' },
+                        { val: 'inspection', label: 'ตรอ.' },
+                        { val: 'registration_book', label: 'เล่มทะเบียน' },
+                      ].map(item => (
+                        <button 
+                          key={item.val}
+                          onClick={() => { setDocTypeFilter(item.val); setIsFilterOpen(false); }}
+                          className={`text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${docTypeFilter === item.val ? 'bg-[#e8f0eb] text-[#1a4d2e]' : 'text-gray-600 hover:bg-gray-50'}`}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {hasActiveFilters && (
+                    <button onClick={() => { setDocTypeFilter('ALL'); }} className="w-full py-2 mt-2 text-sm font-bold text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                      ล้างตัวกรอง
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* 📍 2. ปุ่ม จัดเรียง */}
+          <div className="relative">
+            <button 
+              onClick={() => {
+                setIsSortOpen(!isSortOpen);
+                setIsFilterOpen(false); 
+              }}
+              className={`relative flex items-center gap-2 px-4 py-2.5 bg-white border rounded-xl transition-colors text-sm font-medium shadow-sm ${isSortOpen ? 'border-[#1a4d2e] text-[#1a4d2e]' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+            >
+              <ArrowUpDown size={16} /> จัดเรียง
+            </button>
+
+            {isSortOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setIsSortOpen(false)}></div>
+                <div className="absolute right-0 top-12 w-64 bg-white rounded-xl shadow-xl border border-gray-100 z-20 p-5 flex flex-col gap-4 animate-in fade-in slide-in-from-top-2">
+                  <div className="flex justify-between items-center pb-3 border-b border-gray-100">
+                    <h4 className="font-bold text-gray-800">จัดเรียงข้อมูล</h4>
+                    <button onClick={() => setIsSortOpen(false)} className="text-gray-400 hover:text-gray-600"><X size={16}/></button>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <button 
+                      onClick={() => { setSortBy('RELEVANCE'); setIsSortOpen(false); }}
+                      className={`text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${sortBy === 'RELEVANCE' ? 'bg-[#e8f0eb] text-[#1a4d2e]' : 'text-gray-600 hover:bg-gray-50'}`}
+                    >
+                      เกี่ยวข้องที่สุด (แนะนำ)
+                    </button>
+                    <button 
+                      onClick={() => { setSortBy('DATE_ASC'); setIsSortOpen(false); }}
+                      className={`text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${sortBy === 'DATE_ASC' ? 'bg-[#e8f0eb] text-[#1a4d2e]' : 'text-gray-600 hover:bg-gray-50'}`}
+                    >
+                      วันหมดอายุ (น้อยไปมาก)
+                    </button>
+                    <button 
+                      onClick={() => { setSortBy('DATE_DESC'); setIsSortOpen(false); }}
+                      className={`text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${sortBy === 'DATE_DESC' ? 'bg-[#e8f0eb] text-[#1a4d2e]' : 'text-gray-600 hover:bg-gray-50'}`}
+                    >
+                      วันหมดอายุ (มากไปน้อย)
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
           <input type="file" accept=".xlsx, .xls, .csv" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
-          
-          {/* ปุ่มเรียกคำสั่งนำเข้า Excel */}
           <button 
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 px-4 py-2.5 text-white bg-green-600 border border-transparent rounded-xl hover:bg-green-700 transition-colors text-sm font-medium shadow-sm shadow-green-600/20"
+            className="flex items-center gap-2 px-4 py-2.5 text-white bg-[#1a4d2e] border border-transparent rounded-xl hover:bg-[#123620] transition-colors text-sm font-medium shadow-sm shadow-[#1a4d2e]/20"
           >
-            <FileSpreadsheet size={16} />
-            นำเข้า Excel
+            <FileSpreadsheet size={16} /> นำเข้า Excel
           </button>
         </div>
       </div>
 
-      {/* โครงสร้างตารางแสดงข้อมูล */}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto min-h-[500px]">
         <table className="w-full text-left border-collapse">
-          {/* หัวตาราง */}
           <thead className="bg-gray-50/50 border-y border-gray-100">
             <tr className="text-gray-500 text-xs uppercase tracking-wider">
               <th className="px-6 py-4 font-semibold">ประเภทเอกสาร</th>
               <th className="px-6 py-4 font-semibold">เลขตัวถัง</th>
               <th className="px-6 py-4 font-semibold">ทะเบียนรถ</th>
+              <th className="px-6 py-4 font-semibold">ผู้รับผิดชอบ</th>
               <th className="px-6 py-4 font-semibold">บริษัทประกัน/ผู้ออก</th>
               <th className="px-6 py-4 font-semibold">วันหมดอายุ</th>
-              <th className="px-6 py-4 font-semibold">สถานะ</th>
+              <th className="px-6 py-4 font-semibold text-center">ไฟล์แนบ</th>
+              <th className="px-6 py-4 font-semibold text-right">จัดการ</th>
             </tr>
           </thead>
-          
-          {/* ข้อมูลตาราง */}
           <tbody className="divide-y divide-gray-100 text-sm">
-            {filteredDocs.map((doc, index) => {
-              // คำนวณสถานะก่อนเรนเดอร์ในแต่ละแถว
-              const currentStatus = getDocumentStatus(doc.expiryDate);
-              
-              return (
-                <tr key={index} className="hover:bg-gray-50/50 transition-colors">
-                  {/* ข้อมูลประเภทเอกสาร */}
-                  <td className="px-6 py-4 font-medium text-gray-700">{getDocTypeName(doc.docType)}</td>
-                  
-                  {/* ข้อมูลเลขตัวถัง */}
-                  <td className="px-6 py-4 text-gray-500 font-mono text-xs">{doc.chassis}</td>
-
-                  {/* ข้อมูลทะเบียนรถ */}
-                  <td className="px-6 py-4">
-                    <span className="font-bold text-gray-800">{doc.licensePlate || '-'}</span>
-                  </td>
-                  
-                  {/* ข้อมูลผู้ออกเอกสาร */}
-                  <td className="px-6 py-4 text-gray-600">{doc.issuer || '-'}</td>
-                  
-                  {/* ข้อมูลวันหมดอายุ */}
-                  <td className="px-6 py-4 text-gray-700 font-medium">{formatThaiDate(doc.expiryDate)}</td>
-                  
-                  {/* ป้ายแสดงสถานะ */}
-                  <td className="px-6 py-4">
-                    {currentStatus === 'ACTIVE' && <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-green-100 text-green-700">ปกติ</span>}
-                    {currentStatus === 'WARNING' && <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-yellow-100 text-yellow-700">ใกล้หมด</span>}
-                    {currentStatus === 'EXPIRED' && <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-red-100 text-red-700">หมดอายุ</span>}
-                    {currentStatus === 'NO_EXPIRY' && <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-gray-100 text-gray-600">ถาวร</span>}
-                  </td>
-                </tr>
-              );
-            })}
+            {currentDocs.length > 0 ? (
+              currentDocs.map((doc, index) => {
+                const { status, days } = getDocumentStatus(doc.expiryDate);
+                return (
+                  <tr key={index} className="hover:bg-gray-50/50 transition-colors group">
+                    <td className="px-6 py-4 font-medium text-gray-700">{getDocTypeName(doc.docType)}</td>
+                    <td className="px-6 py-4 text-gray-500 font-mono text-xs">{doc.chassis}</td>
+                    <td className="px-6 py-4">
+                      <span className="font-bold text-gray-800">{doc.licensePlate || '-'}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      {doc.driverName ? (
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <div className="bg-gray-100 p-1.5 rounded-full"><User size={14} /></div>
+                          <span className="text-sm">{doc.driverName}</span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-xs">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-gray-600">{doc.issuer || '-'}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col">
+                        <span className="text-gray-700 font-medium">{formatThaiDate(doc.expiryDate)}</span>
+                        {status === 'WARNING' && <span className="text-[10px] text-yellow-600 font-bold mt-0.5">เหลืออีก {days} วัน</span>}
+                        {status === 'EXPIRED' && <span className="text-[10px] text-red-600 font-bold mt-0.5">เลยกำหนดมาแล้ว {Math.abs(days)} วัน</span>}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      {doc.hasAttachment ? (
+                        <button className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-lg transition-colors inline-flex" title="ดูไฟล์แนบ">
+                          <Paperclip size={18} />
+                        </button>
+                      ) : (
+                        <span className="text-gray-300">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button className="text-gray-400 hover:text-[#1a4d2e] hover:bg-gray-100 p-2 rounded-lg transition-colors">
+                        <MoreHorizontal size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
+            ) : (
+              <tr>
+                <td colSpan={8} className="px-6 py-12 text-center text-gray-400 flex-col items-center justify-center">
+                  <p className="font-medium text-gray-500">ไม่พบข้อมูลที่คุณค้นหา หรือ ไม่ตรงกับตัวกรอง</p>
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/30">
+          <div className="text-sm text-gray-500">
+            แสดง <span className="font-medium text-gray-800">{(currentPage - 1) * itemsPerPage + 1}</span> ถึง <span className="font-medium text-gray-800">{Math.min(currentPage * itemsPerPage, filteredDocs.length)}</span> จากทั้งหมด <span className="font-medium text-gray-800">{filteredDocs.length}</span> รายการ
+          </div>
+          
+          <div className="flex items-center gap-1">
+            <button 
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            
+            {Array.from({ length: totalPages }).map((_, idx) => {
+              const pageNumber = idx + 1;
+              if (pageNumber === 1 || pageNumber === totalPages || (pageNumber >= currentPage - 1 && pageNumber <= currentPage + 1)) {
+                return (
+                  <button
+                    key={pageNumber}
+                    onClick={() => setCurrentPage(pageNumber)}
+                    className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${currentPage === pageNumber ? 'bg-[#1a4d2e] text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+                  >
+                    {pageNumber}
+                  </button>
+                );
+              } else if (pageNumber === currentPage - 2 || pageNumber === currentPage + 2) {
+                return <span key={pageNumber} className="px-1 text-gray-400">...</span>;
+              }
+              return null;
+            })}
+
+            <button 
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
