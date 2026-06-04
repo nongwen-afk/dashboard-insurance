@@ -21,7 +21,7 @@ interface VehicleDocument {
   hasAttachment?: boolean;
 }
 
-// 📍 ข้อมูลจำลอง (Mock Data) 20 รายการ ที่หายไป
+// 📍 ใช้ข้อมูลที่คุณเพิ่มไว้ 100 รายการแทน initialDocs นี้ได้เลยครับ
 const initialDocs: VehicleDocument[] = [
   { chassis: 'CHAS-001', licensePlate: '1กข 1111', docType: 'act', expiryDate: '2026-06-15', driverName: 'สมชาย ใจดี', project: 'สายเหนือ', issuer: 'วิริยะประกันภัย' },
   { chassis: 'CHAS-002', licensePlate: '2กค 2222', docType: 'tax', expiryDate: '2026-06-20', driverName: 'สมศรี รักงาน', project: 'ผู้บริหาร' },
@@ -47,6 +47,7 @@ const initialDocs: VehicleDocument[] = [
 
 export default function DashboardPage() {
   const [documents, setDocuments] = useState<VehicleDocument[]>(initialDocs);
+  const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
 
   const stats = useMemo(() => {
     let active = 0, warning = 0, expired = 0;
@@ -88,18 +89,35 @@ export default function DashboardPage() {
     }));
   }, [documents]);
 
-  const urgentDocs = useMemo(() => {
-    return documents.filter(doc => {
-      if (!doc.expiryDate) return false;
-      const diffDays = Math.ceil((new Date(doc.expiryDate).getTime() - new Date().setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
-      return diffDays <= 30; 
-    }).sort((a, b) => {
-      const today = new Date().setHours(0,0,0,0);
-      const diffA = Math.ceil((new Date(a.expiryDate!).getTime() - today) / (1000 * 60 * 60 * 24));
-      const diffB = Math.ceil((new Date(b.expiryDate!).getTime() - today) / (1000 * 60 * 60 * 24));
-      return diffA - diffB;
-    });
+  // 📍 สร้างแจ้งเตือนจริงจาก documents
+  const alertsList = useMemo(() => {
+    const types: Record<string, string> = { act: 'พ.ร.บ.', tax: 'ภาษี', insurance: 'ประกันภัย', inspection: 'ตรอ.', registration_book: 'เล่มทะเบียน' };
+    const today = new Date().setHours(0,0,0,0);
+
+    return documents
+      .filter(doc => {
+        if (!doc.expiryDate) return false;
+        const diffDays = Math.ceil((new Date(doc.expiryDate).getTime() - today) / (1000 * 60 * 60 * 24));
+        return diffDays <= 30; // ดึงมาเฉพาะที่หมดอายุแล้ว หรือ ใกล้หมดอายุ
+      })
+      .map((doc, index) => {
+        const diffDays = Math.ceil((new Date(doc.expiryDate!).getTime() - today) / (1000 * 60 * 60 * 24));
+        const isExpired = diffDays < 0;
+        const docName = types[doc.docType] || doc.docType;
+
+        return {
+          id: `alert-${index}`,
+          text: `รถทะเบียน ${doc.licensePlate || doc.chassis} - ${docName} ${isExpired ? 'หมดอายุ' : 'ใกล้หมดอายุ'}`,
+          type: isExpired ? 'error' : 'warning',
+          date: doc.expiryDate,
+          diffDays // เก็บไว้เพื่อ sort
+        };
+      })
+      .sort((a, b) => a.diffDays - b.diffDays); // เรียงจากด่วนสุด (ติดลบมากสุด) ไปน้อย
   }, [documents]);
+
+  // ตัดมา 4 รายการแรกสำหรับแสดงในกล่อง
+  const topUrgentDocs = alertsList.slice(0, 4);
 
   return (
     <div className="w-full flex flex-col gap-6">
@@ -139,7 +157,7 @@ export default function DashboardPage() {
         
         <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col">
           <div className="mb-4">
-            <h3 className="text-lg font-bold text-gray-800">คาดการณ์เอกสารหมดอายุ</h3>
+            <h3 className="text-lg font-bold text-gray-800">เอกสารหมดอายุ</h3>
             <p className="text-sm text-gray-500">จำนวนเอกสารที่จะหมดอายุในอีก 6 เดือนข้างหน้า</p>
           </div>
           <div className="flex-1 min-h-[250px]">
@@ -168,24 +186,28 @@ export default function DashboardPage() {
             <div className="bg-red-100 p-2 rounded-full">
               <BellRing size={18} className="text-red-600 animate-pulse" />
             </div>
-            <h3 className="text-lg font-bold text-gray-800">ต้องดำเนินการด่วน</h3>
+            <h3 className="text-lg font-bold text-gray-800">แจ้งเตือน(ด่วน)</h3>
           </div>
           
           <div className="flex-1 overflow-y-auto pr-2 space-y-3 max-h-[250px] custom-scrollbar">
-            {urgentDocs.length > 0 ? (
-              urgentDocs.map((doc, idx) => {
-                const isExpired = new Date(doc.expiryDate!).getTime() < new Date().getTime();
+            {/* 📍 แสดงข้อมูลแจ้งเตือนจากข้อมูลจริง (4 รายการแรก) */}
+            {topUrgentDocs.length > 0 ? (
+              topUrgentDocs.map((doc, idx) => {
+                const isExpired = doc.type === 'error';
                 return (
                   <div key={idx} className={`p-3 rounded-xl border ${isExpired ? 'bg-red-50/50 border-red-100' : 'bg-orange-50/50 border-orange-100'} transition-all hover:shadow-md`}>
                     <div className="flex justify-between items-start mb-1">
-                      <span className="font-bold text-gray-800">{doc.licensePlate || doc.chassis}</span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold ${isExpired ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>
+                      <span className="font-bold text-gray-800 line-clamp-1 flex-1 pr-2">{doc.text.split(' - ')[0]}</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold shrink-0 ${isExpired ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>
                         {isExpired ? 'หมดอายุแล้ว' : 'ใกล้หมด'}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1 text-gray-500 text-xs mt-2 font-medium">
-                      <CalendarDays size={14} className={isExpired ? 'text-red-400' : 'text-orange-400'} />
-                      <span>{doc.expiryDate}</span>
+                    <div className="flex items-center justify-between text-gray-500 text-xs mt-2 font-medium">
+                      <span className="line-clamp-1">{doc.text.split(' - ')[1]}</span>
+                      <div className="flex items-center gap-1">
+                        <CalendarDays size={12} className={isExpired ? 'text-red-400' : 'text-orange-400'} />
+                        <span>{doc.date}</span>
+                      </div>
                     </div>
                   </div>
                 );
@@ -197,12 +219,70 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
+
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <button 
+              onClick={() => setIsAlertModalOpen(true)} 
+              className="w-full text-center text-sm font-bold text-[#1a4d2e] hover:text-[#123620] hover:underline transition-colors py-1"
+            >
+              ดูการแจ้งเตือนทั้งหมด
+            </button>
+          </div>
         </div>
 
       </div>
 
-      {/* เรียกใช้งานตาราง */}
       <PolicyTable documents={documents} setDocuments={setDocuments} />
+
+      {/* ===================== Popup แจ้งเตือนทั้งหมด ===================== */}
+      {isAlertModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl border border-slate-100 animate-in zoom-in duration-200">
+            
+            {/* Header Popup */}
+            <div className="flex justify-between items-center p-4 border-b bg-red-50/80">
+              <div className="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="text-red-600 stroke-2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                {/* 📍 จำนวนแจ้งเตือนจะตรงกับข้อมูลจริงในตาราง */}
+                <h3 className="font-bold text-red-800 text-lg">การแจ้งเตือนทั้งหมด ({alertsList.length})</h3>
+              </div>
+              <button onClick={() => setIsAlertModalOpen(false)} className="text-slate-400 hover:text-slate-700 font-bold bg-slate-100 hover:bg-slate-200 rounded-full w-8 h-8 flex items-center justify-center transition-colors">✕</button>
+            </div>
+            
+            {/* List แจ้งเตือนแบบเต็ม */}
+            <div className="p-4 max-h-[60vh] overflow-y-auto space-y-3 bg-slate-50/50">
+              {/* 📍 นำข้อมูลจริง (alertsList) มาแสดงทั้งหมด */}
+              {alertsList.length > 0 ? (
+                alertsList.map(alert => (
+                  <div key={alert.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-start gap-3 hover:border-red-200 transition-colors">
+                    <div className={`w-3 h-3 rounded-full mt-1.5 shrink-0 shadow-sm ${alert.type === 'error' ? 'bg-red-500' : 'bg-amber-400'}`}></div>
+                    <div className="flex-1">
+                      <p className="text-sm text-slate-800 font-medium">{alert.text}</p>
+                      <p className="text-xs text-slate-400 mt-1">วันที่สิ้นสุดความคุ้มครอง: {alert.date}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">ไม่มีการแจ้งเตือน</div>
+              )}
+            </div>
+            
+            {/* Footer Popup */}
+            <div className="p-4 border-t bg-white flex justify-end">
+              <button 
+                onClick={() => setIsAlertModalOpen(false)} 
+                className="px-5 py-2 text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 font-semibold transition-colors text-sm shadow-sm"
+              >
+                ปิดหน้าต่าง
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

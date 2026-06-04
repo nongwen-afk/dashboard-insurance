@@ -5,6 +5,8 @@ import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import { Noto_Sans_Thai } from 'next/font/google';
 import { useState } from 'react';
+// 📍 1. Import Toaster จาก react-hot-toast
+import { Toaster } from 'react-hot-toast'; 
 
 const notoSansThai = Noto_Sans_Thai({ 
   subsets: ['latin', 'thai'],
@@ -33,6 +35,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
         </div>
 
+        {/* 📍 2. วาง Toaster ไว้ล่างสุดก่อนปิด tag body เพื่อให้อยู่เลเยอร์บนสุดเสมอ */}
+        <Toaster 
+          position="top-right" 
+          toastOptions={{ 
+            style: { 
+              fontFamily: 'inherit', // ดึงฟอนต์ Noto Sans Thai ของเราไปใช้โดยอัตโนมัติ
+              fontSize: '14px',
+              borderRadius: '10px', // เพิ่มขอบมนให้เข้ากับธีมของเรา
+            } 
+          }} 
+        />
       </body>
     </html>
   );

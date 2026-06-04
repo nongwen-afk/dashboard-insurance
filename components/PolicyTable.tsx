@@ -3,6 +3,7 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Search, Filter, FileSpreadsheet, Paperclip, MoreHorizontal, User, ChevronLeft, ChevronRight, X, ArrowUpDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import toast from 'react-hot-toast';
 
 type VehicleDocType = 'act' | 'tax' | 'insurance' | 'inspection' | 'registration_book';
 
@@ -21,7 +22,6 @@ interface VehicleDocument {
 }
 
 type DocStatus = 'EXPIRED' | 'WARNING' | 'ACTIVE' | 'NO_EXPIRY';
-// อัปเดต Sort Option ให้ตรงกับที่คุณต้องการ
 type SortOption = 'RELEVANCE' | 'DATE_ASC' | 'DATE_DESC';
 
 interface PolicyTableProps {
@@ -30,18 +30,18 @@ interface PolicyTableProps {
 }
 
 export default function PolicyTable({ documents, setDocuments }: PolicyTableProps) {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState('');     
+  const [activeSearch, setActiveSearch] = useState('');   
+  
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 📍 State ตัวกรอง (เหลือแค่ประเภทเอกสาร)
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [docTypeFilter, setDocTypeFilter] = useState<string>('ALL'); 
 
-  // 📍 State จัดเรียง
   const [isSortOpen, setIsSortOpen] = useState(false);
-  const [sortBy, setSortBy] = useState<SortOption>('RELEVANCE'); // ค่าเริ่มต้นคือเกี่ยวข้องที่สุด (เรียงตามความด่วน)
+  const [sortBy, setSortBy] = useState<SortOption>('RELEVANCE'); 
 
   const formatThaiDate = (dateString?: string) => {
     if (!dateString) return '-';
@@ -65,40 +65,91 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
     return types[type] || type;
   };
 
+  useEffect(() => {
+    const searchToastId = 'search-toast';
+
+    const timer = setTimeout(() => {
+      if (searchInput !== activeSearch) {
+        if (searchInput.trim() !== '') {
+          toast.loading(`กำลังค้นหา "${searchInput}"...`, { id: searchToastId });
+          
+          setTimeout(() => {
+            setActiveSearch(searchInput); 
+            
+            const query = searchInput.toLowerCase();
+            const foundCount = documents.filter((doc) => {
+              // 📍 เพิ่มการค้นหาให้ครอบคลุมทุกฟิลด์ที่ต้องการ
+              const docTypeName = getDocTypeName(doc.docType).toLowerCase();
+              const matchSearch = 
+                  doc.chassis.toLowerCase().includes(query) || 
+                  (doc.licensePlate?.toLowerCase() || '').includes(query) ||
+                  (doc.driverName?.toLowerCase() || '').includes(query) ||
+                  (doc.issuer?.toLowerCase() || '').includes(query) ||
+                  docTypeName.includes(query);
+
+              const matchDocType = docTypeFilter === 'ALL' || doc.docType === docTypeFilter;
+              return matchSearch && matchDocType;
+            }).length;
+
+            if (foundCount > 0) {
+              toast.success(`พบข้อมูล ${foundCount} รายการ`, { id: searchToastId });
+            } else {
+              toast.error(`ไม่พบข้อมูล "${searchInput}"`, { id: searchToastId });
+            }
+          }, 600); 
+
+        } else {
+          setActiveSearch('');
+          toast.dismiss(searchToastId);
+        }
+      }
+    }, 500); 
+
+    return () => clearTimeout(timer);
+  }, [searchInput, activeSearch, documents, docTypeFilter]);
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const loadingToast = toast.loading('กำลังประมวลผลไฟล์...');
+
     const reader = new FileReader();
     reader.onload = (evt) => {
-      const bstr = evt.target?.result;
-      const wb = XLSX.read(bstr, { type: 'binary' });
-      const wsname = wb.SheetNames[0];
-      const ws = wb.Sheets[wsname];
-      const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as (string | number | undefined)[][]; 
-      
-      const newImportedDocs: VehicleDocument[] = [];
-      for (let i = 1; i < data.length; i++) {
-         const row = data[i];
-         if (!row || row.length === 0 || !row[0]) continue;
-         
-         newImportedDocs.push({
-           chassis: String(row[0] || `CHAS-${Date.now()}-${i}`),
-           licensePlate: String(row[1] || ''),
-           project: String(row[2] || ''),
-           docType: (String(row[3] || 'act').toLowerCase()) as VehicleDocType,
-           issuer: String(row[4] || ''),
-           docNumber: String(row[5] || ''),
-           expiryDate: row[6] ? String(row[6]) : undefined,
-           driverName: i % 2 === 0 ? 'สมชาย ใจดี' : 'สมศรี รักงาน',
-           hasAttachment: i % 3 !== 0, 
-         });
-      }
-      
-      if (newImportedDocs.length > 0) {
-        setDocuments(prev => [...newImportedDocs, ...prev]);
-        setCurrentPage(1); 
-        alert(`นำเข้าข้อมูลสำเร็จ ${newImportedDocs.length} รายการ`);
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as (string | number | undefined)[][]; 
+        
+        const newImportedDocs: VehicleDocument[] = [];
+        for (let i = 1; i < data.length; i++) {
+           const row = data[i];
+           if (!row || row.length === 0 || !row[0]) continue;
+           
+           newImportedDocs.push({
+             chassis: String(row[0] || `CHAS-${Date.now()}-${i}`),
+             licensePlate: String(row[1] || ''),
+             project: String(row[2] || ''),
+             docType: (String(row[3] || 'act').toLowerCase()) as VehicleDocType,
+             issuer: String(row[4] || ''),
+             docNumber: String(row[5] || ''),
+             expiryDate: row[6] ? String(row[6]) : undefined,
+             driverName: i % 2 === 0 ? 'สมชาย ใจดี' : 'สมศรี รักงาน',
+             hasAttachment: i % 3 !== 0, 
+           });
+        }
+        
+        if (newImportedDocs.length > 0) {
+          setDocuments(prev => [...newImportedDocs, ...prev]);
+          setCurrentPage(1); 
+          toast.success(`นำเข้าข้อมูลสำเร็จ ${newImportedDocs.length} รายการ`, { id: loadingToast });
+        } else {
+          toast.error('ไม่พบข้อมูลในไฟล์ Excel', { id: loadingToast });
+        }
+      } catch (error) {
+        toast.error('เกิดข้อผิดพลาดในการอ่านไฟล์', { id: loadingToast });
       }
     };
     reader.readAsBinaryString(file);
@@ -106,22 +157,24 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
   };
 
   const filteredDocs = useMemo(() => {
-    const query = searchQuery.toLowerCase();
+    const query = activeSearch.toLowerCase();
     
-    // 1. กรองข้อมูล (เหลือแค่คำค้นหา กับ ประเภทเอกสาร)
     const filtered = documents.filter((doc) => {
-      const matchSearch = doc.chassis.toLowerCase().includes(query) || 
-                          (doc.licensePlate?.toLowerCase() || '').includes(query) ||
-                          (doc.driverName?.toLowerCase() || '').includes(query);
+      // 📍 เพิ่มการค้นหาให้ครอบคลุมทุกฟิลด์ที่ต้องการ (เหมือนกับข้างบน)
+      const docTypeName = getDocTypeName(doc.docType).toLowerCase();
+      const matchSearch = 
+          doc.chassis.toLowerCase().includes(query) || 
+          (doc.licensePlate?.toLowerCase() || '').includes(query) ||
+          (doc.driverName?.toLowerCase() || '').includes(query) ||
+          (doc.issuer?.toLowerCase() || '').includes(query) ||
+          docTypeName.includes(query);
       
       const matchDocType = docTypeFilter === 'ALL' || doc.docType === docTypeFilter;
 
       return matchSearch && matchDocType;
     });
 
-    // 2. จัดเรียงข้อมูล 3 แบบ ตามที่ต้องการ
     return filtered.sort((a, b) => {
-      // 📍 เกี่ยวข้องที่สุด (เรียงตามสถานะความด่วน: แดง -> ส้ม -> เขียว)
       if (sortBy === 'RELEVANCE') {
         const statusA = getDocumentStatus(a.expiryDate);
         const statusB = getDocumentStatus(b.expiryDate);
@@ -135,22 +188,19 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
         }
         return 0;
       } 
-      // 📍 วันหมดอายุ (น้อยไปมาก)
       else if (sortBy === 'DATE_ASC') {
-        if (!a.expiryDate) return 1; // เล่มทะเบียน (ไม่มีวันหมด) ไปอยู่ล่างสุด
+        if (!a.expiryDate) return 1; 
         if (!b.expiryDate) return -1;
         return new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime();
       }
-      // 📍 วันหมดอายุ (มากไปน้อย)
       else if (sortBy === 'DATE_DESC') {
         if (!a.expiryDate) return 1;
         if (!b.expiryDate) return -1;
         return new Date(b.expiryDate).getTime() - new Date(a.expiryDate).getTime();
       }
-      
       return 0;
     });
-  }, [documents, searchQuery, docTypeFilter, sortBy]);
+  }, [documents, activeSearch, docTypeFilter, sortBy]);
 
   const totalPages = Math.ceil(filteredDocs.length / itemsPerPage);
   
@@ -175,16 +225,15 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input 
             type="text" 
-            placeholder="ค้นหาทะเบียน, เลขตัวถัง, ชื่อคนขับ..." 
+            placeholder="ค้นหาทะเบียน, ประเภทเอกสาร, บริษัท..." 
             className="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a4d2e] transition-all"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
           />
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
           
-          {/* 📍 1. ปุ่ม ตัวกรอง (แสดงแค่ประเภทเอกสาร) */}
           <div className="relative">
             <button 
               onClick={() => {
@@ -211,7 +260,6 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-gray-500">ประเภทเอกสาร</label>
                     <div className="flex flex-col gap-1">
-                      {/* เปลี่ยน Select เป็น ปุ่มกดให้คล้ายๆ รูปตัวอย่าง (Radio-like) */}
                       {[
                         { val: 'ALL', label: 'ทั้งหมด' },
                         { val: 'act', label: 'พ.ร.บ.' },
@@ -241,7 +289,6 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
             )}
           </div>
 
-          {/* 📍 2. ปุ่ม จัดเรียง */}
           <div className="relative">
             <button 
               onClick={() => {
