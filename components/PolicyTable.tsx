@@ -1,7 +1,11 @@
 "use client";
 
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { Search, Filter, FileSpreadsheet, Paperclip, MoreHorizontal, User, ChevronLeft, ChevronRight, X, ArrowUpDown } from 'lucide-react';
+import { 
+  Search, Filter, FileSpreadsheet, Paperclip, MoreHorizontal, 
+  User, ChevronLeft, ChevronRight, X, ArrowUpDown, 
+  Eye, RefreshCw, Trash2, CheckCircle 
+} from 'lucide-react';
 import * as XLSX from 'xlsx';
 import toast from 'react-hot-toast';
 
@@ -43,6 +47,9 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('RELEVANCE'); 
 
+  // State สำหรับเปิด/ปิด เมนูจัดการ
+  const [openActionMenuIndex, setOpenActionMenuIndex] = useState<number | null>(null);
+
   const formatThaiDate = (dateString?: string) => {
     if (!dateString) return '-';
     const months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
@@ -78,7 +85,6 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
             
             const query = searchInput.toLowerCase();
             const foundCount = documents.filter((doc) => {
-              // 📍 เพิ่มการค้นหาให้ครอบคลุมทุกฟิลด์ที่ต้องการ
               const docTypeName = getDocTypeName(doc.docType).toLowerCase();
               const matchSearch = 
                   doc.chassis.toLowerCase().includes(query) || 
@@ -160,7 +166,6 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
     const query = activeSearch.toLowerCase();
     
     const filtered = documents.filter((doc) => {
-      // 📍 เพิ่มการค้นหาให้ครอบคลุมทุกฟิลด์ที่ต้องการ (เหมือนกับข้างบน)
       const docTypeName = getDocTypeName(doc.docType).toLowerCase();
       const matchSearch = 
           doc.chassis.toLowerCase().includes(query) || 
@@ -215,6 +220,19 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
     }
   }, [totalPages, currentPage]);
 
+  // คลิกพื้นที่อื่นเพื่อปิดเมนู Action
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (openActionMenuIndex !== null) {
+        setOpenActionMenuIndex(null);
+      }
+    };
+    document.addEventListener("click", handleClickOutside);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, [openActionMenuIndex]);
+
   const hasActiveFilters = docTypeFilter !== 'ALL';
 
   return (
@@ -236,7 +254,8 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
           
           <div className="relative">
             <button 
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 setIsFilterOpen(!isFilterOpen);
                 setIsSortOpen(false); 
               }}
@@ -291,7 +310,8 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
 
           <div className="relative">
             <button 
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 setIsSortOpen(!isSortOpen);
                 setIsFilterOpen(false); 
               }}
@@ -395,10 +415,69 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
                         <span className="text-gray-300">-</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <button className="text-gray-400 hover:text-[#1a4d2e] hover:bg-gray-100 p-2 rounded-lg transition-colors">
+                    
+                    {/* 📍 ส่วนปุ่ม Action */}
+                    <td className="px-6 py-4 text-right relative">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenActionMenuIndex(openActionMenuIndex === index ? null : index);
+                        }}
+                        className={`p-2 rounded-lg transition-colors ${openActionMenuIndex === index ? 'text-[#1a4d2e] bg-gray-100' : 'text-gray-400 hover:text-[#1a4d2e] hover:bg-gray-100'}`}
+                      >
                         <MoreHorizontal size={18} />
                       </button>
+
+                      {openActionMenuIndex === index && (
+                        <div 
+                          className="absolute right-8 top-10 w-48 bg-white rounded-xl shadow-xl border border-gray-100 z-50 py-2 animate-in fade-in zoom-in-95"
+                          onClick={(e) => e.stopPropagation()} 
+                        >
+                          <button 
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-[#1a4d2e] flex items-center gap-2 transition-colors"
+                            onClick={() => { 
+                              toast.success(`ซิงค์ข้อมูล ${doc.licensePlate || doc.chassis} แล้ว`, { duration: 3000 }); 
+                              setOpenActionMenuIndex(null); 
+                            }}
+                          >
+                            <RefreshCw size={14} /> ซิงค์ข้อมูลล่าสุด
+                          </button>
+                          
+                          <button 
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors"
+                            onClick={() => { 
+                              toast(`กำลังดูรายละเอียด ${doc.licensePlate || doc.chassis}`, { icon: 'ℹ️' }); 
+                              setOpenActionMenuIndex(null); 
+                            }}
+                          >
+                            <Eye size={14} /> ดูรายละเอียด
+                          </button>
+
+                          {status === 'EXPIRED' && (
+                            <button 
+                              className="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 flex items-center gap-2 transition-colors"
+                              onClick={() => { 
+                                toast.success(`รับทราบแจ้งเตือน ${doc.licensePlate || doc.chassis}`); 
+                                setOpenActionMenuIndex(null); 
+                              }}
+                            >
+                              <CheckCircle size={14} /> รับทราบการแจ้งเตือน
+                            </button>
+                          )}
+
+                          <div className="h-[1px] bg-gray-100 my-1"></div>
+
+                          <button 
+                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
+                            onClick={() => { 
+                              toast.error(`จำลองการลบข้อมูล ${doc.licensePlate || doc.chassis}`); 
+                              setOpenActionMenuIndex(null); 
+                            }}
+                          >
+                            <Trash2 size={14} /> ลบข้อมูลออกจากระบบ
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );
