@@ -27,6 +27,7 @@ interface VehicleDocument {
 
 type DocStatus = 'EXPIRED' | 'WARNING' | 'ACTIVE' | 'NO_EXPIRY';
 type SortOption = 'RELEVANCE' | 'DATE_ASC' | 'DATE_DESC';
+type SpreadsheetCell = string | number | Date | undefined;
 
 interface PolicyTableProps {
   documents: VehicleDocument[];
@@ -75,35 +76,138 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
     return types[type] || type;
   };
 
+  const normalizeDateValue = (value?: SpreadsheetCell) => {
+    if (value === undefined || value === null || value === '') return undefined;
+
+    const toIsoDate = (year: number, month: number, day: number) => {
+      const normalizedYear = year > 2400 ? year - 543 : year;
+      const date = new Date(normalizedYear, month - 1, day);
+      if (Number.isNaN(date.getTime())) return undefined;
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    };
+
+    if (value instanceof Date) {
+      return toIsoDate(value.getFullYear(), value.getMonth() + 1, value.getDate());
+    }
+
+    if (typeof value === 'number') {
+      const parsed = XLSX.SSF.parse_date_code(value);
+      return parsed ? toIsoDate(parsed.y, parsed.m, parsed.d) : undefined;
+    }
+
+    const raw = String(value).trim();
+    if (!raw) return undefined;
+
+    if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(raw)) {
+      const [year, month, day] = raw.split('-').map(Number);
+      return toIsoDate(year, month, day);
+    }
+
+    if (/^\d+(\.\d+)?$/.test(raw)) {
+      const serial = Number(raw);
+      if (serial > 20000 && serial < 80000) {
+        const parsed = XLSX.SSF.parse_date_code(serial);
+        return parsed ? toIsoDate(parsed.y, parsed.m, parsed.d) : undefined;
+      }
+    }
+
+    const slashMatch = raw.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/);
+    if (slashMatch) {
+      const first = Number(slashMatch[1]);
+      const second = Number(slashMatch[2]);
+      const year = Number(slashMatch[3].length === 2 ? `20${slashMatch[3]}` : slashMatch[3]);
+      return first > 12 ? toIsoDate(year, second, first) : toIsoDate(year, first, second);
+    }
+
+    const parsed = new Date(raw);
+    if (!Number.isNaN(parsed.getTime())) {
+      return toIsoDate(parsed.getFullYear(), parsed.getMonth() + 1, parsed.getDate());
+    }
+
+    return raw;
+  };
+
+  const normalizeDocType = (value?: SpreadsheetCell): VehicleDocType => {
+    const raw = String(value || 'act').trim().toLowerCase();
+    const compact = raw.replace(/\s|\./g, '');
+
+    if (['act', 'พรบ', 'พ.ร.บ'].includes(compact)) return 'act';
+    if (['tax', 'ภาษี', 'ภาษรถ'].includes(compact)) return 'tax';
+    if (['insurance', 'ประกัน', 'ประกันภัย'].includes(compact)) return 'insurance';
+    if (['inspection', 'ตรอ', 'ตรวจสภาพ'].includes(compact)) return 'inspection';
+    if (['registration_book', 'registrationbook', 'เล่มทะเบียน', 'ทะเบียน'].includes(compact)) return 'registration_book';
+
+    return 'act';
+  };
+
+  const getImportColumns = (headerRow?: SpreadsheetCell[]) => {
+    const normalizeHeader = (value?: SpreadsheetCell) => String(value || '')
+      .toLowerCase()
+      .replace(/[\s*_()./-]/g, '');
+
+    const headers = (headerRow || []).map(normalizeHeader);
+    const findColumn = (candidates: string[]) => {
+      const normalizedCandidates = candidates.map((candidate) => normalizeHeader(candidate));
+      return headers.findIndex((header) => normalizedCandidates.some((candidate) => header.includes(candidate)));
+    };
+
+    const detected = {
+      chassis: findColumn(['เลขตัวถัง', 'chassis']),
+      licensePlate: findColumn(['ทะเบียนรถ', 'licenseplate', 'license']),
+      project: findColumn(['โครงการ', 'project']),
+      docType: findColumn(['ประเภทเอกสาร', 'doctype', 'documenttype']),
+      issuer: findColumn(['บริษัทประกัน', 'ผู้ออก', 'issuer']),
+      docNumber: findColumn(['เลขที่กรมธรรม์', 'หมายเลขเอกสาร', 'docnumber', 'policy']),
+      issuedDate: findColumn(['วันที่มีผล', 'วันเริ่ม', 'issueddate', 'startdate']),
+      expiryDate: findColumn(['วันหมดอายุ', 'expirydate', 'expiredate', 'enddate']),
+      driverName: findColumn(['ผู้รับผิดชอบ', 'driver', 'คนขับ']),
+      note: findColumn(['หมายเหตุ', 'note']),
+    };
+
+    const hasRecognizedHeaders = Object.values(detected).some((index) => index >= 0);
+    if (hasRecognizedHeaders) return detected;
+
+    return {
+      chassis: 0,
+      licensePlate: 1,
+      project: 2,
+      docType: 3,
+      issuer: 4,
+      docNumber: 5,
+      issuedDate: 6,
+      expiryDate: 7,
+      driverName: 8,
+      note: 9,
+    };
+  };
+
+  const getCellValue = (row: SpreadsheetCell[], index: number) => index >= 0 ? row[index] : undefined;
+
   useEffect(() => {
     const searchToastId = 'search-toast';
 
     const timer = setTimeout(() => {
       if (searchInput !== activeSearch) {
         if (searchInput.trim() !== '') {
-          toast.loading(`กำลังค้นหา "${searchInput}"...`, { id: searchToastId });
+          setActiveSearch(searchInput); 
           
-          setTimeout(() => {
-            setActiveSearch(searchInput); 
-            
-            const query = searchInput.toLowerCase();
-            const foundCount = documents.filter((doc) => {
-              const docTypeName = getDocTypeName(doc.docType).toLowerCase();
-              const matchSearch = 
-                  doc.chassis.toLowerCase().includes(query) || 
-                  (doc.licensePlate?.toLowerCase() || '').includes(query) ||
-                  docTypeName.includes(query);
+          const query = searchInput.toLowerCase();
+          const foundCount = documents.filter((doc) => {
+            const docTypeName = getDocTypeName(doc.docType).toLowerCase();
+            const matchSearch = 
+                doc.chassis.toLowerCase().includes(query) || 
+                (doc.licensePlate?.toLowerCase() || '').includes(query) ||
+                docTypeName.includes(query);
 
-              const matchDocType = docTypeFilter === 'ALL' || doc.docType === docTypeFilter;
-              return matchSearch && matchDocType;
-            }).length;
+            const matchDocType = docTypeFilter === 'ALL' || doc.docType === docTypeFilter;
+            return matchSearch && matchDocType;
+          }).length;
 
-            if (foundCount > 0) {
-              toast.success(`พบข้อมูล ${foundCount} รายการ`, { id: searchToastId });
-            } else {
-              toast.error(`ไม่พบข้อมูล "${searchInput}"`, { id: searchToastId });
-            }
-          }, 600); 
+          if (foundCount > 0) {
+            toast.success(`พบข้อมูล ${foundCount} รายการ`, { id: searchToastId });
+          } else {
+            toast.error(`ไม่พบข้อมูล "${searchInput}"`, { id: searchToastId });
+          }
 
         } else {
           setActiveSearch('');
@@ -125,25 +229,29 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
     reader.onload = (evt) => {
       try {
         const bstr = evt.target?.result;
-        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wb = XLSX.read(bstr, { type: 'binary', cellDates: true });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
-        const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as (string | number | undefined)[][]; 
+        const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as SpreadsheetCell[][]; 
+        const columns = getImportColumns(data[0]);
         
         const newImportedDocs: VehicleDocument[] = [];
         for (let i = 1; i < data.length; i++) {
            const row = data[i];
-           if (!row || row.length === 0 || !row[0]) continue;
+           const chassis = getCellValue(row, columns.chassis);
+           if (!row || row.length === 0 || !chassis) continue;
            
            newImportedDocs.push({
-             chassis: String(row[0] || `CHAS-${Date.now()}-${i}`),
-             licensePlate: String(row[1] || ''),
-             project: String(row[2] || ''),
-             docType: (String(row[3] || 'act').toLowerCase()) as VehicleDocType,
-             issuer: String(row[4] || ''),
-             docNumber: String(row[5] || ''),
-             issuedDate: row[6] ? String(row[6]) : undefined,
-             expiryDate: row[7] ? String(row[7]) : undefined,
+             chassis: String(chassis || `CHAS-${Date.now()}-${i}`),
+             licensePlate: String(getCellValue(row, columns.licensePlate) || ''),
+             project: String(getCellValue(row, columns.project) || ''),
+             docType: normalizeDocType(getCellValue(row, columns.docType)),
+             issuer: String(getCellValue(row, columns.issuer) || ''),
+             docNumber: String(getCellValue(row, columns.docNumber) || ''),
+             issuedDate: normalizeDateValue(getCellValue(row, columns.issuedDate)),
+             expiryDate: normalizeDateValue(getCellValue(row, columns.expiryDate)),
+             driverName: getCellValue(row, columns.driverName) ? String(getCellValue(row, columns.driverName)) : undefined,
+             note: getCellValue(row, columns.note) ? String(getCellValue(row, columns.note)) : undefined,
              hasAttachment: i % 3 !== 0, 
            });
         }
@@ -155,7 +263,7 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
         } else {
           toast.error('ไม่พบข้อมูลในไฟล์ Excel', { id: loadingToast });
         }
-      } catch (error) {
+      } catch {
         toast.error('เกิดข้อผิดพลาดในการอ่านไฟล์', { id: loadingToast });
       }
     };
@@ -207,33 +315,29 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
   }, [documents, activeSearch, docTypeFilter, sortBy]);
 
   const totalPages = Math.ceil(filteredDocs.length / itemsPerPage);
+  const safeCurrentPage = totalPages > 0 ? Math.min(currentPage, totalPages) : 1;
   
   const currentDocs = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
+    const startIndex = (safeCurrentPage - 1) * itemsPerPage;
     return filteredDocs.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredDocs, currentPage]);
+  }, [filteredDocs, safeCurrentPage]);
 
   useEffect(() => {
-    if (currentPage > totalPages && totalPages > 0) {
-      setCurrentPage(1);
-    }
-  }, [totalPages, currentPage]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = () => {
       if (openActionMenuIndex !== null) {
         setOpenActionMenuIndex(null);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("click", handleClickOutside);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("click", handleClickOutside);
     };
   }, [openActionMenuIndex]);
 
   const hasActiveFilters = docTypeFilter !== 'ALL';
 
   return (
+    <>
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-6">
       
       <div className="p-6 flex flex-col sm:flex-row justify-between items-center gap-4 relative z-20">
@@ -421,6 +525,7 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
                       {openActionMenuIndex === index && (
                         <div 
                           className="absolute right-8 top-10 w-48 bg-white rounded-xl shadow-xl border border-gray-100 z-50 py-2 animate-in fade-in zoom-in-95"
+                          onMouseDown={(e) => e.stopPropagation()}
                           onClick={(e) => e.stopPropagation()} 
                         >
                           <button 
@@ -439,6 +544,7 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
                             onClick={() => { 
                               setSelectedDocForDetail(doc);
                               setIsDetailModalOpen(true);
+                              toast.success(`เปิดรายละเอียด ${doc.licensePlate || doc.chassis}`, { duration: 1800 });
                               setOpenActionMenuIndex(null); 
                             }}
                           >
@@ -488,13 +594,13 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
       {totalPages > 1 && (
         <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/30">
           <div className="text-sm text-gray-500">
-            แสดง <span className="font-medium text-gray-800">{(currentPage - 1) * itemsPerPage + 1}</span> ถึง <span className="font-medium text-gray-800">{Math.min(currentPage * itemsPerPage, filteredDocs.length)}</span> จากทั้งหมด <span className="font-medium text-gray-800">{filteredDocs.length}</span> รายการ
+            แสดง <span className="font-medium text-gray-800">{(safeCurrentPage - 1) * itemsPerPage + 1}</span> ถึง <span className="font-medium text-gray-800">{Math.min(safeCurrentPage * itemsPerPage, filteredDocs.length)}</span> จากทั้งหมด <span className="font-medium text-gray-800">{filteredDocs.length}</span> รายการ
           </div>
           
           <div className="flex items-center gap-1">
             <button 
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
+              disabled={safeCurrentPage === 1}
               className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronLeft size={18} />
@@ -502,17 +608,17 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
             
             {Array.from({ length: totalPages }).map((_, idx) => {
               const pageNumber = idx + 1;
-              if (pageNumber === 1 || pageNumber === totalPages || (pageNumber >= currentPage - 1 && pageNumber <= currentPage + 1)) {
+              if (pageNumber === 1 || pageNumber === totalPages || (pageNumber >= safeCurrentPage - 1 && pageNumber <= safeCurrentPage + 1)) {
                 return (
                   <button
                     key={pageNumber}
                     onClick={() => setCurrentPage(pageNumber)}
-                    className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${currentPage === pageNumber ? 'bg-[#1a4d2e] text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+                    className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${safeCurrentPage === pageNumber ? 'bg-[#1a4d2e] text-white' : 'text-gray-600 hover:bg-gray-100'}`}
                   >
                     {pageNumber}
                   </button>
                 );
-              } else if (pageNumber === currentPage - 2 || pageNumber === currentPage + 2) {
+              } else if (pageNumber === safeCurrentPage - 2 || pageNumber === safeCurrentPage + 2) {
                 return <span key={pageNumber} className="px-1 text-gray-400">...</span>;
               }
               return null;
@@ -520,7 +626,7 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
 
             <button 
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
+              disabled={safeCurrentPage === totalPages}
               className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronRight size={18} />
@@ -528,13 +634,14 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
           </div>
         </div>
       )}
+    </div>
 
       {/* ===================== Popup แสดงรายละเอียดเอกสารแบบเต็ม ===================== */}
       {isDetailModalOpen && selectedDocForDetail && (
-        <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl border border-slate-100 animate-in zoom-in duration-200">
+        <div className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-[9998] p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-xl max-h-[90vh] overflow-hidden shadow-2xl border border-slate-100 animate-in zoom-in duration-200 flex flex-col">
             
-            <div className="flex justify-between items-center p-5 border-b bg-gray-50/50">
+            <div className="flex justify-between items-center p-5 border-b bg-gray-50/50 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="bg-[#e8f0eb] p-2.5 rounded-xl text-[#1a4d2e]">
                   <FileText size={20} />
@@ -552,13 +659,13 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
               </button>
             </div>
             
-            <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
+            <div className="p-6 space-y-6 overflow-y-auto flex-1 min-h-0">
               {/* ส่วนข้อมูลรถ */}
               <div>
                 <h4 className="text-sm font-bold text-[#1a4d2e] mb-3 flex items-center gap-2">
                   <Car size={16} /> ข้อมูลยานพาหนะ
                 </h4>
-                <div className="bg-gray-50 rounded-xl p-4 grid grid-cols-2 gap-y-4 gap-x-6 border border-gray-100">
+                <div className="bg-gray-50 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 border border-gray-100">
                   <div>
                     <p className="text-xs text-gray-500 mb-1">ทะเบียนรถ</p>
                     <p className="font-bold text-gray-800 text-base">{selectedDocForDetail.licensePlate || '-'}</p>
@@ -581,7 +688,7 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
                 <h4 className="text-sm font-bold text-[#1a4d2e] mb-3 flex items-center gap-2">
                   <CalendarDays size={16} /> ข้อมูลเอกสารและความคุ้มครอง
                 </h4>
-                <div className="grid grid-cols-2 gap-y-4 gap-x-6 px-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 px-2">
                   <div>
                     <p className="text-xs text-gray-500 mb-1">วันที่มีผล (Issued Date)</p>
                     <p className="font-medium text-gray-800">{formatThaiDate(selectedDocForDetail.issuedDate)}</p>
@@ -592,8 +699,8 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
                   </div>
                   
                   {/* 📍 ข้อมูลที่ซ่อนจากตารางหลัก นำมาแสดงตรงนี้ */}
-                  <div className="col-span-2 bg-blue-50/50 p-3 rounded-lg border border-blue-100">
-                    <div className="grid grid-cols-2 gap-4">
+                  <div className="sm:col-span-2 bg-blue-50/50 p-3 rounded-lg border border-blue-100">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <p className="text-xs text-blue-600 font-semibold flex items-center gap-1 mb-1">
                           <User size={12} /> ผู้รับผิดชอบ (Driver)
@@ -609,20 +716,28 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
                     </div>
                   </div>
 
-                  <div className="col-span-2">
+                  <div className="sm:col-span-2">
                     <p className="text-xs text-gray-500 mb-1">หมายเลขเอกสาร/กรมธรรม์</p>
                     <p className="font-medium text-gray-800">{selectedDocForDetail.docNumber || 'ไม่มีข้อมูล'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">ไฟล์แนบ</p>
+                    <p className="font-medium text-gray-800">{selectedDocForDetail.hasAttachment ? 'มีไฟล์แนบในระบบ' : 'ไม่มีไฟล์แนบ'}</p>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <p className="text-xs text-gray-500 mb-1">หมายเหตุ</p>
+                    <p className="font-medium text-gray-800">{selectedDocForDetail.note || 'ไม่มีหมายเหตุ'}</p>
                   </div>
                 </div>
               </div>
             </div>
             
-            <div className="p-5 border-t bg-gray-50 flex justify-end">
+            <div className="px-6 pt-5 pb-8 border-t bg-gray-50 flex items-center justify-end shrink-0">
               <button 
                 onClick={() => setIsDetailModalOpen(false)} 
-                className="px-6 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:text-gray-900 font-bold transition-all shadow-sm"
+                className="min-w-24 h-11 px-6 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:text-gray-900 font-bold transition-all shadow-sm shrink-0"
               >
-                ปิดหน้าต่าง
+                ปิด
               </button>
             </div>
 
@@ -630,6 +745,6 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
         </div>
       )}
 
-    </div>
+    </>
   );
 }
