@@ -109,7 +109,7 @@ export default function DashboardPage() {
 
         return {
           id: `alert-${index}`,
-          text: `รถทะเบียน ${doc.licensePlate || doc.chassis} - ${docName} ${isExpired ? 'หมดอายุ' : 'ใกล้หมดอายุ'}`,
+          text: `${doc.licensePlate ? 'รถทะเบียน' : 'เลขตัวถัง'} ${doc.licensePlate || doc.chassis} - ${docName} ${isExpired ? 'หมดอายุ' : 'ใกล้หมดอายุ'}`,
           type: isExpired ? 'error' as const : 'warning' as const,
           date: formatThaiDate(doc.expiryDate),
           daysText: daysText,

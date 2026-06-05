@@ -41,7 +41,7 @@ export default function ExpiryMonthModal({ month, onClose, onSelectDocument }: E
                 className="w-full text-left bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-start justify-between gap-3 hover:border-[#1a4d2e]/30 hover:bg-[#e8f0eb]/30 transition-colors focus:outline-none focus:ring-2 focus:ring-[#1a4d2e]/30"
               >
                 <div>
-                  <p className="text-sm text-slate-800 font-bold">รถทะเบียน {document.licensePlate || document.chassis}</p>
+                  <p className="text-sm text-slate-800 font-bold">{document.licensePlate ? 'รถทะเบียน' : 'เลขตัวถัง'} {document.licensePlate || document.chassis}</p>
                   <p className="text-sm text-slate-600 font-medium mt-0.5">{getDocTypeName(document.docType)} หมดอายุ</p>
                   <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-slate-500">
                     <span className="flex items-center gap-1">
