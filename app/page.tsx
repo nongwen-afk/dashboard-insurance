@@ -10,7 +10,7 @@ import ExpiryMonthModal from '@/components/dashboard/ExpiryMonthModal';
 import StatCard from '@/components/dashboard/StatCard';
 import UrgentAlerts from '@/components/dashboard/UrgentAlerts';
 import PolicyTable from '../components/PolicyTable';
-import type { DocumentAlert, ExpiryMonthGroup, FilterStatus, VehicleDocType, VehicleDocument } from '@/types';
+import type { DocumentAlert, ExpiryMonthGroup, FilterStatus, VehicleDocument } from '@/types';
 import { formatThaiDate, getDaysUntilExpiry, getDocTypeName, getSixMonthExpiryKey } from '@/utils/documentUtils';
 import { initialDocs } from '@/utils/mockData';
 

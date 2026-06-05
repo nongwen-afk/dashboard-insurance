@@ -145,10 +145,12 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
     }
   };
 
-  // เมื่อเปลี่ยน statusFilter ให้รีเซ็ตกลับไปหน้าแรก
-  useEffect(() => {
+  // เมื่อเปลี่ยน statusFilter ให้รีเซ็ตกลับไปหน้าแรก (ปรับสถานะในขั้นตอน Render เพื่อเลี่ยง Render ซ้ำจาก Effect)
+  const [prevStatusFilter, setPrevStatusFilter] = useState(statusFilter);
+  if (statusFilter !== prevStatusFilter) {
+    setPrevStatusFilter(statusFilter);
     setCurrentPage(1);
-  }, [statusFilter]);
+  }
 
   // รวมการค้นหา กรองประเภท และจัดเรียงไว้ใน memo เพื่อให้ตารางคำนวณใหม่เฉพาะตอนข้อมูลหรือ filter เปลี่ยน
   const filteredDocs = useMemo(() => {
@@ -232,8 +234,6 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
       document.removeEventListener("click", handleClickOutside);
     };
   }, [openActionMenuIndex]);
-
-  const hasActiveFilters = docTypeFilter !== 'ALL' || statusFilter !== 'ALL';
 
   return (
     <>
