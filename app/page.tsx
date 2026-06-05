@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useRef } from 'react';
-import { Files, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
+import { Files, CheckCircle2, AlertCircle, XCircle, Clock } from 'lucide-react';
 import DocumentDetailModal from '@/components/DocumentDetailModal';
 import AlertsModal from '@/components/dashboard/AlertsModal';
 import ExpiryChart from '@/components/dashboard/ExpiryChart';
@@ -82,19 +82,22 @@ export default function DashboardPage() {
     }
   };
 
-  // สรุปจำนวนเอกสารตามสถานะ เพื่อให้ 4 cards ด้านบนสะท้อนข้อมูลหลัง import Excel ทันที
+  // สรุปจำนวนเอกสารตามสถานะ เพื่อให้ 5 cards ด้านบนสะท้อนข้อมูลหลัง import Excel ทันที
   const stats = useMemo(() => {
-    let active = 0, warning = 0, expired = 0;
+    let active = 0, warning = 0, expired = 0, processing = 0;
 
     documents.forEach(doc => {
-      if (doc.isAcknowledged) return; // หากกดรับทราบ/กำลังดำเนินการอยู่ จะไม่นับในส่วนการ์ดสรุปงานค้าง
+      if (doc.isAcknowledged) {
+        processing++;
+        return;
+      }
       if (!doc.expiryDate) { active++; return; }
       const diffDays = getDaysUntilExpiry(doc.expiryDate);
       if (diffDays < 0) expired++;
       else if (diffDays <= 30) warning++;
       else active++;
     });
-    return { total: documents.length, active, warning, expired };
+    return { total: documents.length, active, warning, expired, processing };
   }, [documents]);
 
   // จัดกลุ่มเอกสารที่จะหมดอายุใน 6 เดือนข้างหน้า เพื่อแสดงบนกราฟและใช้เปิด modal รายเดือน
@@ -176,13 +179,13 @@ export default function DashboardPage() {
         </h1>
       </div>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
         <StatCard
           title="เอกสารทั้งหมด"
           value={stats.total}
           caption="รายการในระบบ"
           icon={<Files size={28} />}
-          iconClassName="bg-blue-50 text-blue-600"
+          iconClassName="bg-slate-50 text-slate-600 border border-slate-100"
           onClick={() => handleStatCardClick('ALL')}
         />
         <StatCard
@@ -208,6 +211,14 @@ export default function DashboardPage() {
           icon={<XCircle size={28} />}
           iconClassName="bg-red-50 text-red-500"
           onClick={() => handleStatCardClick('EXPIRED')}
+        />
+        <StatCard
+          title="กำลังดำเนินการ"
+          value={stats.processing}
+          caption="รับทราบเรื่องแล้ว"
+          icon={<Clock size={28} />}
+          iconClassName="bg-blue-50 text-blue-600"
+          onClick={() => handleStatCardClick('PROCESSING')}
         />
       </div>
 
