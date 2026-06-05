@@ -337,27 +337,27 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
       </div>
 
       <div className="overflow-x-auto min-h-[500px]">
-        <table className="w-full min-w-[1120px] table-fixed text-left border-collapse">
+        <table className="w-full min-w-[1000px] table-fixed text-left border-collapse">
           <colgroup>
-            <col className="w-[13%]" />
-            <col className="w-[13%]" />
-            <col className="w-[13%]" />
+            <col className="w-[10%]" />
+            <col className="w-[14%]" />
+            <col className="w-[12%]" />
             <col className="w-[14%]" />
             <col className="w-[14%]" />
-            <col className="w-[16%]" />
-            <col className="w-[8%]" />
-            <col className="w-[6%]" />
+            <col className="w-[24%]" />
+            <col className="w-[7%]" />
+            <col className="w-[5%]" />
           </colgroup>
           <thead className="bg-gray-50/50 border-y border-gray-100">
             <tr className="text-gray-500 text-xs uppercase tracking-wider">
-              <th className="px-5 py-3.5 font-semibold">ประเภทเอกสาร</th>
-              <th className="px-5 py-3.5 font-semibold">เลขตัวถัง</th>
-              <th className="px-5 py-3.5 font-semibold">ทะเบียนรถ</th>
-              <th className="px-5 py-3.5 font-semibold">วันที่มีผล</th>
-              <th className="px-5 py-3.5 font-semibold">วันหมดอายุ</th>
-              <th className="px-5 py-3.5 font-semibold">สถานะ</th>
-              <th className="px-5 py-3.5 font-semibold text-center">ไฟล์แนบ</th>
-              <th className="px-5 py-3.5 font-semibold text-right"></th>
+              <th className="px-4 py-3 font-semibold">ประเภทเอกสาร</th>
+              <th className="px-4 py-3 font-semibold">เลขตัวถัง</th>
+              <th className="px-4 py-3 font-semibold">ทะเบียนรถ</th>
+              <th className="px-4 py-3 font-semibold">วันที่มีผล</th>
+              <th className="px-4 py-3 font-semibold">วันหมดอายุ</th>
+              <th className="px-4 py-3 font-semibold">สถานะ</th>
+              <th className="px-4 py-3 font-semibold text-center">ไฟล์แนบ</th>
+              <th className="px-4 py-3 font-semibold text-right"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 text-sm">
@@ -367,21 +367,21 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
                 const statusBadge = getStatusBadge(status, days);
                 return (
                   <tr key={index} className="hover:bg-gray-50/50 transition-colors group relative">
-                    <td className="px-5 py-4 font-medium text-gray-700">{getDocTypeName(doc.docType)}</td>
-                    <td className="px-5 py-4 text-gray-500 font-mono text-xs">{doc.chassis}</td>
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-3 font-medium text-gray-700">{getDocTypeName(doc.docType)}</td>
+                    <td className="px-4 py-3 text-gray-500 font-mono text-xs">{doc.chassis}</td>
+                    <td className="px-4 py-3">
                       <span className="font-bold text-gray-800">{doc.licensePlate || '-'}</span>
                     </td>
                     
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-3">
                       <span className="text-gray-600">{formatThaiDate(doc.issuedDate)}</span>
                     </td>
                     
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-3">
                       <span className="text-gray-700 font-medium">{formatThaiDate(doc.expiryDate)}</span>
                     </td>
 
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-3">
                       <div className="inline-flex flex-col items-start gap-1">
                         <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold ${statusBadge.className}`}>
                           {statusBadge.label}
@@ -392,7 +392,7 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
                       </div>
                     </td>
 
-                    <td className="px-5 py-4 text-center">
+                    <td className="px-4 py-3 text-center">
                       {doc.hasAttachment ? (
                         <button className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-lg transition-colors inline-flex" title="ดูไฟล์แนบ">
                           <Paperclip size={18} />
@@ -402,7 +402,7 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
                       )}
                     </td>
                     
-                    <td className="px-5 py-4 text-right relative">
+                    <td className="px-4 py-3 text-right relative">
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
