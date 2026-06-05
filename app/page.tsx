@@ -123,6 +123,47 @@ export default function DashboardPage() {
   // หน้า dashboard แสดงเฉพาะ 4 รายการที่ด่วนที่สุด ส่วนรายการเต็มเปิดใน AlertsModal
   const topUrgentDocs = alertsList.slice(0, 4);
 
+  const handleSingleSync = (doc: VehicleDocument) => {
+    const syncToastId = `sync-doc-${doc.id || doc.chassis}-${doc.docType}`;
+    toast.loading(`กำลังตรวจสอบข้อมูลการต่ออายุของ ${doc.licensePlate || doc.chassis || 'ไม่ระบุ'} กับระบบภายนอก...`, { id: syncToastId });
+
+    setTimeout(() => {
+      const isRenewed = Math.random() > 0.5;
+
+      if (isRenewed) {
+        setDocuments(prev => prev.map(d => {
+          if (isSameDocumentRecord(d, doc)) {
+            const currentExpiry = d.expiryDate ? new Date(d.expiryDate) : new Date();
+            const newExpiry = new Date(currentExpiry.getFullYear() + 1, currentExpiry.getMonth(), currentExpiry.getDate());
+            const newIssued = d.expiryDate ? d.expiryDate : new Date().toISOString().split('T')[0];
+
+            return {
+              ...d,
+              isAcknowledged: false,
+              acknowledgedAt: undefined,
+              acknowledgedBy: undefined,
+              issuedDate: newIssued,
+              expiryDate: newExpiry.toISOString().split('T')[0]
+            };
+          }
+          return d;
+        }));
+
+        toast.success(`ซิงค์สำเร็จ! พบการต่ออายุใหม่ของรถ ${doc.licensePlate || doc.chassis || 'ไม่ระบุ'} เรียบร้อย`, {
+          id: syncToastId,
+          icon: '✅',
+          duration: 4000
+        });
+      } else {
+        toast.error(`ซิงค์สำเร็จ: ยังไม่พบการชำระเงิน/ต่ออายุใหม่ในระบบของหน่วยงานภายนอก`, {
+          id: syncToastId,
+          icon: 'ℹ️',
+          duration: 4000
+        });
+      }
+    }, 1500);
+  };
+
   return (
     <div className="w-full flex flex-col gap-6">
       <div className="pb-4 border-b border-gray-200">
@@ -232,15 +273,7 @@ export default function DashboardPage() {
           } : d));
           toast.success(`รับทราบการแจ้งเตือนรถ ${doc.licensePlate || doc.chassis} เรียบร้อย`, { icon: 'ℹ️' });
         }}
-        onSync={(doc) => {
-          setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? {
-            ...d,
-            isAcknowledged: false,
-            acknowledgedAt: undefined,
-            acknowledgedBy: undefined
-          } : d));
-          toast.success(`ซิงค์ข้อมูล ${doc.licensePlate || doc.chassis} แล้ว`, { duration: 3000 });
-        }}
+        onSync={handleSingleSync}
       />
 
     </div>

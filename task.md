@@ -37,6 +37,7 @@
   - `[x]` Seed mock documents with realistic pre-acknowledged metadata in mockData.ts
   - `[x]` Display dynamic banner description and acknowledgement metadata card inside DocumentDetailModal.tsx
   - `[x]` Fix inconsistent behavior when acknowledging documents from the table row detail modal (duplicate DocumentDetailModal inside PolicyTable.tsx)
+  - `[x]` Implement randomized external DLT sync simulation (50% renewal success with 1-year extension / 50% pending payment check) with simulated API delay loading toast
 - `[ ]` Support custom document additions (Add Document Form)
 - `[ ]` Implement real backend API / localstorage integration for persistence
 - `[ ]` Add more chart visualizations (e.g. status breakdown pie chart)

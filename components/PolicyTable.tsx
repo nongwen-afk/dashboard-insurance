@@ -127,6 +127,112 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
 
   const [selectedDocForDetail, setSelectedDocForDetail] = useState<VehicleDocument | null>(null);
 
+  const handleSingleSync = (doc: VehicleDocument) => {
+    const syncToastId = `sync-doc-${doc.id || doc.chassis}-${doc.docType}`;
+    toast.loading(`กำลังตรวจสอบข้อมูลการต่ออายุของ ${doc.licensePlate || doc.chassis || 'ไม่ระบุ'} กับระบบภายนอก...`, { id: syncToastId });
+
+    setTimeout(() => {
+      const isRenewed = Math.random() > 0.5;
+
+      if (isRenewed) {
+        setDocuments(prev => prev.map(d => {
+          if (isSameDocumentRecord(d, doc)) {
+            const currentExpiry = d.expiryDate ? new Date(d.expiryDate) : new Date();
+            const newExpiry = new Date(currentExpiry.getFullYear() + 1, currentExpiry.getMonth(), currentExpiry.getDate());
+            const newIssued = d.expiryDate ? d.expiryDate : new Date().toISOString().split('T')[0];
+
+            return {
+              ...d,
+              isAcknowledged: false,
+              acknowledgedAt: undefined,
+              acknowledgedBy: undefined,
+              issuedDate: newIssued,
+              expiryDate: newExpiry.toISOString().split('T')[0]
+            };
+          }
+          return d;
+        }));
+
+        toast.success(`ซิงค์สำเร็จ! พบการต่ออายุใหม่ของรถ ${doc.licensePlate || doc.chassis || 'ไม่ระบุ'} เรียบร้อย`, {
+          id: syncToastId,
+          icon: '✅',
+          duration: 4000
+        });
+      } else {
+        toast.error(`ซิงค์สำเร็จ: ยังไม่พบการชำระเงิน/ต่ออายุใหม่ในระบบของหน่วยงานภายนอก`, {
+          id: syncToastId,
+          icon: 'ℹ️',
+          duration: 4000
+        });
+      }
+    }, 1500);
+  };
+
+  const handleGlobalSync = () => {
+    const syncToastId = 'global-sync-toast';
+    toast.loading('กำลังตรวจเช็คการต่ออายุเอกสารทั้งหมดกับระบบภายนอก...', { id: syncToastId });
+
+    setTimeout(() => {
+      const processingDocs = documents.filter(d => d.isAcknowledged);
+
+      if (processingDocs.length === 0) {
+        toast.success('ซิงค์สำเร็จ! ข้อมูลทุกรายการอัปเดตเป็นปัจจุบันแล้ว', {
+          id: syncToastId,
+          icon: '🔄',
+          duration: 3000
+        });
+        return;
+      }
+
+      let renewedCount = 0;
+      let pendingCount = 0;
+
+      setDocuments(prev => prev.map(d => {
+        if (d.isAcknowledged) {
+          const isRenewed = Math.random() > 0.5;
+          if (isRenewed) {
+            renewedCount++;
+            const currentExpiry = d.expiryDate ? new Date(d.expiryDate) : new Date();
+            const newExpiry = new Date(currentExpiry.getFullYear() + 1, currentExpiry.getMonth(), currentExpiry.getDate());
+            const newIssued = d.expiryDate ? d.expiryDate : new Date().toISOString().split('T')[0];
+
+            return {
+              ...d,
+              isAcknowledged: false,
+              acknowledgedAt: undefined,
+              acknowledgedBy: undefined,
+              issuedDate: newIssued,
+              expiryDate: newExpiry.toISOString().split('T')[0]
+            };
+          } else {
+            pendingCount++;
+          }
+        }
+        return d;
+      }));
+
+      if (renewedCount > 0) {
+        toast.success(
+          `ซิงค์เรียบร้อย! อัปเดตข้อมูลต่ออายุสำเร็จ ${renewedCount} รายการ, รอการชำระเงินอีก ${pendingCount} รายการ`,
+          {
+            id: syncToastId,
+            icon: '✅',
+            duration: 5000
+          }
+        );
+      } else {
+        toast.error(
+          `ซิงค์เรียบร้อย: เอกสารทั้ง ${pendingCount} รายการที่กำลังดำเนินการ ยังไม่พบการชำระเงินเข้ามาในระบบ`,
+          {
+            id: syncToastId,
+            icon: 'ℹ️',
+            duration: 5000
+          }
+        );
+      }
+    }, 1500);
+  };
+
   // หน่วงการค้นหาเล็กน้อยเพื่อลด toast ถี่เกินไปและไม่กรองข้อมูลทุก key stroke ทันที
   useEffect(() => {
     const searchToastId = 'search-toast';
@@ -375,10 +481,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
 
         <div className="flex w-full sm:w-auto lg:ml-4 gap-2">
           <button
-            onClick={() => {
-              setDocuments(prev => prev.map(doc => ({ ...doc, isAcknowledged: false })));
-              toast.success('ซิงค์สถานะเอกสารทั้งหมดแล้ว', { icon: '🔄' });
-            }}
+            onClick={handleGlobalSync}
             className="flex h-11 items-center justify-center gap-2 px-4 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium text-gray-600 shadow-sm"
             title="ซิงค์ข้อมูลล่าสุดทั้งหมด"
           >
@@ -517,13 +620,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
                           <button
                             className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-[#1a4d2e] flex items-center gap-2 transition-colors"
                            onClick={() => {
-                              setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? {
-                                ...d,
-                                isAcknowledged: false,
-                                acknowledgedAt: undefined,
-                                acknowledgedBy: undefined
-                              } : d));
-                              toast.success(`ซิงค์ข้อมูล ${doc.licensePlate || doc.chassis} แล้ว`, { duration: 3000 });
+                              handleSingleSync(doc);
                               setOpenActionMenuIndex(null);
                             }}
                           >
@@ -652,15 +749,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
           } : d));
           toast.success(`รับทราบการแจ้งเตือนรถ ${doc.licensePlate || doc.chassis} เรียบร้อย`, { icon: 'ℹ️' });
         }}
-        onSync={(doc) => {
-          setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? {
-            ...d,
-            isAcknowledged: false,
-            acknowledgedAt: undefined,
-            acknowledgedBy: undefined
-          } : d));
-          toast.success(`ซิงค์ข้อมูล ${doc.licensePlate || doc.chassis} แล้ว`, { duration: 3000 });
-        }}
+        onSync={handleSingleSync}
       />
 
     </>

@@ -128,6 +128,9 @@ We reviewed and fixed the issues found after the Antigravity update.
     - Updated the status banner description dynamically to display the user and formatted timestamp when a document is in the acknowledged state.
     - Added a sleek slate-colored information card inside the details grid displaying the acknowledgement user and timestamp.
     - **Row Detail Modal Bug Fix**: Fixed an issue where clicking "รับทราบการแจ้งเตือน" inside the `DocumentDetailModal` that was opened directly from a table row (rendered in `PolicyTable.tsx`) did not update the acknowledgement metadata due to outdated handler callbacks. Synchronized the `onAcknowledge` and `onSync` handlers in the duplicate `DocumentDetailModal` component inside `PolicyTable.tsx`.
+    - **Randomized DLT Sync Simulation (Idea 3)**: Modified the "ซิงค์ข้อมูลล่าสุด" (Sync Latest) action to simulate a real API integration check. When clicked (globally or per document), it displays a loading toast ("กำลังตรวจสอบข้อมูลกับระบบภายนอก...") for 1.5 seconds, then randomly (50% chance) decides to either:
+      1. **ต่ออายุสำเร็จ (Renewal Success)**: Extends the expiry date by exactly 1 year, updates the issued date to the current date, clears the acknowledgement metadata, and changes the document status to green **ใช้งานได้ปกติ** (Active).
+      2. **ค้างชำระเงิน/ไม่มีรายการอัปเดต (Pending Check)**: Retains the processing status and alerts the user that no payment or renewal record was found in the external DLT/insurer database.
 
 ### 6. Verification
 - `pnpm run lint` passes.
