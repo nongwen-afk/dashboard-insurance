@@ -594,8 +594,20 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
     </div>
 
       <DocumentDetailModal
-        document={selectedDocForDetail}
+        document={
+          selectedDocForDetail
+            ? documents.find(d => d.chassis === selectedDocForDetail.chassis && d.docType === selectedDocForDetail.docType) || selectedDocForDetail
+            : null
+        }
         onClose={() => setSelectedDocForDetail(null)}
+        onAcknowledge={(doc) => {
+          setDocuments(prev => prev.map(d => d.chassis === doc.chassis && d.docType === doc.docType ? { ...d, isAcknowledged: true } : d));
+          toast.success(`รับทราบการแจ้งเตือนรถ ${doc.licensePlate || doc.chassis} เรียบร้อย`, { icon: 'ℹ️' });
+        }}
+        onSync={(doc) => {
+          setDocuments(prev => prev.map(d => d.chassis === doc.chassis && d.docType === doc.docType ? { ...d, isAcknowledged: false } : d));
+          toast.success(`ซิงค์ข้อมูล ${doc.licensePlate || doc.chassis} แล้ว`, { duration: 3000 });
+        }}
       />
 
     </>
