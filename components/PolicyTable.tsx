@@ -11,6 +11,7 @@ import DocumentDetailModal from '@/components/DocumentDetailModal';
 import type { DocStatus, FilterStatus, SortOption, VehicleDocument } from '@/types';
 import { formatThaiDate, getDocTypeName, getDocumentStatus } from '@/utils/documentUtils';
 import { parseVehicleDocumentsFromFile } from '@/utils/importVehicleDocuments';
+import { initialDocs } from '@/utils/mockData';
 
 interface PolicyTableProps {
   documents: VehicleDocument[];
@@ -370,7 +371,18 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
           </div>
         </div>
 
-        <div className="flex w-full sm:w-auto lg:ml-4">
+        <div className="flex w-full sm:w-auto lg:ml-4 gap-2">
+          <button 
+            onClick={() => {
+              setDocuments(initialDocs);
+              toast.success('ซิงค์ข้อมูลล่าสุดของระบบเรียบร้อยแล้ว', { icon: '🔄' });
+            }}
+            className="flex h-11 items-center justify-center gap-2 px-4 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium text-gray-600 shadow-sm"
+            title="ซิงค์ข้อมูลล่าสุดทั้งหมด"
+          >
+            <RefreshCw size={16} /> ซิงค์ข้อมูลล่าสุด
+          </button>
+          
           <input type="file" accept=".xlsx, .xls, .csv" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
           <button 
             onClick={() => fileInputRef.current?.click()}
@@ -411,7 +423,14 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
                 const { status, days } = getDocumentStatus(doc.expiryDate);
                 const statusBadge = getStatusBadge(status, days, doc.isAcknowledged);
                 return (
-                  <tr key={index} className="hover:bg-gray-50/50 transition-colors group relative">
+                  <tr 
+                    key={index} 
+                    onClick={() => {
+                      setSelectedDocForDetail(doc);
+                      toast.success(`เปิดรายละเอียด ${doc.licensePlate || doc.chassis}`, { duration: 1800 });
+                    }}
+                    className="hover:bg-gray-50/50 transition-colors group relative cursor-pointer"
+                  >
                     <td className="px-4 py-3 font-medium text-gray-700">{getDocTypeName(doc.docType)}</td>
                     <td className="px-4 py-3 text-gray-500 font-mono text-xs">{doc.chassis}</td>
                     <td className="px-4 py-3">
@@ -458,7 +477,14 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
 
                     <td className="px-4 py-3 text-center">
                       {doc.hasAttachment ? (
-                        <button className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-lg transition-colors inline-flex" title="ดูไฟล์แนบ">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toast.success(`เปิดไฟล์แนบของ ${doc.licensePlate || doc.chassis}`, { duration: 1800 });
+                          }}
+                          className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-lg transition-colors inline-flex" 
+                          title="ดูไฟล์แนบ"
+                        >
                           <Paperclip size={18} />
                         </button>
                       ) : (
@@ -525,7 +551,11 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
                           <button 
                             className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
                             onClick={() => { 
-                              toast.error(`จำลองการลบข้อมูล ${doc.licensePlate || doc.chassis}`); 
+                              const isConfirmed = window.confirm(`คุณแน่ใจหรือไม่ที่จะลบข้อมูลของรถทะเบียน/เลขตัวถัง ${doc.licensePlate || doc.chassis}?`);
+                              if (isConfirmed) {
+                                setDocuments(prev => prev.filter(d => d.chassis !== doc.chassis || d.docType !== doc.docType));
+                                toast.success(`ลบข้อมูล ${doc.licensePlate || doc.chassis} ออกจากระบบแล้ว`, { icon: '🗑️' });
+                              }
                               setOpenActionMenuIndex(null); 
                             }}
                           >
