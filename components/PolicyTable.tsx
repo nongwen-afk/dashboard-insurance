@@ -15,6 +15,8 @@ import { parseVehicleDocumentsFromFile } from '@/utils/importVehicleDocuments';
 interface PolicyTableProps {
   documents: VehicleDocument[];
   setDocuments: React.Dispatch<React.SetStateAction<VehicleDocument[]>>;
+  statusFilter: 'ALL' | 'ACTIVE' | 'WARNING' | 'EXPIRED';
+  setStatusFilter: (status: 'ALL' | 'ACTIVE' | 'WARNING' | 'EXPIRED') => void;
 }
 
 // แปลงสถานะจาก helper ให้เป็นข้อความและสีสำหรับคอลัมน์สถานะในตาราง
@@ -54,13 +56,13 @@ const getStatusBadge = (status: DocStatus, days: number) => {
   };
 };
 
-export default function PolicyTable({ documents, setDocuments }: PolicyTableProps) {
+export default function PolicyTable({ documents, setDocuments, statusFilter, setStatusFilter }: PolicyTableProps) {
   // searchInput คือค่าที่พิมพ์อยู่ ส่วน activeSearch คือค่าที่ debounce แล้วจึงนำไปกรองจริง
   const [searchInput, setSearchInput] = useState('');     
   const [activeSearch, setActiveSearch] = useState('');   
   
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 6;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -134,6 +136,11 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
     }
   };
 
+  // เมื่อเปลี่ยน statusFilter ให้รีเซ็ตกลับไปหน้าแรก
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter]);
+
   // รวมการค้นหา กรองประเภท และจัดเรียงไว้ใน memo เพื่อให้ตารางคำนวณใหม่เฉพาะตอนข้อมูลหรือ filter เปลี่ยน
   const filteredDocs = useMemo(() => {
     const query = activeSearch.toLowerCase();
@@ -147,7 +154,19 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
       
       const matchDocType = docTypeFilter === 'ALL' || doc.docType === docTypeFilter;
 
-      return matchSearch && matchDocType;
+      // การกรองตามสถานะเอกสาร
+      const { status } = getDocumentStatus(doc.expiryDate);
+      let matchStatus = true;
+      if (statusFilter !== 'ALL') {
+        if (statusFilter === 'ACTIVE') {
+          // 'ใช้งานได้' ครอบคลุมทั้ง ACTIVE และเอกสารที่ไม่มีวันหมดอายุ NO_EXPIRY
+          matchStatus = status === 'ACTIVE' || status === 'NO_EXPIRY';
+        } else {
+          matchStatus = status === statusFilter;
+        }
+      }
+
+      return matchSearch && matchDocType && matchStatus;
     });
 
     return filtered.sort((a, b) => {
@@ -177,7 +196,7 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
       }
       return 0;
     });
-  }, [documents, activeSearch, docTypeFilter, sortBy]);
+  }, [documents, activeSearch, docTypeFilter, sortBy, statusFilter]);
 
   const totalPages = Math.ceil(filteredDocs.length / itemsPerPage);
   const safeCurrentPage = totalPages > 0 ? Math.min(currentPage, totalPages) : 1;
@@ -201,7 +220,7 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
     };
   }, [openActionMenuIndex]);
 
-  const hasActiveFilters = docTypeFilter !== 'ALL';
+  const hasActiveFilters = docTypeFilter !== 'ALL' || statusFilter !== 'ALL';
 
   return (
     <>
@@ -232,7 +251,7 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
                 className={`relative flex h-11 items-center gap-2 px-4 bg-white border rounded-xl transition-colors text-sm font-medium shadow-sm ${isFilterOpen ? 'border-[#1a4d2e] text-[#1a4d2e]' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
               >
                 <Filter size={16} /> ตัวกรอง
-                {hasActiveFilters && (
+                {docTypeFilter !== 'ALL' && (
                   <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
                 )}
               </button>
@@ -268,7 +287,7 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
                     </div>
                   </div>
                   
-                  {hasActiveFilters && (
+                  {docTypeFilter !== 'ALL' && (
                     <button onClick={() => { setDocTypeFilter('ALL'); }} className="w-full py-2 mt-2 text-sm font-bold text-red-500 hover:bg-red-50 rounded-lg transition-colors">
                       ล้างตัวกรอง
                     </button>
@@ -322,6 +341,19 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
               </>
             )}
             </div>
+
+            {statusFilter !== 'ALL' && (
+              <span className="inline-flex items-center gap-1.5 h-11 px-4 bg-[#e8f0eb] text-[#1a4d2e] rounded-xl text-xs font-bold border border-[#1a4d2e]/20 animate-in fade-in slide-in-from-left-2">
+                สถานะ: {statusFilter === 'ACTIVE' ? 'ใช้งานได้' : statusFilter === 'WARNING' ? 'ใกล้หมดอายุ' : 'หมดอายุแล้ว'}
+                <button 
+                  onClick={() => setStatusFilter('ALL')} 
+                  className="hover:bg-[#d4e5db] rounded-full p-0.5 transition-colors cursor-pointer flex items-center justify-center"
+                  title="ล้างตัวกรองสถานะ"
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            )}
           </div>
         </div>
 
@@ -336,7 +368,7 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
         </div>
       </div>
 
-      <div className="overflow-x-auto min-h-[500px]">
+      <div className="overflow-x-auto min-h-[465px]">
         <table className="w-full min-w-[1000px] table-fixed text-left border-collapse">
           <colgroup>
             <col className="w-[10%]" />
