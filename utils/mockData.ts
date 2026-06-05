@@ -24,12 +24,18 @@ export const initialDocsSeed: VehicleDocument[] = [
   { chassis: 'CHAS-ACK-003', licensePlate: '1กข 1212', docType: 'tax', issuedDate: '2025-05-20', expiryDate: '2026-06-10', driverName: 'วรรณา สุขใจ', isAcknowledged: true }, // เหลือ 5 วัน แต่ยอมรับแล้ว
 
   // 5. กลุ่มปกติ (Active) - เหลืออายุมากกว่า 30 วัน
-  { chassis: 'CHAS-ACT-001', licensePlate: '7กข 7777', docType: 'act', issuedDate: '2025-08-10', expiryDate: '2026-08-10', driverName: 'นิภา รักสิทธิ์', project: 'สายเดินรถภาคใต้' },
-  { chassis: 'CHAS-ACT-002', licensePlate: '8กค 8888', docType: 'tax', issuedDate: '2025-09-01', expiryDate: '2026-09-01', driverName: 'สมปอง คำดี', project: 'รถสวัสดิการ โรงงาน A' },
-  { chassis: 'CHAS-ACT-003', licensePlate: '9กง 9999', docType: 'insurance', issuedDate: '2025-10-15', expiryDate: '2026-10-15', driverName: '', project: 'รถรับส่งพนักงาน MEA' }, // ไม่มีคนขับ
-  { chassis: 'CHAS-ACT-004', licensePlate: '', docType: 'act', issuedDate: '2025-11-20', expiryDate: '2026-11-20', driverName: 'มนัส ปัญญา' }, // ไม่มีทะเบียน
-  { chassis: 'CHAS-ACT-005', licensePlate: '1กข 2020', docType: 'inspection', issuedDate: '2025-12-05', expiryDate: '2026-12-05', driverName: 'ชัชชาติ แข็งแกร่ง' },
-  { chassis: 'CHAS-ACT-006', licensePlate: '2กค 3030', docType: 'insurance', issuedDate: '2026-01-15', expiryDate: '2027-01-15', driverName: 'ธวัชชัย รวดเร็ว' },
+  { chassis: 'CHAS-ACT-001', licensePlate: '7กข 7777', docType: 'act', issuedDate: '2025-07-10', expiryDate: '2026-07-10', driverName: 'นิภา รักสิทธิ์', project: 'สายเดินรถภาคใต้' },
+  { chassis: 'CHAS-ACT-002', licensePlate: '8กค 8888', docType: 'tax', issuedDate: '2025-07-25', expiryDate: '2026-07-25', driverName: 'สมปอง คำดี', project: 'รถสวัสดิการ โรงงาน A' },
+  { chassis: 'CHAS-ACT-003', licensePlate: '9กง 9999', docType: 'insurance', issuedDate: '2025-08-15', expiryDate: '2026-08-15', driverName: '', project: 'รถรับส่งพนักงาน MEA' }, // ไม่มีคนขับ
+  { chassis: 'CHAS-ACT-004', licensePlate: '', docType: 'act', issuedDate: '2025-08-28', expiryDate: '2026-08-28', driverName: 'มนัส ปัญญา' }, // ไม่มีทะเบียน
+  { chassis: 'CHAS-ACT-005', licensePlate: '1กข 2020', docType: 'inspection', issuedDate: '2025-09-12', expiryDate: '2026-09-12', driverName: 'ชัชชาติ แข็งแกร่ง' },
+  { chassis: 'CHAS-ACT-006', licensePlate: '2กค 3030', docType: 'insurance', issuedDate: '2025-09-24', expiryDate: '2026-09-24', driverName: 'ธวัชชัย รวดเร็ว' },
+  { chassis: 'CHAS-ACT-007', licensePlate: '3กง 4040', docType: 'insurance', issuedDate: '2025-10-05', expiryDate: '2026-10-05', driverName: 'วิภา สุภาพ', project: 'รถเวียน จุฬาฯ' },
+  { chassis: 'CHAS-ACT-008', licensePlate: '4กข 5050', docType: 'tax', issuedDate: '2025-10-20', expiryDate: '2026-10-20', driverName: 'ณรงค์ รักสงบ', project: 'รถเช่า AOT' },
+  { chassis: 'CHAS-ACT-009', licensePlate: '5กค 6060', docType: 'act', issuedDate: '2025-11-08', expiryDate: '2026-11-08', driverName: 'สุดา แสนดี', project: 'Shuttle Bus ไอคอนสยาม' },
+  { chassis: 'CHAS-ACT-010', licensePlate: '', docType: 'inspection', issuedDate: '2025-11-25', expiryDate: '2026-11-25', driverName: 'เกษม สุขใจ' },
+  { chassis: 'CHAS-ACT-011', licensePlate: '6กง 7070', docType: 'insurance', issuedDate: '2025-12-10', expiryDate: '2026-12-10', driverName: 'มานะ ขยันยิ่ง' },
+  { chassis: 'CHAS-ACT-012', licensePlate: '7กข 8080', docType: 'tax', issuedDate: '2026-01-05', expiryDate: '2027-01-05', driverName: 'สมศรี มีทรัพย์' },
 
   // 6. กลุ่มไม่มีวันหมดอายุ (No Expiry) - เช่น เล่มทะเบียน (registration_book)
   { chassis: 'CHAS-NOEXP-001', licensePlate: '7กข 7070', docType: 'registration_book', issuedDate: '2019-01-10', driverName: 'กิตติศักดิ์' },
