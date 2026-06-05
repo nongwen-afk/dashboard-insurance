@@ -7,6 +7,7 @@ import { Noto_Sans_Thai } from 'next/font/google';
 import { useState } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import { Analytics } from '@vercel/analytics/next';
 
 const notoSansThai = Noto_Sans_Thai({ 
   subsets: ['latin', 'thai'],
@@ -23,11 +24,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         
         <Header toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
         
-        <div className="flex pt-[70px] min-h-screen">
+        <div className="flex pt-[70px] min-h-screen w-full max-w-full overflow-x-hidden">
           <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
           
-          <div className={`flex-1 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'ml-[280px]' : 'ml-0'}`}>
-            <main className="p-8">
+          {/* Backdrop for mobile */}
+          {isSidebarOpen && (
+            <div 
+              className="fixed inset-0 bg-slate-900/40 z-30 lg:hidden backdrop-blur-xs top-[70px]"
+              onClick={() => setIsSidebarOpen(false)}
+            />
+          )}
+          
+          <div className={`flex-1 min-w-0 w-full max-w-full transition-all duration-300 ease-in-out ${isSidebarOpen ? 'lg:ml-[280px] ml-0' : 'ml-0'}`}>
+            <main className="p-4 sm:p-6 lg:p-8 w-full max-w-7xl mx-auto">
               {children}
             </main>
           </div>
@@ -45,6 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             } 
           }} 
         />
+        <Analytics />
         
         <SpeedInsights />
         

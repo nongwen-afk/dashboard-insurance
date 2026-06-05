@@ -8,19 +8,29 @@ interface StatCardProps {
   caption: string;
   icon: React.ReactNode;
   iconClassName: string;
+  onClick?: () => void;
 }
 
-export default function StatCard({ title, value, caption, icon, iconClassName }: StatCardProps) {
+export default function StatCard({ title, value, caption, icon, iconClassName, onClick }: StatCardProps) {
   // Card กลางสำหรับตัวเลขสรุป ทำให้ dashboard เปลี่ยนข้อความ/icon ได้โดยไม่ซ้ำ markup เดิม 4 รอบ
   return (
-    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+    <div 
+      onClick={onClick}
+      className={`bg-white p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between transition-all duration-200 ${
+        onClick 
+          ? 'cursor-pointer hover:shadow-md hover:border-gray-200 hover:-translate-y-0.5 active:scale-98 select-none' 
+          : ''
+      }`}
+    >
       <div>
-        <p className="text-sm font-medium text-gray-500 mb-1">{title}</p>
-        <h3 className="text-3xl font-bold text-gray-800">{value}</h3>
-        <p className="text-xs font-medium text-gray-400 mt-1">{caption}</p>
+        <p className="text-xs sm:text-sm font-medium text-gray-500 mb-1">{title}</p>
+        <h3 className="text-2xl sm:text-3xl font-bold text-gray-800">{value}</h3>
+        <p className="text-[10px] sm:text-xs font-medium text-gray-400 mt-1">{caption}</p>
       </div>
-      <div className={`w-14 h-14 rounded-full flex items-center justify-center ${iconClassName}`}>
-        {icon}
+      <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center shrink-0 ${iconClassName}`}>
+        <div className="scale-85 sm:scale-100">
+          {icon}
+        </div>
       </div>
     </div>
   );

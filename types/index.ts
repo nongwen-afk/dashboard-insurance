@@ -14,10 +14,12 @@ export interface VehicleDocument {
   note?: string;
   driverName?: string;
   hasAttachment?: boolean;
+  isAcknowledged?: boolean;
 }
 
 // สถานะเอกสารคำนวณจากวันหมดอายุ เพื่อใช้จัดสี ป้ายเตือน และลำดับความสำคัญ
 export type DocStatus = 'EXPIRED' | 'WARNING' | 'ACTIVE' | 'NO_EXPIRY';
+export type FilterStatus = 'ALL' | 'ACTIVE' | 'WARNING' | 'EXPIRED' | 'PROCESSING';
 export type SortOption = 'RELEVANCE' | 'DATE_ASC' | 'DATE_DESC';
 export type AlertSeverity = 'error' | 'warning';
 

@@ -8,17 +8,28 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import DocumentDetailModal from '@/components/DocumentDetailModal';
-import type { DocStatus, SortOption, VehicleDocument } from '@/types';
+import type { DocStatus, FilterStatus, SortOption, VehicleDocument } from '@/types';
 import { formatThaiDate, getDocTypeName, getDocumentStatus } from '@/utils/documentUtils';
 import { parseVehicleDocumentsFromFile } from '@/utils/importVehicleDocuments';
 
 interface PolicyTableProps {
   documents: VehicleDocument[];
   setDocuments: React.Dispatch<React.SetStateAction<VehicleDocument[]>>;
+  statusFilter: FilterStatus;
+  setStatusFilter: (status: FilterStatus) => void;
 }
 
 // แปลงสถานะจาก helper ให้เป็นข้อความและสีสำหรับคอลัมน์สถานะในตาราง
-const getStatusBadge = (status: DocStatus, days: number) => {
+const getStatusBadge = (status: DocStatus, days: number, isAcknowledged?: boolean) => {
+  if (isAcknowledged) {
+    return {
+      label: 'กำลังดำเนินการ',
+      detail: 'รับทราบเรื่องแล้ว',
+      className: 'bg-blue-50 text-blue-700 border-blue-100',
+      detailClassName: 'text-blue-600',
+    };
+  }
+
   if (status === 'EXPIRED') {
     return {
       label: 'หมดอายุแล้ว',
@@ -54,13 +65,13 @@ const getStatusBadge = (status: DocStatus, days: number) => {
   };
 };
 
-export default function PolicyTable({ documents, setDocuments }: PolicyTableProps) {
+export default function PolicyTable({ documents, setDocuments, statusFilter, setStatusFilter }: PolicyTableProps) {
   // searchInput คือค่าที่พิมพ์อยู่ ส่วน activeSearch คือค่าที่ debounce แล้วจึงนำไปกรองจริง
   const [searchInput, setSearchInput] = useState('');     
   const [activeSearch, setActiveSearch] = useState('');   
   
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 6;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -134,6 +145,11 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
     }
   };
 
+  // เมื่อเปลี่ยน statusFilter ให้รีเซ็ตกลับไปหน้าแรก
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter]);
+
   // รวมการค้นหา กรองประเภท และจัดเรียงไว้ใน memo เพื่อให้ตารางคำนวณใหม่เฉพาะตอนข้อมูลหรือ filter เปลี่ยน
   const filteredDocs = useMemo(() => {
     const query = activeSearch.toLowerCase();
@@ -147,7 +163,23 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
       
       const matchDocType = docTypeFilter === 'ALL' || doc.docType === docTypeFilter;
 
-      return matchSearch && matchDocType;
+      // การกรองตามสถานะเอกสาร
+      const { status } = getDocumentStatus(doc.expiryDate);
+      let matchStatus = true;
+      if (statusFilter !== 'ALL') {
+        if (statusFilter === 'PROCESSING') {
+          matchStatus = !!doc.isAcknowledged;
+        } else if (doc.isAcknowledged) {
+          matchStatus = false;
+        } else if (statusFilter === 'ACTIVE') {
+          // 'ใช้งานได้' ครอบคลุมทั้ง ACTIVE และเอกสารที่ไม่มีวันหมดอายุ NO_EXPIRY
+          matchStatus = status === 'ACTIVE' || status === 'NO_EXPIRY';
+        } else {
+          matchStatus = status === statusFilter;
+        }
+      }
+
+      return matchSearch && matchDocType && matchStatus;
     });
 
     return filtered.sort((a, b) => {
@@ -177,7 +209,7 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
       }
       return 0;
     });
-  }, [documents, activeSearch, docTypeFilter, sortBy]);
+  }, [documents, activeSearch, docTypeFilter, sortBy, statusFilter]);
 
   const totalPages = Math.ceil(filteredDocs.length / itemsPerPage);
   const safeCurrentPage = totalPages > 0 ? Math.min(currentPage, totalPages) : 1;
@@ -201,7 +233,7 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
     };
   }, [openActionMenuIndex]);
 
-  const hasActiveFilters = docTypeFilter !== 'ALL';
+  const hasActiveFilters = docTypeFilter !== 'ALL' || statusFilter !== 'ALL';
 
   return (
     <>
@@ -232,7 +264,7 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
                 className={`relative flex h-11 items-center gap-2 px-4 bg-white border rounded-xl transition-colors text-sm font-medium shadow-sm ${isFilterOpen ? 'border-[#1a4d2e] text-[#1a4d2e]' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
               >
                 <Filter size={16} /> ตัวกรอง
-                {hasActiveFilters && (
+                {docTypeFilter !== 'ALL' && (
                   <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
                 )}
               </button>
@@ -268,7 +300,7 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
                     </div>
                   </div>
                   
-                  {hasActiveFilters && (
+                  {docTypeFilter !== 'ALL' && (
                     <button onClick={() => { setDocTypeFilter('ALL'); }} className="w-full py-2 mt-2 text-sm font-bold text-red-500 hover:bg-red-50 rounded-lg transition-colors">
                       ล้างตัวกรอง
                     </button>
@@ -322,6 +354,19 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
               </>
             )}
             </div>
+
+            {statusFilter !== 'ALL' && (
+              <span className="inline-flex items-center gap-1.5 h-11 px-4 bg-[#e8f0eb] text-[#1a4d2e] rounded-xl text-xs font-bold border border-[#1a4d2e]/20 animate-in fade-in slide-in-from-left-2">
+                สถานะ: {statusFilter === 'ACTIVE' ? 'ใช้งานได้' : statusFilter === 'WARNING' ? 'ใกล้หมดอายุ' : statusFilter === 'PROCESSING' ? 'กำลังดำเนินการ' : 'หมดอายุแล้ว'}
+                <button 
+                  onClick={() => setStatusFilter('ALL')} 
+                  className="hover:bg-[#d4e5db] rounded-full p-0.5 transition-colors cursor-pointer flex items-center justify-center"
+                  title="ล้างตัวกรองสถานะ"
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            )}
           </div>
         </div>
 
@@ -336,53 +381,72 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
         </div>
       </div>
 
-      <div className="overflow-x-auto min-h-[500px]">
-        <table className="w-full min-w-[1120px] table-fixed text-left border-collapse">
+      <div className="overflow-x-auto overflow-y-hidden min-h-[465px]">
+        <table className="w-full min-w-[1000px] table-fixed text-left border-collapse">
           <colgroup>
-            <col className="w-[13%]" />
-            <col className="w-[13%]" />
-            <col className="w-[13%]" />
+            <col className="w-[10%]" />
+            <col className="w-[14%]" />
+            <col className="w-[12%]" />
             <col className="w-[14%]" />
             <col className="w-[14%]" />
-            <col className="w-[16%]" />
-            <col className="w-[8%]" />
-            <col className="w-[6%]" />
+            <col className="w-[24%]" />
+            <col className="w-[7%]" />
+            <col className="w-[5%]" />
           </colgroup>
           <thead className="bg-gray-50/50 border-y border-gray-100">
             <tr className="text-gray-500 text-xs uppercase tracking-wider">
-              <th className="px-5 py-3.5 font-semibold">ประเภทเอกสาร</th>
-              <th className="px-5 py-3.5 font-semibold">เลขตัวถัง</th>
-              <th className="px-5 py-3.5 font-semibold">ทะเบียนรถ</th>
-              <th className="px-5 py-3.5 font-semibold">วันที่มีผล</th>
-              <th className="px-5 py-3.5 font-semibold">วันหมดอายุ</th>
-              <th className="px-5 py-3.5 font-semibold">สถานะ</th>
-              <th className="px-5 py-3.5 font-semibold text-center">ไฟล์แนบ</th>
-              <th className="px-5 py-3.5 font-semibold text-right"></th>
+              <th className="px-4 py-3 font-semibold">ประเภทเอกสาร</th>
+              <th className="px-4 py-3 font-semibold">เลขตัวถัง</th>
+              <th className="px-4 py-3 font-semibold">ทะเบียนรถ</th>
+              <th className="px-4 py-3 font-semibold">วันที่มีผล</th>
+              <th className="px-4 py-3 font-semibold">วันหมดอายุ</th>
+              <th className="px-4 py-3 font-semibold">สถานะ</th>
+              <th className="px-4 py-3 font-semibold text-center">ไฟล์แนบ</th>
+              <th className="px-4 py-3 font-semibold text-right"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 text-sm">
             {currentDocs.length > 0 ? (
               currentDocs.map((doc, index) => {
                 const { status, days } = getDocumentStatus(doc.expiryDate);
-                const statusBadge = getStatusBadge(status, days);
+                const statusBadge = getStatusBadge(status, days, doc.isAcknowledged);
                 return (
                   <tr key={index} className="hover:bg-gray-50/50 transition-colors group relative">
-                    <td className="px-5 py-4 font-medium text-gray-700">{getDocTypeName(doc.docType)}</td>
-                    <td className="px-5 py-4 text-gray-500 font-mono text-xs">{doc.chassis}</td>
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-3 font-medium text-gray-700">{getDocTypeName(doc.docType)}</td>
+                    <td className="px-4 py-3 text-gray-500 font-mono text-xs">{doc.chassis}</td>
+                    <td className="px-4 py-3">
                       <span className="font-bold text-gray-800">{doc.licensePlate || '-'}</span>
                     </td>
                     
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-3">
                       <span className="text-gray-600">{formatThaiDate(doc.issuedDate)}</span>
                     </td>
                     
-                    <td className="px-5 py-4">
+                    <td className="px-4 py-3">
                       <span className="text-gray-700 font-medium">{formatThaiDate(doc.expiryDate)}</span>
                     </td>
 
-                    <td className="px-5 py-4">
-                      <div className="inline-flex flex-col items-start gap-1">
+                    <td className="px-4 py-3">
+                      <div 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (doc.isAcknowledged) {
+                            setStatusFilter('PROCESSING');
+                            toast.success('กรองเฉพาะเอกสารที่กำลังดำเนินการ', { id: 'status-filter-toast' });
+                          } else if (status === 'EXPIRED') {
+                            setStatusFilter('EXPIRED');
+                            toast.success('กรองเฉพาะเอกสารที่หมดอายุแล้ว', { id: 'status-filter-toast' });
+                          } else if (status === 'WARNING') {
+                            setStatusFilter('WARNING');
+                            toast.success('กรองเฉพาะเอกสารที่ใกล้หมดอายุ', { id: 'status-filter-toast' });
+                          } else if (status === 'ACTIVE' || status === 'NO_EXPIRY') {
+                            setStatusFilter('ACTIVE');
+                            toast.success('กรองเฉพาะเอกสารที่ใช้งานได้', { id: 'status-filter-toast' });
+                          }
+                        }}
+                        className="inline-flex flex-col items-start gap-1 cursor-pointer hover:scale-105 transition-all duration-200"
+                        title="คลิกเพื่อกรองข้อมูลตามสถานะนี้"
+                      >
                         <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold ${statusBadge.className}`}>
                           {statusBadge.label}
                         </span>
@@ -392,7 +456,7 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
                       </div>
                     </td>
 
-                    <td className="px-5 py-4 text-center">
+                    <td className="px-4 py-3 text-center">
                       {doc.hasAttachment ? (
                         <button className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-lg transition-colors inline-flex" title="ดูไฟล์แนบ">
                           <Paperclip size={18} />
@@ -402,7 +466,7 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
                       )}
                     </td>
                     
-                    <td className="px-5 py-4 text-right relative">
+                    <td className="px-4 py-3 text-right relative">
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
@@ -415,13 +479,16 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
 
                       {openActionMenuIndex === index && (
                         <div 
-                          className="absolute right-8 top-10 w-48 bg-white rounded-xl shadow-xl border border-gray-100 z-50 py-2 animate-in fade-in zoom-in-95"
+                          className={`absolute right-8 w-48 bg-white rounded-xl shadow-xl border border-gray-100 z-50 py-2 animate-in fade-in zoom-in-95 ${
+                            index >= 4 ? 'bottom-full mb-1 origin-bottom-right' : 'top-10 origin-top-right'
+                          }`}
                           onMouseDown={(e) => e.stopPropagation()}
                           onClick={(e) => e.stopPropagation()} 
                         >
                           <button 
                             className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-[#1a4d2e] flex items-center gap-2 transition-colors"
                             onClick={() => { 
+                              setDocuments(prev => prev.map(d => d.chassis === doc.chassis && d.docType === doc.docType ? { ...d, isAcknowledged: false } : d));
                               toast.success(`ซิงค์ข้อมูล ${doc.licensePlate || doc.chassis} แล้ว`, { duration: 3000 }); 
                               setOpenActionMenuIndex(null); 
                             }}
@@ -440,11 +507,12 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
                             <Eye size={14} /> ดูรายละเอียด
                           </button>
 
-                          {status === 'EXPIRED' && (
+                          {(status === 'EXPIRED' || status === 'WARNING') && !doc.isAcknowledged && (
                             <button 
                               className="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 flex items-center gap-2 transition-colors"
                               onClick={() => { 
-                                toast.success(`รับทราบแจ้งเตือน ${doc.licensePlate || doc.chassis}`); 
+                                setDocuments(prev => prev.map(d => d.chassis === doc.chassis && d.docType === doc.docType ? { ...d, isAcknowledged: true } : d));
+                                toast.success(`รับทราบการแจ้งเตือนรถ ${doc.licensePlate || doc.chassis} เรียบร้อย`, { icon: 'ℹ️' });
                                 setOpenActionMenuIndex(null); 
                               }}
                             >
@@ -526,8 +594,20 @@ export default function PolicyTable({ documents, setDocuments }: PolicyTableProp
     </div>
 
       <DocumentDetailModal
-        document={selectedDocForDetail}
+        document={
+          selectedDocForDetail
+            ? documents.find(d => d.chassis === selectedDocForDetail.chassis && d.docType === selectedDocForDetail.docType) || selectedDocForDetail
+            : null
+        }
         onClose={() => setSelectedDocForDetail(null)}
+        onAcknowledge={(doc) => {
+          setDocuments(prev => prev.map(d => d.chassis === doc.chassis && d.docType === doc.docType ? { ...d, isAcknowledged: true } : d));
+          toast.success(`รับทราบการแจ้งเตือนรถ ${doc.licensePlate || doc.chassis} เรียบร้อย`, { icon: 'ℹ️' });
+        }}
+        onSync={(doc) => {
+          setDocuments(prev => prev.map(d => d.chassis === doc.chassis && d.docType === doc.docType ? { ...d, isAcknowledged: false } : d));
+          toast.success(`ซิงค์ข้อมูล ${doc.licensePlate || doc.chassis} แล้ว`, { duration: 3000 });
+        }}
       />
 
     </>

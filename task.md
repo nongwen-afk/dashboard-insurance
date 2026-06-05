@@ -1,0 +1,25 @@
+# Task Tracking - Fleet Management Dashboard
+
+- `[x]` Fix responsive layout bugs on mobile devices
+  - `[x]` Prevent content from being compressed (squished) when sidebar is open by using responsive margin (`lg:ml-[280px]`)
+  - `[x]` Add dark backdrop overlay on mobile when sidebar is open and close it when clicked
+  - `[x]` Hide username and details in header on mobile to conserve screen space
+  - `[x]` Make stat cards padding, font sizes, and icon sizes responsive
+  - `[x]` Add w-full and overflow-hidden to ExpiryChart container to prevent horizontal scroll breaking page
+  - `[x]` Constrain flex layout and block wrapper width using `min-w-0` and `overflow-x-hidden` on main wrapper to completely prevent page stretching (horizontal scroll of the entire viewport) on mobile.
+  - `[x]` Test and compile project successfully with Next.js Turbopack build
+- `[x]` Optimize desktop layout density & UI components
+  - `[x]` Limit content container width to `max-w-7xl mx-auto` on large monitors to prevent elements from stretching too far apart.
+  - `[x]` Tighter column percentage distributions in `PolicyTable.tsx` (giving more space to Status and mono-spaced columns, tightening document type and action columns).
+  - `[x]` Reduced padding in table headers and body cells from `px-5 py-4` to `px-4 py-3` to make layout look clean and compact.
+  - `[x]` Reduce table pagination page size from 10 rows to 6 rows.
+  - `[x]` Set table container min-height to exactly `min-h-[465px]` to match the actual height of 6 table rows (including status badges), ensuring the container height remains constant and preventing scroll position jumping when switching between pages.
+- `[x]` Implement Interactive Stat Cards with scrolling & filtering
+  - `[x]` Add `onClick` prop and pointer cursor/hover transitions to `StatCard` component.
+  - `[x]` Set up `statusFilter` state in `app/page.tsx` and pass down to `PolicyTable` and click handlers.
+  - `[x]` Implement smooth scrolling to the table section when clicking a card, accounting for the 90px fixed header offset.
+  - `[x]` Add filtering logic to the table search query based on document expiration status (Active/No Expiry, Warning, Expired).
+  - `[x]` Render a clear filter badge next to sorting/filtering buttons in `PolicyTable.tsx` showing the active status filter and allowing the user to reset it.
+- `[ ]` Support custom document additions (Add Document Form)
+- `[ ]` Implement real backend API / localstorage integration for persistence
+- `[ ]` Add more chart visualizations (e.g. status breakdown pie chart)

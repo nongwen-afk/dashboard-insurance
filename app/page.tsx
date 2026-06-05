@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
-import { Files, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
+import React, { useState, useMemo, useRef } from 'react';
+import { Files, CheckCircle2, AlertCircle, XCircle, Clock } from 'lucide-react';
+import toast from 'react-hot-toast';
 import DocumentDetailModal from '@/components/DocumentDetailModal';
 import AlertsModal from '@/components/dashboard/AlertsModal';
 import ExpiryChart from '@/components/dashboard/ExpiryChart';
@@ -9,53 +10,9 @@ import ExpiryMonthModal from '@/components/dashboard/ExpiryMonthModal';
 import StatCard from '@/components/dashboard/StatCard';
 import UrgentAlerts from '@/components/dashboard/UrgentAlerts';
 import PolicyTable from '../components/PolicyTable';
-import type { DocumentAlert, ExpiryMonthGroup, VehicleDocType, VehicleDocument } from '@/types';
+import type { DocumentAlert, ExpiryMonthGroup, FilterStatus, VehicleDocType, VehicleDocument } from '@/types';
 import { formatThaiDate, getDaysUntilExpiry, getDocTypeName, getSixMonthExpiryKey } from '@/utils/documentUtils';
-
-// ข้อมูลตั้งต้นใช้จำลองเอกสารในระบบก่อนผู้ใช้จะนำเข้า Excel เพิ่ม
-const initialDocsSeed: VehicleDocument[] = [
-  { chassis: 'CHAS-001', licensePlate: '1กข 1111', docType: 'act', issuedDate: '2025-06-15', expiryDate: '2026-06-15', driverName: 'สมชาย ใจดี', project: 'สายเหนือ' },
-  { chassis: 'CHAS-002', licensePlate: '2กค 2222', docType: 'tax', issuedDate: '2025-06-20', expiryDate: '2026-06-20', driverName: 'สมศรี รักงาน', project: 'ผู้บริหาร' },
-  { chassis: 'CHAS-003', licensePlate: '3กง 3333', docType: 'insurance', issuedDate: '2025-06-25', expiryDate: '2026-06-25', driverName: 'วิชัย เก่งกล้า' },
-  { chassis: 'CHAS-004', licensePlate: '4กข 4444', docType: 'act', issuedDate: '2025-07-05', expiryDate: '2026-07-05', driverName: 'มานพ' },
-  { chassis: 'CHAS-005', licensePlate: '5กค 5555', docType: 'tax', issuedDate: '2025-07-12', expiryDate: '2026-07-12', driverName: 'สุดา' },
-  { chassis: 'CHAS-006', licensePlate: '6กง 6666', docType: 'insurance', issuedDate: '2025-07-28', expiryDate: '2026-07-28', driverName: 'ปรีชา' },
-  { chassis: 'CHAS-007', licensePlate: '7กข 7777', docType: 'act', issuedDate: '2025-08-10', expiryDate: '2026-08-10', driverName: 'นิภา' },
-  { chassis: 'CHAS-008', licensePlate: '8กค 8888', docType: 'tax', issuedDate: '2025-08-15', expiryDate: '2026-08-15', driverName: 'สมปอง' },
-  { chassis: 'CHAS-009', licensePlate: '9กง 9999', docType: 'act', issuedDate: '2025-08-20', expiryDate: '2026-08-20', driverName: 'วิรัช' },
-  { chassis: 'CHAS-010', licensePlate: '1กข 1010', docType: 'insurance', issuedDate: '2025-08-25', expiryDate: '2026-08-25', driverName: 'อารีย์' },
-  { chassis: 'CHAS-011', licensePlate: '2กค 2020', docType: 'tax', issuedDate: '2025-09-05', expiryDate: '2026-09-05', driverName: 'สุรศักดิ์' },
-  { chassis: 'CHAS-012', licensePlate: '3กง 3030', docType: 'act', issuedDate: '2025-09-18', expiryDate: '2026-09-18', driverName: 'นารี' },
-  { chassis: 'CHAS-013', licensePlate: '4กข 4040', docType: 'insurance', issuedDate: '2025-10-10', expiryDate: '2026-10-10', driverName: 'กมล' },
-  { chassis: 'CHAS-014', licensePlate: '5กค 5050', docType: 'tax', issuedDate: '2025-10-22', expiryDate: '2026-10-22', driverName: 'ประยุทธ์' },
-  { chassis: 'CHAS-015', licensePlate: '6กง 6060', docType: 'act', issuedDate: '2025-11-05', expiryDate: '2026-11-05', driverName: 'มณี' },
-  { chassis: 'CHAS-016', licensePlate: '7กข 7070', docType: 'registration_book', issuedDate: '2019-01-10' }, 
-  { chassis: 'CHAS-017', licensePlate: '8กค 8080', docType: 'registration_book', issuedDate: '2020-03-15' }, 
-  { chassis: 'CHAS-018', licensePlate: '9กง 9090', docType: 'act', issuedDate: '2025-05-10', expiryDate: '2026-05-10', driverName: 'สมเกียรติ' }, 
-  { chassis: 'CHAS-019', licensePlate: '1กข 1212', docType: 'tax', issuedDate: '2025-05-20', expiryDate: '2026-05-20', driverName: 'วรรณา' }, 
-  { chassis: 'CHAS-020', licensePlate: '2กค 2323', docType: 'insurance', issuedDate: '2025-06-05', expiryDate: '2026-06-05', driverName: 'ธนากร' }, 
-];
-
-// issuer default ช่วยเติมข้อมูลเชิงเอกสารให้ mock data โดยอิงจากประเภทเอกสาร
-const issuersByType: Record<VehicleDocType, string> = {
-  act: 'กรมการขนส่งทางบก',
-  tax: 'กรมการขนส่งทางบก',
-  insurance: 'EVT Insurance Broker',
-  inspection: 'ศูนย์ตรวจสภาพรถ EVT',
-  registration_book: 'สำนักงานขนส่งจังหวัด',
-};
-
-// เติม field ที่ dashboard/detail modal ต้องใช้ เพื่อให้ mock data มีรูปทรงใกล้ข้อมูลจริงจาก Excel
-const initialDocs: VehicleDocument[] = initialDocsSeed.map((doc, index) => ({
-  issuer: issuersByType[doc.docType],
-  docNumber: `${doc.docType.toUpperCase()}-${String(index + 1).padStart(5, '0')}`,
-  note: doc.expiryDate
-    ? `ตรวจสอบเอกสารรอบถัดไปก่อนวันหมดอายุ 30 วัน`
-    : 'เอกสารประเภทนี้ไม่มีวันหมดอายุ แต่ควรตรวจสอบข้อมูลทะเบียนให้ตรงกับรถจริง',
-  hasAttachment: index % 3 !== 1,
-  project: doc.project || 'ส่วนกลาง',
-  ...doc,
-}));
+import { initialDocs } from '@/utils/mockData';
 
 export default function DashboardPage() {
   // documents เป็น state หลักของทั้งหน้า: card, chart, alert และ table อ่านจากชุดเดียวกัน
@@ -64,18 +21,40 @@ export default function DashboardPage() {
   const [selectedExpiryMonth, setSelectedExpiryMonth] = useState<ExpiryMonthGroup | null>(null);
   const [selectedDocForDetail, setSelectedDocForDetail] = useState<VehicleDocument | null>(null);
 
-  // สรุปจำนวนเอกสารตามสถานะ เพื่อให้ 4 cards ด้านบนสะท้อนข้อมูลหลัง import Excel ทันที
+  // สถานะตัวกรองจาก stat card ที่ส่งไปควบคุม PolicyTable
+  const [statusFilter, setStatusFilter] = useState<FilterStatus>('ALL');
+  const tableRef = useRef<HTMLDivElement>(null);
+
+  const handleStatCardClick = (status: FilterStatus) => {
+    setStatusFilter(status);
+    if (tableRef.current) {
+      const headerOffset = 90; // ความสูง Header + ระยะห่างความสวยงาม
+      const elementPosition = tableRef.current.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.scrollY - headerOffset;
+      
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  // สรุปจำนวนเอกสารตามสถานะ เพื่อให้ 5 cards ด้านบนสะท้อนข้อมูลหลัง import Excel ทันที
   const stats = useMemo(() => {
-    let active = 0, warning = 0, expired = 0;
+    let active = 0, warning = 0, expired = 0, processing = 0;
 
     documents.forEach(doc => {
+      if (doc.isAcknowledged) {
+        processing++;
+        return;
+      }
       if (!doc.expiryDate) { active++; return; }
       const diffDays = getDaysUntilExpiry(doc.expiryDate);
       if (diffDays < 0) expired++;
       else if (diffDays <= 30) warning++;
       else active++;
     });
-    return { total: documents.length, active, warning, expired };
+    return { total: documents.length, active, warning, expired, processing };
   }, [documents]);
 
   // จัดกลุ่มเอกสารที่จะหมดอายุใน 6 เดือนข้างหน้า เพื่อแสดงบนกราฟและใช้เปิด modal รายเดือน
@@ -108,6 +87,7 @@ export default function DashboardPage() {
   const alertsList = useMemo<DocumentAlert[]>(() => {
     return documents
       .filter(doc => {
+        if (doc.isAcknowledged) return false; // ซ่อนจากการแจ้งเตือนหากกดรับทราบแล้ว
         if (!doc.expiryDate) return false;
         const diffDays = getDaysUntilExpiry(doc.expiryDate);
         return diffDays <= 30; 
@@ -129,7 +109,7 @@ export default function DashboardPage() {
 
         return {
           id: `alert-${index}`,
-          text: `รถทะเบียน ${doc.licensePlate || doc.chassis} - ${docName} ${isExpired ? 'หมดอายุ' : 'ใกล้หมดอายุ'}`,
+          text: `${doc.licensePlate ? 'รถทะเบียน' : 'เลขตัวถัง'} ${doc.licensePlate || doc.chassis} - ${docName} ${isExpired ? 'หมดอายุ' : 'ใกล้หมดอายุ'}`,
           type: isExpired ? 'error' as const : 'warning' as const,
           date: formatThaiDate(doc.expiryDate),
           daysText: daysText,
@@ -156,13 +136,14 @@ export default function DashboardPage() {
         </h1>
       </div>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
         <StatCard
           title="เอกสารทั้งหมด"
           value={stats.total}
           caption="รายการในระบบ"
           icon={<Files size={28} />}
-          iconClassName="bg-blue-50 text-blue-600"
+          iconClassName="bg-slate-50 text-slate-600 border border-slate-100"
+          onClick={() => handleStatCardClick('ALL')}
         />
         <StatCard
           title="ใช้งานได้"
@@ -170,6 +151,7 @@ export default function DashboardPage() {
           caption="ยังไม่ถึงกำหนด"
           icon={<CheckCircle2 size={28} />}
           iconClassName="bg-green-50 text-green-500"
+          onClick={() => handleStatCardClick('ACTIVE')}
         />
         <StatCard
           title="ใกล้หมดอายุ"
@@ -177,6 +159,7 @@ export default function DashboardPage() {
           caption="ภายใน 30 วัน"
           icon={<AlertCircle size={28} />}
           iconClassName="bg-orange-50 text-orange-500"
+          onClick={() => handleStatCardClick('WARNING')}
         />
         <StatCard
           title="หมดอายุแล้ว"
@@ -184,6 +167,15 @@ export default function DashboardPage() {
           caption="ต้องดำเนินการ"
           icon={<XCircle size={28} />}
           iconClassName="bg-red-50 text-red-500"
+          onClick={() => handleStatCardClick('EXPIRED')}
+        />
+        <StatCard
+          title="กำลังดำเนินการ"
+          value={stats.processing}
+          caption="รับทราบเรื่องแล้ว"
+          icon={<Clock size={28} />}
+          iconClassName="bg-blue-50 text-blue-600"
+          onClick={() => handleStatCardClick('PROCESSING')}
         />
       </div>
 
@@ -199,7 +191,14 @@ export default function DashboardPage() {
         />
       </div>
 
-      <PolicyTable documents={documents} setDocuments={setDocuments} />
+      <div ref={tableRef}>
+        <PolicyTable 
+          documents={documents} 
+          setDocuments={setDocuments} 
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+        />
+      </div>
 
       {isAlertModalOpen && (
         <AlertsModal
@@ -218,8 +217,20 @@ export default function DashboardPage() {
       )}
 
       <DocumentDetailModal
-        document={selectedDocForDetail}
+        document={
+          selectedDocForDetail 
+            ? documents.find(d => d.chassis === selectedDocForDetail.chassis && d.docType === selectedDocForDetail.docType) || selectedDocForDetail
+            : null
+        }
         onClose={() => setSelectedDocForDetail(null)}
+        onAcknowledge={(doc) => {
+          setDocuments(prev => prev.map(d => d.chassis === doc.chassis && d.docType === doc.docType ? { ...d, isAcknowledged: true } : d));
+          toast.success(`รับทราบการแจ้งเตือนรถ ${doc.licensePlate || doc.chassis} เรียบร้อย`, { icon: 'ℹ️' });
+        }}
+        onSync={(doc) => {
+          setDocuments(prev => prev.map(d => d.chassis === doc.chassis && d.docType === doc.docType ? { ...d, isAcknowledged: false } : d));
+          toast.success(`ซิงค์ข้อมูล ${doc.licensePlate || doc.chassis} แล้ว`, { duration: 3000 });
+        }}
       />
 
     </div>
