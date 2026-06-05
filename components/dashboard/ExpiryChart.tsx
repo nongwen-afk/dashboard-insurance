@@ -21,7 +21,7 @@ export default function ExpiryChart({ chartData, onSelectMonth }: ExpiryChartPro
         <h3 className="text-lg font-bold text-gray-800">เอกสารหมดอายุ</h3>
         <p className="text-sm text-gray-500">จำนวนเอกสารที่จะหมดอายุในอีก 6 เดือนข้างหน้า</p>
       </div>
-      <div className="flex-1 min-h-[250px]">
+      <div className="flex-1 min-h-[250px] w-full min-w-0 overflow-hidden">
         {/* กำหนด height คงที่เพื่อให้ Recharts render ได้ถูกต้องทั้งตอน build และบน browser */}
         <ResponsiveContainer width="100%" height={250} minWidth={0}>
           <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
