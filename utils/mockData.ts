@@ -4,8 +4,8 @@ import type { VehicleDocument, VehicleDocType } from '@/types';
 // ข้อมูลดิบตั้งต้นที่มีระดับความสมบูรณ์แตกต่างกัน เพื่อทดสอบความคงทนและหน้าตาของระบบ
 export const initialDocsSeed: VehicleDocument[] = [
   // 1. กลุ่มหมดอายุแล้ว (Expired) - ไม่มีการตอบรับ
-  { chassis: 'CHAS-EXP-001', licensePlate: '1กข 1111', docType: 'act', issuedDate: '2025-05-01', expiryDate: '2026-05-01', driverName: 'สมชาย ใจดี', project: 'สายเหนือ' },
-  { chassis: 'CHAS-EXP-002', licensePlate: '2กค 2222', docType: 'tax', issuedDate: '2025-05-10', expiryDate: '2026-05-10', driverName: 'สมศรี รักงาน', project: 'ผู้บริหาร' },
+  { chassis: 'CHAS-EXP-001', licensePlate: '1กข 1111', docType: 'act', issuedDate: '2025-05-01', expiryDate: '2026-05-01', driverName: 'สมชาย ใจดี', project: 'สายเดินรถภาคเหนือ' },
+  { chassis: 'CHAS-EXP-002', licensePlate: '2กค 2222', docType: 'tax', issuedDate: '2025-05-10', expiryDate: '2026-05-10', driverName: 'สมศรี รักงาน', project: 'รถเช่าผู้บริหาร' },
   { chassis: 'CHAS-EXP-003', licensePlate: '', docType: 'insurance', issuedDate: '2025-05-15', expiryDate: '2026-05-15', driverName: 'วิชัย เก่งกล้า' }, // ไม่มีทะเบียน
   { chassis: 'CHAS-EXP-004', licensePlate: '4กข 4444', docType: 'inspection', issuedDate: '2025-05-20', expiryDate: '2026-05-20', driverName: '' }, // ไม่มีคนขับ
   
@@ -24,9 +24,9 @@ export const initialDocsSeed: VehicleDocument[] = [
   { chassis: 'CHAS-ACK-003', licensePlate: '1กข 1212', docType: 'tax', issuedDate: '2025-05-20', expiryDate: '2026-06-10', driverName: 'วรรณา สุขใจ', isAcknowledged: true }, // เหลือ 5 วัน แต่ยอมรับแล้ว
 
   // 5. กลุ่มปกติ (Active) - เหลืออายุมากกว่า 30 วัน
-  { chassis: 'CHAS-ACT-001', licensePlate: '7กข 7777', docType: 'act', issuedDate: '2025-08-10', expiryDate: '2026-08-10', driverName: 'นิภา รักสิทธิ์', project: 'สายใต้' },
-  { chassis: 'CHAS-ACT-002', licensePlate: '8กค 8888', docType: 'tax', issuedDate: '2025-09-01', expiryDate: '2026-09-01', driverName: 'สมปอง คำดี', project: 'ฝ่ายผลิต' },
-  { chassis: 'CHAS-ACT-003', licensePlate: '9กง 9999', docType: 'insurance', issuedDate: '2025-10-15', expiryDate: '2026-10-15', driverName: '', project: 'ฝ่ายบุคคล' }, // ไม่มีคนขับ
+  { chassis: 'CHAS-ACT-001', licensePlate: '7กข 7777', docType: 'act', issuedDate: '2025-08-10', expiryDate: '2026-08-10', driverName: 'นิภา รักสิทธิ์', project: 'สายเดินรถภาคใต้' },
+  { chassis: 'CHAS-ACT-002', licensePlate: '8กค 8888', docType: 'tax', issuedDate: '2025-09-01', expiryDate: '2026-09-01', driverName: 'สมปอง คำดี', project: 'รถสวัสดิการ โรงงาน A' },
+  { chassis: 'CHAS-ACT-003', licensePlate: '9กง 9999', docType: 'insurance', issuedDate: '2025-10-15', expiryDate: '2026-10-15', driverName: '', project: 'รถรับส่งพนักงาน MEA' }, // ไม่มีคนขับ
   { chassis: 'CHAS-ACT-004', licensePlate: '', docType: 'act', issuedDate: '2025-11-20', expiryDate: '2026-11-20', driverName: 'มนัส ปัญญา' }, // ไม่มีทะเบียน
   { chassis: 'CHAS-ACT-005', licensePlate: '1กข 2020', docType: 'inspection', issuedDate: '2025-12-05', expiryDate: '2026-12-05', driverName: 'ชัชชาติ แข็งแกร่ง' },
   { chassis: 'CHAS-ACT-006', licensePlate: '2กค 3030', docType: 'insurance', issuedDate: '2026-01-15', expiryDate: '2027-01-15', driverName: 'ธวัชชัย รวดเร็ว' },
@@ -58,7 +58,7 @@ export const initialDocs: VehicleDocument[] = initialDocsSeed.map((doc, index) =
       ? `เอกสารนี้จำเป็นต้องดำเนินการตรวจสอบตามที่กฎหมายกำหนดก่อนวันสิ้นอายุ`
       : undefined, // บางเอกสารไม่มีโน้ตแจ้งเตือน
     hasAttachment: index % 3 !== 1, // สลับให้บางเอกสารไม่มีปุ่มดาวน์โหลด/ดูไฟล์แนบ
-    project: doc.project || (index % 3 === 0 ? 'โครงการขนส่งด่วน' : 'ส่วนกลาง'),
+    project: doc.project || (index % 3 === 0 ? 'รถร่วมบริการด่วน (BRT)' : 'รถเช่าส่วนกลาง'),
     ...doc,
   };
 });

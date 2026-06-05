@@ -133,7 +133,7 @@ export default function DocumentDetailModal({ document, onClose, onAcknowledge, 
                 <p className="font-mono text-gray-700 font-medium">{document.chassis || '-'}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 mb-1">โครงการ / Project</p>
+                <p className="text-xs text-gray-500 mb-1">โครงการ / สัญญา (Project)</p>
                 <p className="font-medium text-gray-700">{document.project || 'ไม่ระบุ'}</p>
               </div>
             </div>
