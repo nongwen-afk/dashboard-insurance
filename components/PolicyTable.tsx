@@ -644,11 +644,21 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
         }
         onClose={() => setSelectedDocForDetail(null)}
         onAcknowledge={(doc) => {
-          setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? { ...d, isAcknowledged: true } : d));
+          setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? {
+            ...d,
+            isAcknowledged: true,
+            acknowledgedAt: new Date().toISOString(),
+            acknowledgedBy: 'testuser'
+          } : d));
           toast.success(`รับทราบการแจ้งเตือนรถ ${doc.licensePlate || doc.chassis} เรียบร้อย`, { icon: 'ℹ️' });
         }}
         onSync={(doc) => {
-          setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? { ...d, isAcknowledged: false } : d));
+          setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? {
+            ...d,
+            isAcknowledged: false,
+            acknowledgedAt: undefined,
+            acknowledgedBy: undefined
+          } : d));
           toast.success(`ซิงค์ข้อมูล ${doc.licensePlate || doc.chassis} แล้ว`, { duration: 3000 });
         }}
       />

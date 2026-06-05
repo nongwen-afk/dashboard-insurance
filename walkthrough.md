@@ -127,6 +127,7 @@ We reviewed and fixed the issues found after the Antigravity update.
   - **Modal Details Display ([components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
     - Updated the status banner description dynamically to display the user and formatted timestamp when a document is in the acknowledged state.
     - Added a sleek slate-colored information card inside the details grid displaying the acknowledgement user and timestamp.
+    - **Row Detail Modal Bug Fix**: Fixed an issue where clicking "รับทราบการแจ้งเตือน" inside the `DocumentDetailModal` that was opened directly from a table row (rendered in `PolicyTable.tsx`) did not update the acknowledgement metadata due to outdated handler callbacks. Synchronized the `onAcknowledge` and `onSync` handlers in the duplicate `DocumentDetailModal` component inside `PolicyTable.tsx`.
 
 ### 6. Verification
 - `pnpm run lint` passes.

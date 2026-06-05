@@ -36,6 +36,7 @@
   - `[x]` Create formatThaiDateTime helper in documentUtils.ts to format complete Thai dates with timestamps
   - `[x]` Seed mock documents with realistic pre-acknowledged metadata in mockData.ts
   - `[x]` Display dynamic banner description and acknowledgement metadata card inside DocumentDetailModal.tsx
+  - `[x]` Fix inconsistent behavior when acknowledging documents from the table row detail modal (duplicate DocumentDetailModal inside PolicyTable.tsx)
 - `[ ]` Support custom document additions (Add Document Form)
 - `[ ]` Implement real backend API / localstorage integration for persistence
 - `[ ]` Add more chart visualizations (e.g. status breakdown pie chart)
