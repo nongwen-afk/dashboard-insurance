@@ -1,15 +1,17 @@
 "use client";
 
-import { Building2, CalendarDays, Car, FileText, User, X, AlertTriangle, Clock, CheckCircle2, Info } from 'lucide-react';
+import { Building2, CalendarDays, Car, FileText, User, X, AlertTriangle, Clock, CheckCircle2, Info, RefreshCw } from 'lucide-react';
 import type { VehicleDocument } from '@/types';
 import { formatThaiDate, getDocTypeName, getDocumentStatus } from '@/utils/documentUtils';
 
 interface DocumentDetailModalProps {
   document: VehicleDocument | null;
   onClose: () => void;
+  onAcknowledge?: (document: VehicleDocument) => void;
+  onSync?: (document: VehicleDocument) => void;
 }
 
-export default function DocumentDetailModal({ document, onClose }: DocumentDetailModalProps) {
+export default function DocumentDetailModal({ document, onClose, onAcknowledge, onSync }: DocumentDetailModalProps) {
   // ใช้ document null เป็นสัญญาณปิด modal เพื่อให้ caller ไม่ต้องมี state boolean แยกอีกตัว
   if (!document) return null;
 
@@ -184,7 +186,30 @@ export default function DocumentDetailModal({ document, onClose }: DocumentDetai
           </div>
         </div>
 
-        <div className="px-6 pt-5 pb-8 border-t bg-gray-50 flex items-center justify-end shrink-0">
+        <div className="px-6 pt-5 pb-8 border-t bg-gray-50 flex flex-wrap items-center justify-end gap-3 shrink-0">
+          {document.isAcknowledged ? (
+            onSync && (
+              <button
+                type="button"
+                onClick={() => onSync(document)}
+                className="h-11 px-5 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:text-gray-900 font-bold transition-all shadow-sm flex items-center gap-2 shrink-0"
+              >
+                <RefreshCw size={16} />
+                ซิงค์ข้อมูลล่าสุด
+              </button>
+            )
+          ) : (
+            (status === 'EXPIRED' || status === 'WARNING') && onAcknowledge && (
+              <button
+                type="button"
+                onClick={() => onAcknowledge(document)}
+                className="h-11 px-5 text-white bg-[#1a4d2e] hover:bg-[#123620] rounded-xl font-bold transition-all shadow-sm flex items-center gap-2 shrink-0"
+              >
+                <CheckCircle2 size={16} />
+                รับทราบการแจ้งเตือน
+              </button>
+            )
+          )}
           <button
             onClick={onClose}
             className="min-w-24 h-11 px-6 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:text-gray-900 font-bold transition-all shadow-sm shrink-0"
