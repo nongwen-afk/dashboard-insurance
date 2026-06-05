@@ -13,7 +13,7 @@ interface UrgentAlertsProps {
 export default function UrgentAlerts({ alerts, onOpenAll, onSelectDocument }: UrgentAlertsProps) {
   // แสดงเฉพาะรายการด่วนบนหน้าแรก และให้แต่ละรายการเปิด detail modal จาก document ต้นทาง
   return (
-    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col">
+    <div className="bg-white p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col">
       <div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-100">
         <div className="bg-red-100 p-2 rounded-full">
           <BellRing size={18} className="text-red-600 animate-pulse" />
