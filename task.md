@@ -28,4 +28,8 @@
 - `[ ]` Support custom document additions (Add Document Form)
 - `[ ]` Implement real backend API / localstorage integration for persistence
 - `[ ]` Add more chart visualizations (e.g. status breakdown pie chart)
+- `[ ]` **Git & Documentation Rules (กฎระเบียบการพัฒนา)**
+  - `[ ]` Check out and work exclusively in the `dev` branch first (never commit to `main` directly).
+  - `[ ]` Document completed tasks in both `task.md` and `walkthrough.md` after work is done.
+  - `[ ]` Read both `task.md` and `walkthrough.md` before starting any new task.
 

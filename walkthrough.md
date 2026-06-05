@@ -79,3 +79,13 @@ Since we deleted `package-lock.json` and stuck to `pnpm` to avoid conflicts:
 - **Run linting**: `pnpm run lint`
 - **Build production**: `pnpm run build`
 
+---
+
+## ⚠️ Workflow Rules & Guidelines (กฎระเบียบและแนวทางการทำงาน)
+เพื่อความเป็นระเบียบและลดการเกิด Conflict ในการทำงานร่วมกัน:
+1. **ต้องเริ่มทำงานและเขียนโค้ดในกิ่ง \`dev\` เสมอ!** ห้ามเขียนโค้ดหรือทำการบันทึก (Commit) ลงบนกิ่งหลัก \`main\` โดยตรง (เมื่อเสร็จสิ้นการเขียนบน \`dev\` แล้วจึงค่อยทำ Pull Request เพื่อ Merge เข้าสู่ \`main\`)
+2. **ต้องบันทึกประวัติการทำงานและงานที่ทำเสร็จลงในไฟล์เอกสารทั้งสองไฟล์เสมอเมื่อเสร็จสิ้นงานย่อย:**
+   - [task.md](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/task.md) (สำหรับบันทึก/อัปเดต Checklist งานที่ทำ)
+   - [walkthrough.md](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/walkthrough.md) (สำหรับอัปเดตอธิบายสิ่งที่ปรับปรุงเพิ่มเติม)
+3. **ก่อนเริ่มงานใหม่ทุกครั้ง:** **ต้องเปิดอ่าน** ไฟล์ [task.md](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/task.md) และ [walkthrough.md](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/walkthrough.md) ก่อนเสมอเพื่อรับรู้สถานะโครงการล่าสุดก่อนลงมือทำต่อ
+
