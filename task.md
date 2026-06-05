@@ -30,7 +30,12 @@
   - `[x]` Add stable document record IDs for mock and imported documents.
   - `[x]` Use document identity helpers for acknowledge, sync, delete, and detail lookup actions.
   - `[x]` Make search result toast respect status-card filters.
-  - `[x]` Remove duplicate generated files (`task 2.md`, `walkthrough 2.md`, `utils/mockData 2.ts`).
+- `[x]` Expand document acknowledgement metadata (`acknowledgedAt` and `acknowledgedBy`)
+  - `[x]` Update TypeScript interfaces with optional metadata fields in types/index.ts
+  - `[x]` Track ISO timestamp and user 'testuser' during action callback executions in page.tsx and PolicyTable.tsx
+  - `[x]` Create formatThaiDateTime helper in documentUtils.ts to format complete Thai dates with timestamps
+  - `[x]` Seed mock documents with realistic pre-acknowledged metadata in mockData.ts
+  - `[x]` Display dynamic banner description and acknowledgement metadata card inside DocumentDetailModal.tsx
 - `[ ]` Support custom document additions (Add Document Form)
 - `[ ]` Implement real backend API / localstorage integration for persistence
 - `[ ]` Add more chart visualizations (e.g. status breakdown pie chart)

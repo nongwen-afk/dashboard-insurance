@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { 
-  Search, Filter, FileSpreadsheet, Paperclip, MoreHorizontal, 
-  ChevronLeft, ChevronRight, X, ArrowUpDown, 
+import {
+  Search, Filter, FileSpreadsheet, Paperclip, MoreHorizontal,
+  ChevronLeft, ChevronRight, X, ArrowUpDown,
   Eye, RefreshCw, Trash2, CheckCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -110,18 +110,18 @@ const matchesDocumentFilters = (
 
 export default function PolicyTable({ documents, setDocuments, statusFilter, setStatusFilter }: PolicyTableProps) {
   // searchInput คือค่าที่พิมพ์อยู่ ส่วน activeSearch คือค่าที่ debounce แล้วจึงนำไปกรองจริง
-  const [searchInput, setSearchInput] = useState('');     
-  const [activeSearch, setActiveSearch] = useState('');   
-  
+  const [searchInput, setSearchInput] = useState('');
+  const [activeSearch, setActiveSearch] = useState('');
+
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [docTypeFilter, setDocTypeFilter] = useState<string>('ALL'); 
+  const [docTypeFilter, setDocTypeFilter] = useState<string>('ALL');
 
   const [isSortOpen, setIsSortOpen] = useState(false);
-  const [sortBy, setSortBy] = useState<SortOption>('RELEVANCE'); 
+  const [sortBy, setSortBy] = useState<SortOption>('RELEVANCE');
 
   const [openActionMenuIndex, setOpenActionMenuIndex] = useState<number | null>(null);
 
@@ -134,8 +134,8 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
     const timer = setTimeout(() => {
       if (searchInput !== activeSearch) {
         if (searchInput.trim() !== '') {
-          setActiveSearch(searchInput); 
-          
+          setActiveSearch(searchInput);
+
           const query = searchInput.toLowerCase();
           const foundCount = documents.filter((doc) => matchesDocumentFilters(doc, query, docTypeFilter, statusFilter)).length;
 
@@ -150,7 +150,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
           toast.dismiss(searchToastId);
         }
       }
-    }, 500); 
+    }, 500);
 
     return () => clearTimeout(timer);
   }, [searchInput, activeSearch, documents, docTypeFilter, statusFilter]);
@@ -182,7 +182,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
   // รวมการค้นหา กรองประเภท และจัดเรียงไว้ใน memo เพื่อให้ตารางคำนวณใหม่เฉพาะตอนข้อมูลหรือ filter เปลี่ยน
   const filteredDocs = useMemo(() => {
     const query = activeSearch.toLowerCase();
-    
+
     const filtered = documents.filter((doc) => {
       return matchesDocumentFilters(doc, query, docTypeFilter, statusFilter);
     });
@@ -193,7 +193,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
         const statusB = getDocumentStatus(b.expiryDate);
         // ความเกี่ยวข้องให้เอกสารหมดอายุมาก่อน ตามด้วยใกล้หมดอายุ เพื่อให้งานด่วนอยู่บนสุด
         const priority: Record<DocStatus, number> = { EXPIRED: 3, WARNING: 2, ACTIVE: 1, NO_EXPIRY: 0 };
-        
+
         if (priority[statusA.status] !== priority[statusB.status]) {
           return priority[statusB.status] - priority[statusA.status];
         }
@@ -201,9 +201,9 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
            return statusA.days - statusB.days;
         }
         return 0;
-      } 
+      }
       else if (sortBy === 'DATE_ASC') {
-        if (!a.expiryDate) return 1; 
+        if (!a.expiryDate) return 1;
         if (!b.expiryDate) return -1;
         return new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime();
       }
@@ -218,7 +218,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
 
   const totalPages = Math.ceil(filteredDocs.length / itemsPerPage);
   const safeCurrentPage = totalPages > 0 ? Math.min(currentPage, totalPages) : 1;
-  
+
   // แยกข้อมูลเฉพาะหน้าปัจจุบันหลังจาก filter/sort เสร็จแล้ว
   const currentDocs = useMemo(() => {
     const startIndex = (safeCurrentPage - 1) * itemsPerPage;
@@ -241,7 +241,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
   return (
     <>
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-6">
-      
+
       <div className="p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 relative z-20">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full lg:flex-1">
           <div className="relative w-full sm:max-w-sm lg:w-80">
@@ -256,7 +256,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-          
+
             <div className="relative">
               <button
                 onClick={(e) => {
@@ -280,7 +280,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
                     <h4 className="font-bold text-gray-800">ตัวกรองข้อมูล</h4>
                     <button onClick={() => setIsFilterOpen(false)} className="text-gray-400 hover:text-gray-600"><X size={16}/></button>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-gray-500">ประเภทเอกสาร</label>
                     <div className="flex flex-col gap-1">
@@ -292,7 +292,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
                         { val: 'inspection', label: 'ตรอ.' },
                         { val: 'registration_book', label: 'เล่มทะเบียน' },
                       ].map(item => (
-                        <button 
+                        <button
                           key={item.val}
                           onClick={() => { setDocTypeFilter(item.val); setIsFilterOpen(false); }}
                           className={`text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${docTypeFilter === item.val ? 'bg-[#e8f0eb] text-[#1a4d2e]' : 'text-gray-600 hover:bg-gray-50'}`}
@@ -302,7 +302,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
                       ))}
                     </div>
                   </div>
-                  
+
                   {docTypeFilter !== 'ALL' && (
                     <button onClick={() => { setDocTypeFilter('ALL'); }} className="w-full py-2 mt-2 text-sm font-bold text-red-500 hover:bg-red-50 rounded-lg transition-colors">
                       ล้างตัวกรอง
@@ -334,19 +334,19 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
                     <button onClick={() => setIsSortOpen(false)} className="text-gray-400 hover:text-gray-600"><X size={16}/></button>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <button 
+                    <button
                       onClick={() => { setSortBy('RELEVANCE'); setIsSortOpen(false); }}
                       className={`text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${sortBy === 'RELEVANCE' ? 'bg-[#e8f0eb] text-[#1a4d2e]' : 'text-gray-600 hover:bg-gray-50'}`}
                     >
                       เกี่ยวข้องที่สุด (แนะนำ)
                     </button>
-                    <button 
+                    <button
                       onClick={() => { setSortBy('DATE_ASC'); setIsSortOpen(false); }}
                       className={`text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${sortBy === 'DATE_ASC' ? 'bg-[#e8f0eb] text-[#1a4d2e]' : 'text-gray-600 hover:bg-gray-50'}`}
                     >
                       วันหมดอายุ (น้อยไปมาก)
                     </button>
-                    <button 
+                    <button
                       onClick={() => { setSortBy('DATE_DESC'); setIsSortOpen(false); }}
                       className={`text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${sortBy === 'DATE_DESC' ? 'bg-[#e8f0eb] text-[#1a4d2e]' : 'text-gray-600 hover:bg-gray-50'}`}
                     >
@@ -361,8 +361,8 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
             {statusFilter !== 'ALL' && (
               <span className="inline-flex items-center gap-1.5 h-11 px-4 bg-[#e8f0eb] text-[#1a4d2e] rounded-xl text-xs font-bold border border-[#1a4d2e]/20 animate-in fade-in slide-in-from-left-2">
                 สถานะ: {getStatusFilterLabel(statusFilter)}
-                <button 
-                  onClick={() => setStatusFilter('ALL')} 
+                <button
+                  onClick={() => setStatusFilter('ALL')}
                   className="hover:bg-[#d4e5db] rounded-full p-0.5 transition-colors cursor-pointer flex items-center justify-center"
                   title="ล้างตัวกรองสถานะ"
                 >
@@ -374,7 +374,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
         </div>
 
         <div className="flex w-full sm:w-auto lg:ml-4 gap-2">
-          <button 
+          <button
             onClick={() => {
               setDocuments(prev => prev.map(doc => ({ ...doc, isAcknowledged: false })));
               toast.success('ซิงค์สถานะเอกสารทั้งหมดแล้ว', { icon: '🔄' });
@@ -384,9 +384,9 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
           >
             <RefreshCw size={16} /> ซิงค์ข้อมูลล่าสุด
           </button>
-          
+
           <input type="file" accept=".xlsx, .xls, .csv" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
-          <button 
+          <button
             onClick={() => fileInputRef.current?.click()}
             className="flex h-11 w-full sm:w-auto items-center justify-center gap-2 px-5 text-white bg-[#1a4d2e] border border-transparent rounded-xl hover:bg-[#123620] transition-colors text-sm font-medium shadow-sm shadow-[#1a4d2e]/20"
           >
@@ -426,7 +426,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
                 const statusBadge = getStatusBadge(status, days, doc.isAcknowledged);
                 const documentKey = getDocumentRecordKey(doc);
                 return (
-                  <tr 
+                  <tr
                     key={documentKey}
                     onClick={() => {
                       setSelectedDocForDetail(doc);
@@ -439,17 +439,17 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
                     <td className="px-4 py-3">
                       <span className="font-bold text-gray-800">{doc.licensePlate || '-'}</span>
                     </td>
-                    
+
                     <td className="px-4 py-3">
                       <span className="text-gray-600">{formatThaiDate(doc.issuedDate)}</span>
                     </td>
-                    
+
                     <td className="px-4 py-3">
                       <span className="text-gray-700 font-medium">{formatThaiDate(doc.expiryDate)}</span>
                     </td>
 
                     <td className="px-4 py-3">
-                      <div 
+                      <div
                         onClick={(e) => {
                           e.stopPropagation();
                           if (doc.isAcknowledged) {
@@ -480,12 +480,12 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
 
                     <td className="px-4 py-3 text-center">
                       {doc.hasAttachment ? (
-                        <button 
+                        <button
                           onClick={(e) => {
                             e.stopPropagation();
                             toast.success(`เปิดไฟล์แนบของ ${doc.licensePlate || doc.chassis}`, { duration: 1800 });
                           }}
-                          className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-lg transition-colors inline-flex" 
+                          className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-lg transition-colors inline-flex"
                           title="ดูไฟล์แนบ"
                         >
                           <Paperclip size={18} />
@@ -494,9 +494,9 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
                         <span className="text-gray-300">-</span>
                       )}
                     </td>
-                    
+
                     <td className="px-4 py-3 text-right relative">
-                      <button 
+                      <button
                         onClick={(e) => {
                           e.stopPropagation();
                           setOpenActionMenuIndex(openActionMenuIndex === index ? null : index);
@@ -507,42 +507,52 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
                       </button>
 
                       {openActionMenuIndex === index && (
-                        <div 
+                        <div
                           className={`absolute right-8 w-48 bg-white rounded-xl shadow-xl border border-gray-100 z-50 py-2 animate-in fade-in zoom-in-95 ${
                             index >= 4 ? 'bottom-full mb-1 origin-bottom-right' : 'top-10 origin-top-right'
                           }`}
                           onMouseDown={(e) => e.stopPropagation()}
-                          onClick={(e) => e.stopPropagation()} 
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          <button 
+                          <button
                             className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-[#1a4d2e] flex items-center gap-2 transition-colors"
-                            onClick={() => { 
-                              setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? { ...d, isAcknowledged: false } : d));
-                              toast.success(`ซิงค์ข้อมูล ${doc.licensePlate || doc.chassis} แล้ว`, { duration: 3000 }); 
-                              setOpenActionMenuIndex(null); 
+                           onClick={() => {
+                              setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? {
+                                ...d,
+                                isAcknowledged: false,
+                                acknowledgedAt: undefined,
+                                acknowledgedBy: undefined
+                              } : d));
+                              toast.success(`ซิงค์ข้อมูล ${doc.licensePlate || doc.chassis} แล้ว`, { duration: 3000 });
+                              setOpenActionMenuIndex(null);
                             }}
                           >
                             <RefreshCw size={14} /> ซิงค์ข้อมูลล่าสุด
                           </button>
-                          
-                          <button 
+
+                          <button
                             className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors"
-                            onClick={() => { 
+                            onClick={() => {
                               setSelectedDocForDetail(doc);
                               toast.success(`เปิดรายละเอียด ${doc.licensePlate || doc.chassis}`, { duration: 1800 });
-                              setOpenActionMenuIndex(null); 
+                              setOpenActionMenuIndex(null);
                             }}
                           >
                             <Eye size={14} /> ดูรายละเอียด
                           </button>
 
                           {(status === 'EXPIRED' || status === 'WARNING') && !doc.isAcknowledged && (
-                            <button 
+                            <button
                               className="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 flex items-center gap-2 transition-colors"
-                              onClick={() => { 
-                                setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? { ...d, isAcknowledged: true } : d));
+                              onClick={() => {
+                                setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? {
+                                  ...d,
+                                  isAcknowledged: true,
+                                  acknowledgedAt: new Date().toISOString(),
+                                  acknowledgedBy: 'testuser'
+                                } : d));
                                 toast.success(`รับทราบการแจ้งเตือนรถ ${doc.licensePlate || doc.chassis} เรียบร้อย`, { icon: 'ℹ️' });
-                                setOpenActionMenuIndex(null); 
+                                setOpenActionMenuIndex(null);
                               }}
                             >
                               <CheckCircle size={14} /> รับทราบการแจ้งเตือน
@@ -551,15 +561,15 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
 
                           <div className="h-[1px] bg-gray-100 my-1"></div>
 
-                          <button 
+                          <button
                             className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
-                            onClick={() => { 
+                            onClick={() => {
                               const isConfirmed = window.confirm(`คุณแน่ใจหรือไม่ที่จะลบข้อมูลของรถทะเบียน/เลขตัวถัง ${doc.licensePlate || doc.chassis}?`);
                               if (isConfirmed) {
                                 setDocuments(prev => prev.filter(d => !isSameDocumentRecord(d, doc)));
                                 toast.success(`ลบข้อมูล ${doc.licensePlate || doc.chassis} ออกจากระบบแล้ว`, { icon: '🗑️' });
                               }
-                              setOpenActionMenuIndex(null); 
+                              setOpenActionMenuIndex(null);
                             }}
                           >
                             <Trash2 size={14} /> ลบข้อมูลออกจากระบบ
@@ -586,16 +596,16 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
           <div className="text-sm text-gray-500">
             แสดง <span className="font-medium text-gray-800">{(safeCurrentPage - 1) * itemsPerPage + 1}</span> ถึง <span className="font-medium text-gray-800">{Math.min(safeCurrentPage * itemsPerPage, filteredDocs.length)}</span> จากทั้งหมด <span className="font-medium text-gray-800">{filteredDocs.length}</span> รายการ
           </div>
-          
+
           <div className="flex items-center gap-1">
-            <button 
+            <button
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
               disabled={safeCurrentPage === 1}
               className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronLeft size={18} />
             </button>
-            
+
             {Array.from({ length: totalPages }).map((_, idx) => {
               const pageNumber = idx + 1;
               if (pageNumber === 1 || pageNumber === totalPages || (pageNumber >= safeCurrentPage - 1 && pageNumber <= safeCurrentPage + 1)) {
@@ -614,7 +624,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
               return null;
             })}
 
-            <button 
+            <button
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
               disabled={safeCurrentPage === totalPages}
               className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"

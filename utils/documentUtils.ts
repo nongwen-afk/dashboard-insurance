@@ -49,6 +49,24 @@ export const getDocumentStatus = (expiryDate?: string): { status: DocStatus; day
 // key เดือนแบบสั้นสำหรับ grouping ข้อมูลในกราฟ 6 เดือน
 export const getSixMonthExpiryKey = (date: Date) => `${THAI_MONTHS[date.getMonth()]} ${date.getFullYear().toString().slice(-2)}`;
 
+// แสดงวันและเวลาแบบไทย
+export const formatThaiDateTime = (dateString?: string) => {
+  if (!dateString) return '-';
+
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return dateString;
+
+  const datePart = `${date.getDate()} ${THAI_MONTHS[date.getMonth()]} ${date.getFullYear() + 543}`;
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+
+  if (dateString.includes('T') || dateString.includes(':')) {
+    return `${datePart} เวลา ${hours}:${minutes} น.`;
+  }
+
+  return datePart;
+};
+
 // ใช้ระบุตัวตนของเอกสารแต่ละแถว ให้ action ต่าง ๆ ไม่พลาดไปกระทบเอกสารประเภทเดียวกันของรถคันเดียวกัน
 export const getDocumentRecordKey = (document: VehicleDocument) => document.id || [
   document.chassis,

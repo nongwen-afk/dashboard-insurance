@@ -14,14 +14,14 @@ We have resolved layout issues on mobile, optimized desktop layout density, and 
 
 ### 2. Header Improvements ([Header.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/Header.tsx))
 - **Issue**: The user's name and panel title took too much horizontal space, squishing header elements on small devices.
-- **Solution**: 
+- **Solution**:
   - Hid the text "testuser" and "admins" on mobile (`hidden sm:block`) so only the avatar dropdown is visible.
   - Made the header padding responsive (`px-4 sm:px-6`).
   - Adjusted logo and branding text size to fit cleanly on narrow screens.
 
 ### 3. Stat Cards & Charts
 - **Stat Cards ([StatCard.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/dashboard/StatCard.tsx))**: Adjusted card padding (`p-4 sm:p-6`) and reduced icon scales on mobile to prevent cards from looking too bulky. Added pointer cursor, shadow transitions, and active scale animations for user interaction.
-- **Expiry Chart ([ExpiryChart.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/dashboard/ExpiryChart.tsx))**: 
+- **Expiry Chart ([ExpiryChart.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/dashboard/ExpiryChart.tsx))**:
   - Added `w-full overflow-hidden` classes to the container card.
   - Added `w-full min-w-0 overflow-hidden` to the direct parent of `ResponsiveContainer` to prevent Recharts from breaking the horizontal page boundaries.
 - **Urgent Alerts ([UrgentAlerts.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/dashboard/UrgentAlerts.tsx))**: Made container padding responsive.
@@ -117,7 +117,18 @@ We reviewed and fixed the issues found after the Antigravity update.
   - `walkthrough 2.md`
   - `utils/mockData 2.ts`
 
-### 5. Verification
+### 5. Expand Document Acknowledgement Metadata (Latest Update)
+- **Goal**: Make the simulated acknowledgement flow more realistic and credible by expanding the `isAcknowledged` boolean status to capture detailed information (`acknowledgedAt` and `acknowledgedBy`).
+- **Solution**:
+  - **Type Definition ([types/index.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/types/index.ts))**: Expanded the `VehicleDocument` interface to support optional fields `acknowledgedAt?: string` and `acknowledgedBy?: string`.
+  - **Date Helper ([utils/documentUtils.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/documentUtils.ts))**: Added `formatThaiDateTime` to format timestamp strings into Thai date and time strings (e.g. `4 มิ.ย. 2569 เวลา 10:30 น.`).
+  - **State Action Handlers ([app/page.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/page.tsx) & [components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx))**: Updated the acknowledge handlers to capture `acknowledgedAt` with the current time in ISO format and `acknowledgedBy` as `'testuser'`, and updated the reset handlers to clean them up (set to `undefined`).
+  - **Mock Data Seeding ([utils/mockData.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/mockData.ts))**: Added mock `acknowledgedAt` and `acknowledgedBy` fields to already acknowledged documents (`CHAS-ACK-001` to `CHAS-ACK-003`) for initial load realism.
+  - **Modal Details Display ([components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
+    - Updated the status banner description dynamically to display the user and formatted timestamp when a document is in the acknowledged state.
+    - Added a sleek slate-colored information card inside the details grid displaying the acknowledgement user and timestamp.
+
+### 6. Verification
 - `pnpm run lint` passes.
 - `git diff --check` passes.
 - `pnpm run build` passes.

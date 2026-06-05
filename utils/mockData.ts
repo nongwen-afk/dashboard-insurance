@@ -8,10 +8,10 @@ export const initialDocsSeed: VehicleDocument[] = [
   { chassis: 'CHAS-EXP-002', licensePlate: '2กค 2222', docType: 'tax', issuedDate: '2025-05-10', expiryDate: '2026-05-10', driverName: 'สมศรี รักงาน', project: 'รถเช่าผู้บริหาร' },
   { chassis: 'CHAS-EXP-003', licensePlate: '', docType: 'insurance', issuedDate: '2025-05-15', expiryDate: '2026-05-15', driverName: 'วิชัย เก่งกล้า' }, // ไม่มีทะเบียน
   { chassis: 'CHAS-EXP-004', licensePlate: '4กข 4444', docType: 'inspection', issuedDate: '2025-05-20', expiryDate: '2026-05-20', driverName: '' }, // ไม่มีคนขับ
-  
+
   // 2. กลุ่มหมดอายุแล้วแต่ได้รับการกดยอมรับแล้ว (Expired but Acknowledged) -> จะเป็นสถานะ "กำลังดำเนินการ" ทันทีที่โหลดหน้าเว็บ
-  { chassis: 'CHAS-ACK-001', licensePlate: '9กง 9090', docType: 'act', issuedDate: '2025-05-10', expiryDate: '2026-05-10', driverName: 'สมเกียรติ ยอดเยี่ยม', isAcknowledged: true },
-  { chassis: 'CHAS-ACK-002', licensePlate: '8กข 8080', docType: 'tax', issuedDate: '2025-05-05', expiryDate: '2026-05-05', driverName: '', isAcknowledged: true }, // ไม่มีคนขับแต่อ่านรับทราบแล้ว
+  { chassis: 'CHAS-ACK-001', licensePlate: '9กง 9090', docType: 'act', issuedDate: '2025-05-10', expiryDate: '2026-05-10', driverName: 'สมเกียรติ ยอดเยี่ยม', isAcknowledged: true, acknowledgedAt: '2026-06-04T10:30:00Z', acknowledgedBy: 'testuser' },
+  { chassis: 'CHAS-ACK-002', licensePlate: '8กข 8080', docType: 'tax', issuedDate: '2025-05-05', expiryDate: '2026-05-05', driverName: '', isAcknowledged: true, acknowledgedAt: '2026-06-04T11:15:00Z', acknowledgedBy: 'testuser' }, // ไม่มีคนขับแต่อ่านรับทราบแล้ว
 
   // 3. กลุ่มใกล้หมดอายุ (Warning) - มีระยะคงเหลือไม่เกิน 30 วัน (นับจาก 2026-06-05)
   { chassis: 'CHAS-WAR-001', licensePlate: '2กค 2323', docType: 'insurance', issuedDate: '2025-06-05', expiryDate: '2026-06-06', driverName: 'ธนากร นำทาง' }, // เหลือ 1 วัน
@@ -21,7 +21,7 @@ export const initialDocsSeed: VehicleDocument[] = [
   { chassis: 'CHAS-WAR-005', licensePlate: '6กง 6060', docType: 'insurance', issuedDate: '2025-06-25', expiryDate: '2026-07-02', driverName: 'นพพล เรืองดี' }, // เหลือ 27 วัน
 
   // 4. กลุ่มใกล้หมดอายุแต่ยอมรับแล้ว (Warning Acknowledged)
-  { chassis: 'CHAS-ACK-003', licensePlate: '1กข 1212', docType: 'tax', issuedDate: '2025-05-20', expiryDate: '2026-06-10', driverName: 'วรรณา สุขใจ', isAcknowledged: true }, // เหลือ 5 วัน แต่ยอมรับแล้ว
+  { chassis: 'CHAS-ACK-003', licensePlate: '1กข 1212', docType: 'tax', issuedDate: '2025-05-20', expiryDate: '2026-06-10', driverName: 'วรรณา สุขใจ', isAcknowledged: true, acknowledgedAt: '2026-06-05T08:00:00Z', acknowledgedBy: 'testuser' }, // เหลือ 5 วัน แต่ยอมรับแล้ว
 
   // 5. กลุ่มปกติ (Active) - เหลืออายุมากกว่า 30 วัน
   // กรกฎาคม (July 2026): 4 รายการ (รวม CHAS-WAR-005 ที่หมดอายุ 2 ก.ค. เป็น 4 รายการ)

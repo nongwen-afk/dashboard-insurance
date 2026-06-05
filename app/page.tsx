@@ -31,7 +31,7 @@ export default function DashboardPage() {
       const headerOffset = 90; // ความสูง Header + ระยะห่างความสวยงาม
       const elementPosition = tableRef.current.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.scrollY - headerOffset;
-      
+
       window.scrollTo({
         top: offsetPosition,
         behavior: 'smooth'
@@ -60,7 +60,7 @@ export default function DashboardPage() {
   // จัดกลุ่มเอกสารที่จะหมดอายุใน 6 เดือนข้างหน้า เพื่อแสดงบนกราฟและใช้เปิด modal รายเดือน
   const chartData = useMemo(() => {
     const dataMap: Record<string, VehicleDocument[]> = {};
-    
+
     const today = new Date();
     for (let i = 0; i < 6; i++) {
       const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
@@ -90,7 +90,7 @@ export default function DashboardPage() {
         if (doc.isAcknowledged) return false; // ซ่อนจากการแจ้งเตือนหากกดรับทราบแล้ว
         if (!doc.expiryDate) return false;
         const diffDays = getDaysUntilExpiry(doc.expiryDate);
-        return diffDays <= 30; 
+        return diffDays <= 30;
       })
       .map((doc, index) => {
         const diffDays = getDaysUntilExpiry(doc.expiryDate);
@@ -117,7 +117,7 @@ export default function DashboardPage() {
           doc,
         };
       })
-      .sort((a, b) => a.diffDays - b.diffDays); 
+      .sort((a, b) => a.diffDays - b.diffDays);
   }, [documents]);
 
   // หน้า dashboard แสดงเฉพาะ 4 รายการที่ด่วนที่สุด ส่วนรายการเต็มเปิดใน AlertsModal
@@ -135,7 +135,7 @@ export default function DashboardPage() {
           รายการเอกสารยานพาหนะ
         </h1>
       </div>
-      
+
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
         <StatCard
           title="เอกสารทั้งหมด"
@@ -192,9 +192,9 @@ export default function DashboardPage() {
       </div>
 
       <div ref={tableRef}>
-        <PolicyTable 
-          documents={documents} 
-          setDocuments={setDocuments} 
+        <PolicyTable
+          documents={documents}
+          setDocuments={setDocuments}
           statusFilter={statusFilter}
           setStatusFilter={setStatusFilter}
         />
@@ -218,17 +218,27 @@ export default function DashboardPage() {
 
       <DocumentDetailModal
         document={
-          selectedDocForDetail 
+          selectedDocForDetail
             ? documents.find(d => isSameDocumentRecord(d, selectedDocForDetail)) || selectedDocForDetail
             : null
         }
         onClose={() => setSelectedDocForDetail(null)}
         onAcknowledge={(doc) => {
-          setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? { ...d, isAcknowledged: true } : d));
+          setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? {
+            ...d,
+            isAcknowledged: true,
+            acknowledgedAt: new Date().toISOString(),
+            acknowledgedBy: 'testuser'
+          } : d));
           toast.success(`รับทราบการแจ้งเตือนรถ ${doc.licensePlate || doc.chassis} เรียบร้อย`, { icon: 'ℹ️' });
         }}
         onSync={(doc) => {
-          setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? { ...d, isAcknowledged: false } : d));
+          setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? {
+            ...d,
+            isAcknowledged: false,
+            acknowledgedAt: undefined,
+            acknowledgedBy: undefined
+          } : d));
           toast.success(`ซิงค์ข้อมูล ${doc.licensePlate || doc.chassis} แล้ว`, { duration: 3000 });
         }}
       />
