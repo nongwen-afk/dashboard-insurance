@@ -16,6 +16,8 @@ export interface VehicleDocument {
   driverName?: string;
   hasAttachment?: boolean;
   isAcknowledged?: boolean;
+  acknowledgedAt?: string;
+  acknowledgedBy?: string;
 }
 
 // สถานะเอกสารคำนวณจากวันหมดอายุ เพื่อใช้จัดสี ป้ายเตือน และลำดับความสำคัญ

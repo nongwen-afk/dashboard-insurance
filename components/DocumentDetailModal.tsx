@@ -2,7 +2,7 @@
 
 import { Building2, CalendarDays, Car, FileText, User, X, AlertTriangle, Clock, CheckCircle2, Info, RefreshCw } from 'lucide-react';
 import type { VehicleDocument } from '@/types';
-import { formatThaiDate, getDocTypeName, getDocumentStatus } from '@/utils/documentUtils';
+import { formatThaiDate, formatThaiDateTime, getDocTypeName, getDocumentStatus } from '@/utils/documentUtils';
 
 interface DocumentDetailModalProps {
   document: VehicleDocument | null;
@@ -20,11 +20,13 @@ export default function DocumentDetailModal({ document, onClose, onAcknowledge, 
   // กำหนดรูปแบบเนื้อหาแบนเนอร์และป้ายสถานะ
   const getBannerDetails = () => {
     if (document.isAcknowledged) {
+      const ackUserText = document.acknowledgedBy || 'ไม่ระบุ';
+      const ackDateText = formatThaiDateTime(document.acknowledgedAt);
       return {
         bg: 'bg-blue-50 border-blue-200 text-blue-800',
         icon: <Info className="text-blue-500 shrink-0" size={20} />,
         title: 'กำลังดำเนินการ',
-        description: 'รับทราบการแจ้งเตือนแล้ว อยู่ระหว่างดำเนินการต่ออายุเอกสาร',
+        description: `รับทราบการแจ้งเตือนโดย ${ackUserText} เมื่อวันที่ ${ackDateText} (อยู่ระหว่างดำเนินการต่ออายุ)`,
         badgeClassName: 'bg-blue-50 text-blue-700 border-blue-100'
       };
     }
@@ -170,6 +172,24 @@ export default function DocumentDetailModal({ document, onClose, onAcknowledge, 
                   </div>
                 </div>
               </div>
+              {document.isAcknowledged && (
+                <div className="sm:col-span-2 bg-slate-50/60 p-3 rounded-lg border border-slate-200/60">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-slate-500 font-semibold flex items-center gap-1 mb-1">
+                        <User size={12} /> ผู้รับทราบ (Acknowledged By)
+                      </p>
+                      <p className="font-medium text-gray-800">{document.acknowledgedBy || 'ไม่ระบุ'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 font-semibold flex items-center gap-1 mb-1">
+                        <Clock size={12} /> วันที่รับทราบ (Acknowledged At)
+                      </p>
+                      <p className="font-medium text-gray-800">{formatThaiDateTime(document.acknowledgedAt)}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="sm:col-span-2">
                 <p className="text-xs text-gray-500 mb-1">หมายเลขเอกสาร/กรมธรรม์</p>
                 <p className="font-medium text-gray-800">{document.docNumber || 'ไม่มีข้อมูล'}</p>
