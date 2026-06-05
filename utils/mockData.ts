@@ -77,6 +77,7 @@ const issuersByType: Record<VehicleDocType, string> = {
 export const initialDocs: VehicleDocument[] = initialDocsSeed.map((doc, index) => {
   const isIndexEven = index % 2 === 0;
   return {
+    id: `mock-${String(index + 1).padStart(3, '0')}`,
     issuer: isIndexEven ? issuersByType[doc.docType] : undefined, // บางเอกสารไม่มีระบุผู้ออกเพื่อทดสอบข้อมูลไม่ครบ
     docNumber: isIndexEven ? `${doc.docType.toUpperCase()}-${String(index + 1).padStart(5, '0')}` : undefined, // บางเอกสารไม่มีหมายเลข
     note: doc.expiryDate

@@ -89,3 +89,35 @@ Since we deleted `package-lock.json` and stuck to `pnpm` to avoid conflicts:
    - [walkthrough.md](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/walkthrough.md) (สำหรับอัปเดตอธิบายสิ่งที่ปรับปรุงเพิ่มเติม)
 3. **ก่อนเริ่มงานใหม่ทุกครั้ง:** **ต้องเปิดอ่าน** ไฟล์ [task.md](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/task.md) และ [walkthrough.md](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/walkthrough.md) ก่อนเสมอเพื่อรับรู้สถานะโครงการล่าสุดก่อนลงมือทำต่อ
 
+---
+
+## Review Fixes After Antigravity Changes
+
+We reviewed and fixed the issues found after the Antigravity update.
+
+### 1. Preserve User Data During Global Sync
+- **Issue**: The table-level `ซิงค์ข้อมูลล่าสุด` button reset the whole document list back to mock data via `setDocuments(initialDocs)`, which could discard imported Excel rows, deleted rows, and acknowledged states.
+- **Solution**: Changed the button to preserve the current document list and only clear `isAcknowledged` flags across existing rows.
+
+### 2. Stable Document Identity
+- **Issue**: Several actions matched rows using only `chassis + docType`, so duplicate documents for the same vehicle and document type could be acknowledged, synced, or deleted together.
+- **Solution**:
+  - Added optional `id` to `VehicleDocument`.
+  - Added stable IDs for mock data and imported rows.
+  - Added shared identity helpers in `documentUtils.ts`.
+  - Updated table actions and detail modal callbacks to use the shared identity helper.
+
+### 3. Search Count Consistency
+- **Issue**: Search toast counts ignored the status-card filter, so the toast could report records that were hidden by the active status filter.
+- **Solution**: Consolidated filtering logic in `PolicyTable.tsx` and reused it for both search toast counts and actual table filtering.
+
+### 4. Cleanup Duplicate Files
+- Removed stale duplicate files created outside the main source path:
+  - `task 2.md`
+  - `walkthrough 2.md`
+  - `utils/mockData 2.ts`
+
+### 5. Verification
+- `pnpm run lint` passes.
+- `git diff --check` passes.
+- `pnpm run build` passes.

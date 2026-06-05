@@ -3,6 +3,7 @@ export type VehicleDocType = 'act' | 'tax' | 'insurance' | 'inspection' | 'regis
 
 // โครงสร้างข้อมูลหลักของเอกสารรถ 1 รายการ หลังจาก mock data หรือ Excel ถูก normalize แล้ว
 export interface VehicleDocument {
+  id?: string;
   chassis: string;
   licensePlate?: string;
   project?: string;

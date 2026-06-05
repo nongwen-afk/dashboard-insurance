@@ -159,6 +159,7 @@ export const parseVehicleDocumentsFromFile = async (file: File): Promise<Vehicle
   const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as SpreadsheetCell[][];
   const { columns, startRowIndex } = detectImportColumns(rows[0]);
   const importedDocs: VehicleDocument[] = [];
+  const importBatchId = `${file.name}-${Date.now()}`;
 
   // ข้ามแถวว่างและแถวที่ไม่มีเลขตัวถัง เพราะเลขตัวถังคือ key ขั้นต่ำของเอกสารรถในระบบนี้
   for (let i = startRowIndex; i < rows.length; i++) {
@@ -169,6 +170,7 @@ export const parseVehicleDocumentsFromFile = async (file: File): Promise<Vehicle
     if (!chassis) continue;
 
     importedDocs.push({
+      id: `import-${importBatchId}-${i}`,
       chassis: String(chassis || `CHAS-${Date.now()}-${i}`),
       licensePlate: String(getCellValue(row, columns.licensePlate) || ''),
       project: String(getCellValue(row, columns.project) || ''),
