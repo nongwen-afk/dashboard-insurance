@@ -47,11 +47,35 @@ We have resolved layout issues on mobile, optimized desktop layout density, and 
 ---
 
 ## Verification & Build Results
-We compiled the production build using Next.js Turbopack compiler (`npm run build`). The project compiles with zero warnings or errors:
+We compiled the production build using Next.js Turbopack compiler (`pnpm run build`). The project compiles with zero warnings or errors.
 
-```bash
-✓ Compiled successfully in 1835ms
-  Running TypeScript ...
-  Finished TypeScript in 1182ms ...
-✓ Generating static pages using 5 workers (4/4) in 202ms
-```
+---
+
+## 🚀 Latest Updates & Package Manager Migration (pnpm)
+
+We implemented several important fixes, distributed the mock data, integrated analytics, and successfully migrated the package manager from `npm` to `pnpm`.
+
+### 1. Label Fix: License Plate vs Chassis
+- **Issue**: Notification alerts and expiry modals hardcoded "รถทะเบียน" even if the vehicle only had a chassis number and no license plate.
+- **Solution**: Replaced hardcoded strings with conditional labels (`document.licensePlate ? 'รถทะเบียน' : 'เลขตัวถัง'`) in:
+  - Main Alerts Generator ([page.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/page.tsx))
+  - Monthly Expiry Modal ([ExpiryMonthModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/dashboard/ExpiryMonthModal.tsx))
+
+### 2. Mock Data Optimization
+- **Data Distribution**: Updated [mockData.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/mockData.ts) to distribute active documents unevenly across the 6-month chart window (June: 5, July: 4, August: 3, Sept: 1, Oct: 7, Nov: 2) to look like a realistic fleet operation.
+- **Project/Contract Names**: Renamed mock projects from internal company departments (which were misleading) to realistic client leasing contracts (e.g., `รถเวียน จุฬาฯ`, `รถรับส่ง MEA`, `รถเช่า AOT`, `รถเช่าผู้บริหาร`).
+- **CSV Generation**: Created a mock database file [mock_vehicles.csv](file:///Users/microwen/Desktop/Project_EVT/mock_vehicles.csv) containing 100 realistic records with UTF-8 BOM encoding for proper Thai character display in Excel.
+
+### 3. Vercel Integration
+- **Speed Insights**: Installed `@vercel/speed-insights` and integrated it into the root layout ([layout.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/layout.tsx)) to measure web page load speeds.
+- **Analytics**: Resolved out-of-sync `pnpm-lock.yaml` issues on Vercel deployment by running a clean install and committing the updated lockfile.
+
+### 4. 🛠️ How to run commands with pnpm
+Since we deleted `package-lock.json` and stuck to `pnpm` to avoid conflicts:
+- **Run project locally**: `pnpm dev`
+- **Install all dependencies**: `pnpm install` (or `pnpm i`)
+- **Add new dependencies**: `pnpm add <package-name>`
+- **Add dev dependencies**: `pnpm add -D <package-name>`
+- **Run linting**: `pnpm run lint`
+- **Build production**: `pnpm run build`
+

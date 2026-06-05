@@ -20,6 +20,12 @@
   - `[x]` Implement smooth scrolling to the table section when clicking a card, accounting for the 90px fixed header offset.
   - `[x]` Add filtering logic to the table search query based on document expiration status (Active/No Expiry, Warning, Expired).
   - `[x]` Render a clear filter badge next to sorting/filtering buttons in `PolicyTable.tsx` showing the active status filter and allowing the user to reset it.
+- `[x]` Fix hardcoded "รถทะเบียน" labels to show "เลขตัวถัง" if license plate is missing in notifications and modal.
+- `[x]` Generate mock data as a CSV file with realistic Thai license plates and project/contract names.
+- `[x]` Clean up package managers and stick to `pnpm` by deleting `package-lock.json` and updating lockfile.
+- `[x]` Integrate Vercel Speed Insights and Analytics packages.
+- `[x]` Fix ESLint warnings and errors to resolve build blockages.
 - `[ ]` Support custom document additions (Add Document Form)
 - `[ ]` Implement real backend API / localstorage integration for persistence
 - `[ ]` Add more chart visualizations (e.g. status breakdown pie chart)
+
