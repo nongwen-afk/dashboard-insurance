@@ -11,51 +11,7 @@ import UrgentAlerts from '@/components/dashboard/UrgentAlerts';
 import PolicyTable from '../components/PolicyTable';
 import type { DocumentAlert, ExpiryMonthGroup, FilterStatus, VehicleDocType, VehicleDocument } from '@/types';
 import { formatThaiDate, getDaysUntilExpiry, getDocTypeName, getSixMonthExpiryKey } from '@/utils/documentUtils';
-
-// ข้อมูลตั้งต้นใช้จำลองเอกสารในระบบก่อนผู้ใช้จะนำเข้า Excel เพิ่ม
-const initialDocsSeed: VehicleDocument[] = [
-  { chassis: 'CHAS-001', licensePlate: '1กข 1111', docType: 'act', issuedDate: '2025-06-15', expiryDate: '2026-06-15', driverName: 'สมชาย ใจดี', project: 'สายเหนือ' },
-  { chassis: 'CHAS-002', licensePlate: '2กค 2222', docType: 'tax', issuedDate: '2025-06-20', expiryDate: '2026-06-20', driverName: 'สมศรี รักงาน', project: 'ผู้บริหาร' },
-  { chassis: 'CHAS-003', licensePlate: '3กง 3333', docType: 'insurance', issuedDate: '2025-06-25', expiryDate: '2026-06-25', driverName: 'วิชัย เก่งกล้า' },
-  { chassis: 'CHAS-004', licensePlate: '4กข 4444', docType: 'act', issuedDate: '2025-07-05', expiryDate: '2026-07-05', driverName: 'มานพ' },
-  { chassis: 'CHAS-005', licensePlate: '5กค 5555', docType: 'tax', issuedDate: '2025-07-12', expiryDate: '2026-07-12', driverName: 'สุดา' },
-  { chassis: 'CHAS-006', licensePlate: '6กง 6666', docType: 'insurance', issuedDate: '2025-07-28', expiryDate: '2026-07-28', driverName: 'ปรีชา' },
-  { chassis: 'CHAS-007', licensePlate: '7กข 7777', docType: 'act', issuedDate: '2025-08-10', expiryDate: '2026-08-10', driverName: 'นิภา' },
-  { chassis: 'CHAS-008', licensePlate: '8กค 8888', docType: 'tax', issuedDate: '2025-08-15', expiryDate: '2026-08-15', driverName: 'สมปอง' },
-  { chassis: 'CHAS-009', licensePlate: '9กง 9999', docType: 'act', issuedDate: '2025-08-20', expiryDate: '2026-08-20', driverName: 'วิรัช' },
-  { chassis: 'CHAS-010', licensePlate: '1กข 1010', docType: 'insurance', issuedDate: '2025-08-25', expiryDate: '2026-08-25', driverName: 'อารีย์' },
-  { chassis: 'CHAS-011', licensePlate: '2กค 2020', docType: 'tax', issuedDate: '2025-09-05', expiryDate: '2026-09-05', driverName: 'สุรศักดิ์' },
-  { chassis: 'CHAS-012', licensePlate: '3กง 3030', docType: 'act', issuedDate: '2025-09-18', expiryDate: '2026-09-18', driverName: 'นารี' },
-  { chassis: 'CHAS-013', licensePlate: '4กข 4040', docType: 'insurance', issuedDate: '2025-10-10', expiryDate: '2026-10-10', driverName: 'กมล' },
-  { chassis: 'CHAS-014', licensePlate: '5กค 5050', docType: 'tax', issuedDate: '2025-10-22', expiryDate: '2026-10-22', driverName: 'ประยุทธ์' },
-  { chassis: 'CHAS-015', licensePlate: '6กง 6060', docType: 'act', issuedDate: '2025-11-05', expiryDate: '2026-11-05', driverName: 'มณี' },
-  { chassis: 'CHAS-016', licensePlate: '7กข 7070', docType: 'registration_book', issuedDate: '2019-01-10' }, 
-  { chassis: 'CHAS-017', licensePlate: '8กค 8080', docType: 'registration_book', issuedDate: '2020-03-15' }, 
-  { chassis: 'CHAS-018', licensePlate: '9กง 9090', docType: 'act', issuedDate: '2025-05-10', expiryDate: '2026-05-10', driverName: 'สมเกียรติ' }, 
-  { chassis: 'CHAS-019', licensePlate: '1กข 1212', docType: 'tax', issuedDate: '2025-05-20', expiryDate: '2026-05-20', driverName: 'วรรณา' }, 
-  { chassis: 'CHAS-020', licensePlate: '2กค 2323', docType: 'insurance', issuedDate: '2025-06-05', expiryDate: '2026-06-05', driverName: 'ธนากร' }, 
-];
-
-// issuer default ช่วยเติมข้อมูลเชิงเอกสารให้ mock data โดยอิงจากประเภทเอกสาร
-const issuersByType: Record<VehicleDocType, string> = {
-  act: 'กรมการขนส่งทางบก',
-  tax: 'กรมการขนส่งทางบก',
-  insurance: 'EVT Insurance Broker',
-  inspection: 'ศูนย์ตรวจสภาพรถ EVT',
-  registration_book: 'สำนักงานขนส่งจังหวัด',
-};
-
-// เติม field ที่ dashboard/detail modal ต้องใช้ เพื่อให้ mock data มีรูปทรงใกล้ข้อมูลจริงจาก Excel
-const initialDocs: VehicleDocument[] = initialDocsSeed.map((doc, index) => ({
-  issuer: issuersByType[doc.docType],
-  docNumber: `${doc.docType.toUpperCase()}-${String(index + 1).padStart(5, '0')}`,
-  note: doc.expiryDate
-    ? `ตรวจสอบเอกสารรอบถัดไปก่อนวันหมดอายุ 30 วัน`
-    : 'เอกสารประเภทนี้ไม่มีวันหมดอายุ แต่ควรตรวจสอบข้อมูลทะเบียนให้ตรงกับรถจริง',
-  hasAttachment: index % 3 !== 1,
-  project: doc.project || 'ส่วนกลาง',
-  ...doc,
-}));
+import { initialDocs } from '@/utils/mockData';
 
 export default function DashboardPage() {
   // documents เป็น state หลักของทั้งหน้า: card, chart, alert และ table อ่านจากชุดเดียวกัน
