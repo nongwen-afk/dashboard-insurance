@@ -6,6 +6,7 @@
   - `[x]` Hide username and details in header on mobile to conserve screen space
   - `[x]` Make stat cards padding, font sizes, and icon sizes responsive
   - `[x]` Add w-full and overflow-hidden to ExpiryChart container to prevent horizontal scroll breaking page
+  - `[x]` Constrain flex layout and block wrapper width using `min-w-0` and `overflow-x-hidden` on main wrapper to completely prevent page stretching (horizontal scroll of the entire viewport) on mobile.
   - `[x]` Test and compile project successfully with Next.js Turbopack build
 - `[ ]` Support custom document additions (Add Document Form)
 - `[ ]` Implement real backend API / localstorage integration for persistence
