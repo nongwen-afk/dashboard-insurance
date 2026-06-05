@@ -8,15 +8,15 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import DocumentDetailModal from '@/components/DocumentDetailModal';
-import type { DocStatus, SortOption, VehicleDocument } from '@/types';
+import type { DocStatus, FilterStatus, SortOption, VehicleDocument } from '@/types';
 import { formatThaiDate, getDocTypeName, getDocumentStatus } from '@/utils/documentUtils';
 import { parseVehicleDocumentsFromFile } from '@/utils/importVehicleDocuments';
 
 interface PolicyTableProps {
   documents: VehicleDocument[];
   setDocuments: React.Dispatch<React.SetStateAction<VehicleDocument[]>>;
-  statusFilter: 'ALL' | 'ACTIVE' | 'WARNING' | 'EXPIRED';
-  setStatusFilter: (status: 'ALL' | 'ACTIVE' | 'WARNING' | 'EXPIRED') => void;
+  statusFilter: FilterStatus;
+  setStatusFilter: (status: FilterStatus) => void;
 }
 
 // แปลงสถานะจาก helper ให้เป็นข้อความและสีสำหรับคอลัมน์สถานะในตาราง
@@ -167,7 +167,11 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
       const { status } = getDocumentStatus(doc.expiryDate);
       let matchStatus = true;
       if (statusFilter !== 'ALL') {
-        if (statusFilter === 'ACTIVE') {
+        if (statusFilter === 'PROCESSING') {
+          matchStatus = !!doc.isAcknowledged;
+        } else if (doc.isAcknowledged) {
+          matchStatus = false;
+        } else if (statusFilter === 'ACTIVE') {
           // 'ใช้งานได้' ครอบคลุมทั้ง ACTIVE และเอกสารที่ไม่มีวันหมดอายุ NO_EXPIRY
           matchStatus = status === 'ACTIVE' || status === 'NO_EXPIRY';
         } else {
@@ -353,7 +357,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
 
             {statusFilter !== 'ALL' && (
               <span className="inline-flex items-center gap-1.5 h-11 px-4 bg-[#e8f0eb] text-[#1a4d2e] rounded-xl text-xs font-bold border border-[#1a4d2e]/20 animate-in fade-in slide-in-from-left-2">
-                สถานะ: {statusFilter === 'ACTIVE' ? 'ใช้งานได้' : statusFilter === 'WARNING' ? 'ใกล้หมดอายุ' : 'หมดอายุแล้ว'}
+                สถานะ: {statusFilter === 'ACTIVE' ? 'ใช้งานได้' : statusFilter === 'WARNING' ? 'ใกล้หมดอายุ' : statusFilter === 'PROCESSING' ? 'กำลังดำเนินการ' : 'หมดอายุแล้ว'}
                 <button 
                   onClick={() => setStatusFilter('ALL')} 
                   className="hover:bg-[#d4e5db] rounded-full p-0.5 transition-colors cursor-pointer flex items-center justify-center"
@@ -426,7 +430,10 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
                       <div 
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (status === 'EXPIRED') {
+                          if (doc.isAcknowledged) {
+                            setStatusFilter('PROCESSING');
+                            toast.success('กรองเฉพาะเอกสารที่กำลังดำเนินการ', { id: 'status-filter-toast' });
+                          } else if (status === 'EXPIRED') {
                             setStatusFilter('EXPIRED');
                             toast.success('กรองเฉพาะเอกสารที่หมดอายุแล้ว', { id: 'status-filter-toast' });
                           } else if (status === 'WARNING') {

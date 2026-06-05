@@ -9,7 +9,7 @@ import ExpiryMonthModal from '@/components/dashboard/ExpiryMonthModal';
 import StatCard from '@/components/dashboard/StatCard';
 import UrgentAlerts from '@/components/dashboard/UrgentAlerts';
 import PolicyTable from '../components/PolicyTable';
-import type { DocumentAlert, ExpiryMonthGroup, VehicleDocType, VehicleDocument } from '@/types';
+import type { DocumentAlert, ExpiryMonthGroup, FilterStatus, VehicleDocType, VehicleDocument } from '@/types';
 import { formatThaiDate, getDaysUntilExpiry, getDocTypeName, getSixMonthExpiryKey } from '@/utils/documentUtils';
 
 // ข้อมูลตั้งต้นใช้จำลองเอกสารในระบบก่อนผู้ใช้จะนำเข้า Excel เพิ่ม
@@ -65,10 +65,10 @@ export default function DashboardPage() {
   const [selectedDocForDetail, setSelectedDocForDetail] = useState<VehicleDocument | null>(null);
 
   // สถานะตัวกรองจาก stat card ที่ส่งไปควบคุม PolicyTable
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'WARNING' | 'EXPIRED'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<FilterStatus>('ALL');
   const tableRef = useRef<HTMLDivElement>(null);
 
-  const handleStatCardClick = (status: 'ALL' | 'ACTIVE' | 'WARNING' | 'EXPIRED') => {
+  const handleStatCardClick = (status: FilterStatus) => {
     setStatusFilter(status);
     if (tableRef.current) {
       const headerOffset = 90; // ความสูง Header + ระยะห่างความสวยงาม
@@ -87,6 +87,7 @@ export default function DashboardPage() {
     let active = 0, warning = 0, expired = 0;
 
     documents.forEach(doc => {
+      if (doc.isAcknowledged) return; // หากกดรับทราบ/กำลังดำเนินการอยู่ จะไม่นับในส่วนการ์ดสรุปงานค้าง
       if (!doc.expiryDate) { active++; return; }
       const diffDays = getDaysUntilExpiry(doc.expiryDate);
       if (diffDays < 0) expired++;
