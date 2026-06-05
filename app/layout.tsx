@@ -6,6 +6,7 @@ import Header from '@/components/Header';
 import { Noto_Sans_Thai } from 'next/font/google';
 import { useState } from 'react';
 import { Toaster } from 'react-hot-toast';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 const notoSansThai = Noto_Sans_Thai({ 
   subsets: ['latin', 'thai'],
@@ -44,6 +45,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             } 
           }} 
         />
+        
+        <SpeedInsights />
         
       </body>
     </html>
