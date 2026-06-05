@@ -381,7 +381,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
         </div>
       </div>
 
-      <div className="overflow-x-auto min-h-[465px]">
+      <div className="overflow-x-auto overflow-y-hidden min-h-[465px]">
         <table className="w-full min-w-[1000px] table-fixed text-left border-collapse">
           <colgroup>
             <col className="w-[10%]" />
@@ -479,7 +479,9 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
 
                       {openActionMenuIndex === index && (
                         <div 
-                          className="absolute right-8 top-10 w-48 bg-white rounded-xl shadow-xl border border-gray-100 z-50 py-2 animate-in fade-in zoom-in-95"
+                          className={`absolute right-8 w-48 bg-white rounded-xl shadow-xl border border-gray-100 z-50 py-2 animate-in fade-in zoom-in-95 ${
+                            index >= 4 ? 'bottom-full mb-1 origin-bottom-right' : 'top-10 origin-top-right'
+                          }`}
                           onMouseDown={(e) => e.stopPropagation()}
                           onClick={(e) => e.stopPropagation()} 
                         >
