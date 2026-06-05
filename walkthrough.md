@@ -132,7 +132,28 @@ We reviewed and fixed the issues found after the Antigravity update.
       1. **ต่ออายุสำเร็จ (Renewal Success)**: Extends the expiry date by exactly 1 year, updates the issued date to the current date, clears the acknowledgement metadata, and changes the document status to green **ใช้งานได้ปกติ** (Active).
       2. **ค้างชำระเงิน/ไม่มีรายการอัปเดต (Pending Check)**: Retains the processing status and alerts the user that no payment or renewal record was found in the external DLT/insurer database.
 
-### 6. Verification
+### 6. Dashboard UI Beautification & Aesthetic Polish (Latest Update)
+- **Header Upgrade ([Header.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/Header.tsx))**:
+  - Implemented glassmorphic styling with a blurred background (`bg-white/80 backdrop-blur-md`).
+  - Redesigned the EVT brand badge into a modern high-contrast green gradient box (`bg-gradient-to-r from-emerald-800 to-[#1a4d2e]`) with a subtle drop shadow.
+  - Replaced the simple round chevron-dropdown profile placeholder with a modern circular gradient avatar containing bold `'TU'` (Test User) initials.
+- **Sidebar Upgrade ([Sidebar.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/Sidebar.tsx))**:
+  - Replaced the uniform dark green font color with a clean modern slate gray typography (`text-slate-700 font-semibold`) for secondary items, so the active page link pops out.
+  - Upgraded the hover styling to a light emerald background (`hover:bg-emerald-50/30 hover:text-[#1a4d2e]`).
+  - Added a clean green left-border indicator on expanded submenus and upgraded the active page link ("เอกสารยานพาหนะ") to a rich forest green gradient (`bg-gradient-to-r from-emerald-800 to-[#1a4d2e]`) with shadow and scale transition effects.
+- **Stat Cards Upgrade ([StatCard.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/dashboard/StatCard.tsx))**:
+  - Added support for active states linked to the table's `statusFilter`. When a stat card is selected, it shows a rich glowing ring, colored border, and matching soft background depending on its type:
+    - *All*: slate border, ring, and background.
+    - *Active*: green border, ring, and background.
+    - *Warning*: orange border, ring, and background.
+    - *Expired*: red border, ring, and background.
+    - *Processing*: blue border, ring, and background.
+  - Replaced standard round circular icon wrappers with modern rounded-square (`rounded-2xl`) boxes with subtle drop shadows and borders.
+- **Expiry Chart Upgrade ([ExpiryChart.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/dashboard/ExpiryChart.tsx))**:
+  - Replaced flat single-color bars with a bright emerald-to-forest-green gradient (`linearGradient` from `#34d399` to `#1a4d2e`).
+  - Increased bar corner roundness (`radius={[6, 6, 0, 0]}`) and stylized the tooltip container with a cleaner shadow, borderless design, and hover overlay cursor styles.
+
+### 7. Verification
 - `pnpm run lint` passes.
 - `git diff --check` passes.
 - `pnpm run build` passes.

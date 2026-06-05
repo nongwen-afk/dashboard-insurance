@@ -38,6 +38,12 @@
   - `[x]` Display dynamic banner description and acknowledgement metadata card inside DocumentDetailModal.tsx
   - `[x]` Fix inconsistent behavior when acknowledging documents from the table row detail modal (duplicate DocumentDetailModal inside PolicyTable.tsx)
   - `[x]` Implement randomized external DLT sync simulation (50% renewal success with 1-year extension / 50% pending payment check) with simulated API delay loading toast
+- `[x]` Beautify Dashboard UI & Aesthetics
+  - `[x]` Implement glassmorphism blurred background and premium brand badge in Header.tsx
+  - `[x]` Add modern circular gradient avatar with 'TU' user initials in Header.tsx
+  - `[x]` Modernize Sidebar.tsx with clean slate typography, indicators, hover states, and premium gradient active sub-link
+  - `[x]` Update StatCard.tsx to show status-matched border highlights, ring glows, and soft background colors when active
+  - `[x]` Upgrade ExpiryChart.tsx with smooth round-corner bars and bright emerald-to-forest-green gradients
 - `[ ]` Support custom document additions (Add Document Form)
 - `[ ]` Implement real backend API / localstorage integration for persistence
 - `[ ]` Add more chart visualizations (e.g. status breakdown pie chart)
