@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Files, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
 import DocumentDetailModal from '@/components/DocumentDetailModal';
 import AlertsModal from '@/components/dashboard/AlertsModal';
@@ -63,6 +63,24 @@ export default function DashboardPage() {
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
   const [selectedExpiryMonth, setSelectedExpiryMonth] = useState<ExpiryMonthGroup | null>(null);
   const [selectedDocForDetail, setSelectedDocForDetail] = useState<VehicleDocument | null>(null);
+
+  // สถานะตัวกรองจาก stat card ที่ส่งไปควบคุม PolicyTable
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'WARNING' | 'EXPIRED'>('ALL');
+  const tableRef = useRef<HTMLDivElement>(null);
+
+  const handleStatCardClick = (status: 'ALL' | 'ACTIVE' | 'WARNING' | 'EXPIRED') => {
+    setStatusFilter(status);
+    if (tableRef.current) {
+      const headerOffset = 90; // ความสูง Header + ระยะห่างความสวยงาม
+      const elementPosition = tableRef.current.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.scrollY - headerOffset;
+      
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   // สรุปจำนวนเอกสารตามสถานะ เพื่อให้ 4 cards ด้านบนสะท้อนข้อมูลหลัง import Excel ทันที
   const stats = useMemo(() => {
@@ -163,6 +181,7 @@ export default function DashboardPage() {
           caption="รายการในระบบ"
           icon={<Files size={28} />}
           iconClassName="bg-blue-50 text-blue-600"
+          onClick={() => handleStatCardClick('ALL')}
         />
         <StatCard
           title="ใช้งานได้"
@@ -170,6 +189,7 @@ export default function DashboardPage() {
           caption="ยังไม่ถึงกำหนด"
           icon={<CheckCircle2 size={28} />}
           iconClassName="bg-green-50 text-green-500"
+          onClick={() => handleStatCardClick('ACTIVE')}
         />
         <StatCard
           title="ใกล้หมดอายุ"
@@ -177,6 +197,7 @@ export default function DashboardPage() {
           caption="ภายใน 30 วัน"
           icon={<AlertCircle size={28} />}
           iconClassName="bg-orange-50 text-orange-500"
+          onClick={() => handleStatCardClick('WARNING')}
         />
         <StatCard
           title="หมดอายุแล้ว"
@@ -184,6 +205,7 @@ export default function DashboardPage() {
           caption="ต้องดำเนินการ"
           icon={<XCircle size={28} />}
           iconClassName="bg-red-50 text-red-500"
+          onClick={() => handleStatCardClick('EXPIRED')}
         />
       </div>
 
@@ -199,7 +221,14 @@ export default function DashboardPage() {
         />
       </div>
 
-      <PolicyTable documents={documents} setDocuments={setDocuments} />
+      <div ref={tableRef}>
+        <PolicyTable 
+          documents={documents} 
+          setDocuments={setDocuments} 
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+        />
+      </div>
 
       {isAlertModalOpen && (
         <AlertsModal

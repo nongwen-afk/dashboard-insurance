@@ -1,6 +1,6 @@
-# Walkthrough: Responsive Design Fixes for Mobile Devices & Desktop Density
+# Walkthrough: Responsive Design Fixes, Desktop Optimization, and Interactive Stat Cards
 
-We have resolved the layout issues shown in the mobile screenshots and optimized the desktop density to make the app clean, cohesive, and professional on all screen sizes.
+We have resolved layout issues on mobile, optimized desktop layout density, and added interactive stat cards with auto-scroll and document filtering.
 
 ## Changes Made
 
@@ -20,7 +20,7 @@ We have resolved the layout issues shown in the mobile screenshots and optimized
   - Adjusted logo and branding text size to fit cleanly on narrow screens.
 
 ### 3. Stat Cards & Charts
-- **Stat Cards ([StatCard.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/dashboard/StatCard.tsx))**: Adjusted card padding (`p-4 sm:p-6`) and reduced icon scales on mobile to prevent cards from looking too bulky.
+- **Stat Cards ([StatCard.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/dashboard/StatCard.tsx))**: Adjusted card padding (`p-4 sm:p-6`) and reduced icon scales on mobile to prevent cards from looking too bulky. Added pointer cursor, shadow transitions, and active scale animations for user interaction.
 - **Expiry Chart ([ExpiryChart.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/dashboard/ExpiryChart.tsx))**: 
   - Added `w-full overflow-hidden` classes to the container card.
   - Added `w-full min-w-0 overflow-hidden` to the direct parent of `ResponsiveContainer` to prevent Recharts from breaking the horizontal page boundaries.
@@ -29,9 +29,20 @@ We have resolved the layout issues shown in the mobile screenshots and optimized
 ### 4. Table Layout Density Optimization ([PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx))
 - **Issue**: Columns felt too far apart on wide screens, creating massive blank gaps between table values.
 - **Solution**:
-  - Redistributed column percentage widths inside the `<colgroup>` to make them tighter and more proportional (Document Type: 10%, Chassis: 14%, License Plate: 12%, Issued Date: 14%, Expiry Date: 14%, Status: 24%, Attachment: 7%, Action: 5%). This allocates more width to the Status badge text (preventing awkward line wraps) and tightens columns that contain short text.
+  - Redistributed column percentage widths inside the `<colgroup>` to make them tighter and more proportional (Document Type: 10%, Chassis: 14%, License Plate: 12%, Issued Date: 14%, Expiry Date: 14%, Status: 24%, Attachment: 7%, Action: 5%).
   - Reduced cell padding from `px-5 py-4` to `px-4 py-3` for a tighter vertical and horizontal density.
   - Reduced table minimum width to `min-w-[1000px]`.
+  - **Pagination Size Reduction**: Changed the table pagination size from `10` to `6` items per page to make the screen layout more compact.
+  - **Constant Table Height Fix**: Set table wrapper min-height to `min-h-[465px]`. This matches the actual height of 6 table rows (including status badges), ensuring the container height remains completely constant. This prevents layout shifting and scroll position jumping when users switch between pages with different row counts (e.g. Page 3 which only has 2 rows).
+
+### 5. Interactive Stat Cards (New Feature)
+- **Interactive Filtering**: Clicking any of the 4 stat cards now filters the document table by status:
+  - **เอกสารทั้งหมด** -> Shows all records.
+  - **ใช้งานได้** -> Shows active records and those with no expiry dates.
+  - **ใกล้หมดอายุ** -> Shows documents expiring within 30 days.
+  - **หมดอายุแล้ว** -> Shows documents that have passed their expiration dates.
+- **Auto Smooth Scroll**: When a card is clicked, the page smoothly scrolls down to the table. An offset of `90px` is applied to ensure the table header is not covered by the fixed header bar.
+- **Active Filter Badge**: Added a green badge next to the table sorting/filtering controls showing the active status filter. Users can clear this filter by clicking the `X` button on the badge.
 
 ---
 
@@ -39,8 +50,8 @@ We have resolved the layout issues shown in the mobile screenshots and optimized
 We compiled the production build using Next.js Turbopack compiler (`npm run build`). The project compiles with zero warnings or errors:
 
 ```bash
-✓ Compiled successfully in 1937ms
+✓ Compiled successfully in 1835ms
   Running TypeScript ...
-  Finished TypeScript in 1178ms ...
-✓ Generating static pages using 5 workers (4/4) in 204ms
+  Finished TypeScript in 1182ms ...
+✓ Generating static pages using 5 workers (4/4) in 202ms
 ```

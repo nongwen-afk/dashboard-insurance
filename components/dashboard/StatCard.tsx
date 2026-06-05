@@ -8,12 +8,20 @@ interface StatCardProps {
   caption: string;
   icon: React.ReactNode;
   iconClassName: string;
+  onClick?: () => void;
 }
 
-export default function StatCard({ title, value, caption, icon, iconClassName }: StatCardProps) {
+export default function StatCard({ title, value, caption, icon, iconClassName, onClick }: StatCardProps) {
   // Card กลางสำหรับตัวเลขสรุป ทำให้ dashboard เปลี่ยนข้อความ/icon ได้โดยไม่ซ้ำ markup เดิม 4 รอบ
   return (
-    <div className="bg-white p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+    <div 
+      onClick={onClick}
+      className={`bg-white p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between transition-all duration-200 ${
+        onClick 
+          ? 'cursor-pointer hover:shadow-md hover:border-gray-200 hover:-translate-y-0.5 active:scale-98 select-none' 
+          : ''
+      }`}
+    >
       <div>
         <p className="text-xs sm:text-sm font-medium text-gray-500 mb-1">{title}</p>
         <h3 className="text-2xl sm:text-3xl font-bold text-gray-800">{value}</h3>
