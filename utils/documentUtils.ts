@@ -1,4 +1,4 @@
-import type { DocStatus, VehicleDocType } from '@/types';
+import type { DocStatus, VehicleDocument, VehicleDocType } from '@/types';
 
 const THAI_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 
@@ -48,3 +48,14 @@ export const getDocumentStatus = (expiryDate?: string): { status: DocStatus; day
 
 // key เดือนแบบสั้นสำหรับ grouping ข้อมูลในกราฟ 6 เดือน
 export const getSixMonthExpiryKey = (date: Date) => `${THAI_MONTHS[date.getMonth()]} ${date.getFullYear().toString().slice(-2)}`;
+
+// ใช้ระบุตัวตนของเอกสารแต่ละแถว ให้ action ต่าง ๆ ไม่พลาดไปกระทบเอกสารประเภทเดียวกันของรถคันเดียวกัน
+export const getDocumentRecordKey = (document: VehicleDocument) => document.id || [
+  document.chassis,
+  document.docType,
+  document.docNumber || '',
+  document.issuedDate || '',
+  document.expiryDate || '',
+].join('|');
+
+export const isSameDocumentRecord = (a: VehicleDocument, b: VehicleDocument) => getDocumentRecordKey(a) === getDocumentRecordKey(b);

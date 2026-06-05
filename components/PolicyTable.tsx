@@ -9,9 +9,8 @@ import {
 import toast from 'react-hot-toast';
 import DocumentDetailModal from '@/components/DocumentDetailModal';
 import type { DocStatus, FilterStatus, SortOption, VehicleDocument } from '@/types';
-import { formatThaiDate, getDocTypeName, getDocumentStatus } from '@/utils/documentUtils';
+import { formatThaiDate, getDocTypeName, getDocumentRecordKey, getDocumentStatus, isSameDocumentRecord } from '@/utils/documentUtils';
 import { parseVehicleDocumentsFromFile } from '@/utils/importVehicleDocuments';
-import { initialDocs } from '@/utils/mockData';
 
 interface PolicyTableProps {
   documents: VehicleDocument[];
@@ -66,6 +65,49 @@ const getStatusBadge = (status: DocStatus, days: number, isAcknowledged?: boolea
   };
 };
 
+const getStatusFilterLabel = (status: FilterStatus) => {
+  const labels: Record<FilterStatus, string> = {
+    ALL: 'ทั้งหมด',
+    ACTIVE: 'ใช้งานได้',
+    WARNING: 'ใกล้หมดอายุ',
+    EXPIRED: 'หมดอายุแล้ว',
+    PROCESSING: 'กำลังดำเนินการ',
+  };
+
+  return labels[status];
+};
+
+const matchesDocumentFilters = (
+  doc: VehicleDocument,
+  query: string,
+  docTypeFilter: string,
+  statusFilter: FilterStatus,
+) => {
+  const docTypeName = getDocTypeName(doc.docType).toLowerCase();
+  const matchSearch =
+    doc.chassis.toLowerCase().includes(query) ||
+    (doc.licensePlate?.toLowerCase() || '').includes(query) ||
+    docTypeName.includes(query);
+
+  const matchDocType = docTypeFilter === 'ALL' || doc.docType === docTypeFilter;
+  const { status } = getDocumentStatus(doc.expiryDate);
+  let matchStatus = true;
+
+  if (statusFilter !== 'ALL') {
+    if (statusFilter === 'PROCESSING') {
+      matchStatus = !!doc.isAcknowledged;
+    } else if (doc.isAcknowledged) {
+      matchStatus = false;
+    } else if (statusFilter === 'ACTIVE') {
+      matchStatus = status === 'ACTIVE' || status === 'NO_EXPIRY';
+    } else {
+      matchStatus = status === statusFilter;
+    }
+  }
+
+  return matchSearch && matchDocType && matchStatus;
+};
+
 export default function PolicyTable({ documents, setDocuments, statusFilter, setStatusFilter }: PolicyTableProps) {
   // searchInput คือค่าที่พิมพ์อยู่ ส่วน activeSearch คือค่าที่ debounce แล้วจึงนำไปกรองจริง
   const [searchInput, setSearchInput] = useState('');     
@@ -95,16 +137,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
           setActiveSearch(searchInput); 
           
           const query = searchInput.toLowerCase();
-          const foundCount = documents.filter((doc) => {
-            const docTypeName = getDocTypeName(doc.docType).toLowerCase();
-            const matchSearch = 
-                doc.chassis.toLowerCase().includes(query) || 
-                (doc.licensePlate?.toLowerCase() || '').includes(query) ||
-                docTypeName.includes(query);
-
-            const matchDocType = docTypeFilter === 'ALL' || doc.docType === docTypeFilter;
-            return matchSearch && matchDocType;
-          }).length;
+          const foundCount = documents.filter((doc) => matchesDocumentFilters(doc, query, docTypeFilter, statusFilter)).length;
 
           if (foundCount > 0) {
             toast.success(`พบข้อมูล ${foundCount} รายการ`, { id: searchToastId });
@@ -120,7 +153,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
     }, 500); 
 
     return () => clearTimeout(timer);
-  }, [searchInput, activeSearch, documents, docTypeFilter]);
+  }, [searchInput, activeSearch, documents, docTypeFilter, statusFilter]);
 
   // ให้ utility แปลงไฟล์เป็น VehicleDocument[] แล้ว component รับผิดชอบแค่ update state และแจ้งผล
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -146,43 +179,12 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
     }
   };
 
-  // เมื่อเปลี่ยน statusFilter ให้รีเซ็ตกลับไปหน้าแรก (ปรับสถานะในขั้นตอน Render เพื่อเลี่ยง Render ซ้ำจาก Effect)
-  const [prevStatusFilter, setPrevStatusFilter] = useState(statusFilter);
-  if (statusFilter !== prevStatusFilter) {
-    setPrevStatusFilter(statusFilter);
-    setCurrentPage(1);
-  }
-
   // รวมการค้นหา กรองประเภท และจัดเรียงไว้ใน memo เพื่อให้ตารางคำนวณใหม่เฉพาะตอนข้อมูลหรือ filter เปลี่ยน
   const filteredDocs = useMemo(() => {
     const query = activeSearch.toLowerCase();
     
     const filtered = documents.filter((doc) => {
-      const docTypeName = getDocTypeName(doc.docType).toLowerCase();
-      const matchSearch = 
-          doc.chassis.toLowerCase().includes(query) || 
-          (doc.licensePlate?.toLowerCase() || '').includes(query) ||
-          docTypeName.includes(query);
-      
-      const matchDocType = docTypeFilter === 'ALL' || doc.docType === docTypeFilter;
-
-      // การกรองตามสถานะเอกสาร
-      const { status } = getDocumentStatus(doc.expiryDate);
-      let matchStatus = true;
-      if (statusFilter !== 'ALL') {
-        if (statusFilter === 'PROCESSING') {
-          matchStatus = !!doc.isAcknowledged;
-        } else if (doc.isAcknowledged) {
-          matchStatus = false;
-        } else if (statusFilter === 'ACTIVE') {
-          // 'ใช้งานได้' ครอบคลุมทั้ง ACTIVE และเอกสารที่ไม่มีวันหมดอายุ NO_EXPIRY
-          matchStatus = status === 'ACTIVE' || status === 'NO_EXPIRY';
-        } else {
-          matchStatus = status === statusFilter;
-        }
-      }
-
-      return matchSearch && matchDocType && matchStatus;
+      return matchesDocumentFilters(doc, query, docTypeFilter, statusFilter);
     });
 
     return filtered.sort((a, b) => {
@@ -358,7 +360,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
 
             {statusFilter !== 'ALL' && (
               <span className="inline-flex items-center gap-1.5 h-11 px-4 bg-[#e8f0eb] text-[#1a4d2e] rounded-xl text-xs font-bold border border-[#1a4d2e]/20 animate-in fade-in slide-in-from-left-2">
-                สถานะ: {statusFilter === 'ACTIVE' ? 'ใช้งานได้' : statusFilter === 'WARNING' ? 'ใกล้หมดอายุ' : statusFilter === 'PROCESSING' ? 'กำลังดำเนินการ' : 'หมดอายุแล้ว'}
+                สถานะ: {getStatusFilterLabel(statusFilter)}
                 <button 
                   onClick={() => setStatusFilter('ALL')} 
                   className="hover:bg-[#d4e5db] rounded-full p-0.5 transition-colors cursor-pointer flex items-center justify-center"
@@ -374,8 +376,8 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
         <div className="flex w-full sm:w-auto lg:ml-4 gap-2">
           <button 
             onClick={() => {
-              setDocuments(initialDocs);
-              toast.success('ซิงค์ข้อมูลล่าสุดของระบบเรียบร้อยแล้ว', { icon: '🔄' });
+              setDocuments(prev => prev.map(doc => ({ ...doc, isAcknowledged: false })));
+              toast.success('ซิงค์สถานะเอกสารทั้งหมดแล้ว', { icon: '🔄' });
             }}
             className="flex h-11 items-center justify-center gap-2 px-4 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium text-gray-600 shadow-sm"
             title="ซิงค์ข้อมูลล่าสุดทั้งหมด"
@@ -422,9 +424,10 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
               currentDocs.map((doc, index) => {
                 const { status, days } = getDocumentStatus(doc.expiryDate);
                 const statusBadge = getStatusBadge(status, days, doc.isAcknowledged);
+                const documentKey = getDocumentRecordKey(doc);
                 return (
                   <tr 
-                    key={index} 
+                    key={documentKey}
                     onClick={() => {
                       setSelectedDocForDetail(doc);
                       toast.success(`เปิดรายละเอียด ${doc.licensePlate || doc.chassis}`, { duration: 1800 });
@@ -514,7 +517,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
                           <button 
                             className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-[#1a4d2e] flex items-center gap-2 transition-colors"
                             onClick={() => { 
-                              setDocuments(prev => prev.map(d => d.chassis === doc.chassis && d.docType === doc.docType ? { ...d, isAcknowledged: false } : d));
+                              setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? { ...d, isAcknowledged: false } : d));
                               toast.success(`ซิงค์ข้อมูล ${doc.licensePlate || doc.chassis} แล้ว`, { duration: 3000 }); 
                               setOpenActionMenuIndex(null); 
                             }}
@@ -537,7 +540,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
                             <button 
                               className="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 flex items-center gap-2 transition-colors"
                               onClick={() => { 
-                                setDocuments(prev => prev.map(d => d.chassis === doc.chassis && d.docType === doc.docType ? { ...d, isAcknowledged: true } : d));
+                                setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? { ...d, isAcknowledged: true } : d));
                                 toast.success(`รับทราบการแจ้งเตือนรถ ${doc.licensePlate || doc.chassis} เรียบร้อย`, { icon: 'ℹ️' });
                                 setOpenActionMenuIndex(null); 
                               }}
@@ -553,7 +556,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
                             onClick={() => { 
                               const isConfirmed = window.confirm(`คุณแน่ใจหรือไม่ที่จะลบข้อมูลของรถทะเบียน/เลขตัวถัง ${doc.licensePlate || doc.chassis}?`);
                               if (isConfirmed) {
-                                setDocuments(prev => prev.filter(d => d.chassis !== doc.chassis || d.docType !== doc.docType));
+                                setDocuments(prev => prev.filter(d => !isSameDocumentRecord(d, doc)));
                                 toast.success(`ลบข้อมูล ${doc.licensePlate || doc.chassis} ออกจากระบบแล้ว`, { icon: '🗑️' });
                               }
                               setOpenActionMenuIndex(null); 
@@ -626,16 +629,16 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
       <DocumentDetailModal
         document={
           selectedDocForDetail
-            ? documents.find(d => d.chassis === selectedDocForDetail.chassis && d.docType === selectedDocForDetail.docType) || selectedDocForDetail
+            ? documents.find(d => isSameDocumentRecord(d, selectedDocForDetail)) || selectedDocForDetail
             : null
         }
         onClose={() => setSelectedDocForDetail(null)}
         onAcknowledge={(doc) => {
-          setDocuments(prev => prev.map(d => d.chassis === doc.chassis && d.docType === doc.docType ? { ...d, isAcknowledged: true } : d));
+          setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? { ...d, isAcknowledged: true } : d));
           toast.success(`รับทราบการแจ้งเตือนรถ ${doc.licensePlate || doc.chassis} เรียบร้อย`, { icon: 'ℹ️' });
         }}
         onSync={(doc) => {
-          setDocuments(prev => prev.map(d => d.chassis === doc.chassis && d.docType === doc.docType ? { ...d, isAcknowledged: false } : d));
+          setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? { ...d, isAcknowledged: false } : d));
           toast.success(`ซิงค์ข้อมูล ${doc.licensePlate || doc.chassis} แล้ว`, { duration: 3000 });
         }}
       />

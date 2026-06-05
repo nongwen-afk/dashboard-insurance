@@ -11,7 +11,7 @@ import StatCard from '@/components/dashboard/StatCard';
 import UrgentAlerts from '@/components/dashboard/UrgentAlerts';
 import PolicyTable from '../components/PolicyTable';
 import type { DocumentAlert, ExpiryMonthGroup, FilterStatus, VehicleDocument } from '@/types';
-import { formatThaiDate, getDaysUntilExpiry, getDocTypeName, getSixMonthExpiryKey } from '@/utils/documentUtils';
+import { formatThaiDate, getDaysUntilExpiry, getDocTypeName, getSixMonthExpiryKey, isSameDocumentRecord } from '@/utils/documentUtils';
 import { initialDocs } from '@/utils/mockData';
 
 export default function DashboardPage() {
@@ -219,16 +219,16 @@ export default function DashboardPage() {
       <DocumentDetailModal
         document={
           selectedDocForDetail 
-            ? documents.find(d => d.chassis === selectedDocForDetail.chassis && d.docType === selectedDocForDetail.docType) || selectedDocForDetail
+            ? documents.find(d => isSameDocumentRecord(d, selectedDocForDetail)) || selectedDocForDetail
             : null
         }
         onClose={() => setSelectedDocForDetail(null)}
         onAcknowledge={(doc) => {
-          setDocuments(prev => prev.map(d => d.chassis === doc.chassis && d.docType === doc.docType ? { ...d, isAcknowledged: true } : d));
+          setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? { ...d, isAcknowledged: true } : d));
           toast.success(`รับทราบการแจ้งเตือนรถ ${doc.licensePlate || doc.chassis} เรียบร้อย`, { icon: 'ℹ️' });
         }}
         onSync={(doc) => {
-          setDocuments(prev => prev.map(d => d.chassis === doc.chassis && d.docType === doc.docType ? { ...d, isAcknowledged: false } : d));
+          setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? { ...d, isAcknowledged: false } : d));
           toast.success(`ซิงค์ข้อมูล ${doc.licensePlate || doc.chassis} แล้ว`, { duration: 3000 });
         }}
       />

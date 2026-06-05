@@ -25,7 +25,16 @@
 - `[x]` Clean up package managers and stick to `pnpm` by deleting `package-lock.json` and updating lockfile.
 - `[x]` Integrate Vercel Speed Insights and Analytics packages.
 - `[x]` Fix ESLint warnings and errors to resolve build blockages.
+- `[x]` Fix review findings after Antigravity changes
+  - `[x]` Prevent global sync from resetting imported/deleted data back to mock data.
+  - `[x]` Add stable document record IDs for mock and imported documents.
+  - `[x]` Use document identity helpers for acknowledge, sync, delete, and detail lookup actions.
+  - `[x]` Make search result toast respect status-card filters.
+  - `[x]` Remove duplicate generated files (`task 2.md`, `walkthrough 2.md`, `utils/mockData 2.ts`).
 - `[ ]` Support custom document additions (Add Document Form)
 - `[ ]` Implement real backend API / localstorage integration for persistence
 - `[ ]` Add more chart visualizations (e.g. status breakdown pie chart)
-
+- `[ ]` **Git & Documentation Rules (กฎระเบียบการพัฒนา)**
+  - `[ ]` Check out and work exclusively in the `dev` branch first (never commit to `main` directly).
+  - `[ ]` Document completed tasks in both `task.md` and `walkthrough.md` after work is done.
+  - `[ ]` Read both `task.md` and `walkthrough.md` before starting any new task.
