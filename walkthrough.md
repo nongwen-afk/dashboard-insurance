@@ -153,7 +153,10 @@ We reviewed and fixed the issues found after the Antigravity update.
   - Replaced flat single-color bars with a bright emerald-to-forest-green gradient (`linearGradient` from `#34d399` to `#1a4d2e`).
   - Increased bar corner roundness (`radius={[6, 6, 0, 0]}`) and stylized the tooltip container with a cleaner shadow, borderless design, and hover overlay cursor styles.
 
-### 7. Verification
+### 7. Search Usability Improvements (Latest Update)
+- **Search Query Extension**: Expanded the search query logic to check against `doc.project`, allowing users to quickly find documents by typing a project or contract name keyword (e.g. "MEA", "AOT", "จุฬาฯ") in the search input without altering the visual design of the table.
+
+### 8. Verification
 - `pnpm run lint` passes.
 - `git diff --check` passes.
 - `pnpm run build` passes.

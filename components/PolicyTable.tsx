@@ -87,6 +87,7 @@ const matchesDocumentFilters = (
   const matchSearch =
     doc.chassis.toLowerCase().includes(query) ||
     (doc.licensePlate?.toLowerCase() || '').includes(query) ||
+    (doc.project?.toLowerCase() || '').includes(query) ||
     docTypeName.includes(query);
 
   const matchDocType = docTypeFilter === 'ALL' || doc.docType === docTypeFilter;
