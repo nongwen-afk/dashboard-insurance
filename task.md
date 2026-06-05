@@ -44,6 +44,8 @@
   - `[x]` Modernize Sidebar.tsx with clean slate typography, indicators, hover states, and premium gradient active sub-link
   - `[x]` Update StatCard.tsx to show status-matched border highlights, ring glows, and soft background colors when active
   - `[x]` Upgrade ExpiryChart.tsx with smooth round-corner bars and bright emerald-to-forest-green gradients
+- `[x]` Improve search functionality in PolicyTable.tsx
+  - `[x]` Enable search query matching on Project names (allows users to search vehicles by project/contract name)
 - `[ ]` Support custom document additions (Add Document Form)
 - `[ ]` Implement real backend API / localstorage integration for persistence
 - `[ ]` Add more chart visualizations (e.g. status breakdown pie chart)
