@@ -25,19 +25,25 @@ export default function ExpiryChart({ chartData, onSelectMonth }: ExpiryChartPro
         {/* กำหนด height คงที่เพื่อให้ Recharts render ได้ถูกต้องทั้งตอน build และบน browser */}
         <ResponsiveContainer width="100%" height={250} minWidth={0}>
           <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id="chartBarGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#34d399" stopOpacity={0.85} />
+                <stop offset="100%" stopColor="#1a4d2e" stopOpacity={1} />
+              </linearGradient>
+            </defs>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
             <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
             <Tooltip
-              cursor={{ fill: '#f3f4f6' }}
-              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+              cursor={{ fill: '#f8fafc', radius: 8 }}
+              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)', padding: '8px 12px' }}
               formatter={(value) => [`${value} รายการ`, 'หมดอายุ']}
             />
-            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+            <Bar dataKey="value" radius={[6, 6, 0, 0]}>
               {chartData.map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}
-                  fill={entry.value > 0 ? '#1a4d2e' : '#e5e7eb'}
+                  fill={entry.value > 0 ? 'url(#chartBarGradient)' : '#e2e8f0'}
                   cursor="pointer"
                   onClick={() => onSelectMonth({ name: entry.name, docs: entry.docs })}
                 />

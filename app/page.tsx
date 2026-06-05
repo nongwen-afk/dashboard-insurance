@@ -185,6 +185,8 @@ export default function DashboardPage() {
           icon={<Files size={28} />}
           iconClassName="bg-slate-50 text-slate-600 border border-slate-100"
           onClick={() => handleStatCardClick('ALL')}
+          isActive={statusFilter === 'ALL'}
+          activeType="ALL"
         />
         <StatCard
           title="ใช้งานได้"
@@ -193,6 +195,8 @@ export default function DashboardPage() {
           icon={<CheckCircle2 size={28} />}
           iconClassName="bg-green-50 text-green-500"
           onClick={() => handleStatCardClick('ACTIVE')}
+          isActive={statusFilter === 'ACTIVE'}
+          activeType="ACTIVE"
         />
         <StatCard
           title="ใกล้หมดอายุ"
@@ -201,6 +205,8 @@ export default function DashboardPage() {
           icon={<AlertCircle size={28} />}
           iconClassName="bg-orange-50 text-orange-500"
           onClick={() => handleStatCardClick('WARNING')}
+          isActive={statusFilter === 'WARNING'}
+          activeType="WARNING"
         />
         <StatCard
           title="หมดอายุแล้ว"
@@ -209,6 +215,8 @@ export default function DashboardPage() {
           icon={<XCircle size={28} />}
           iconClassName="bg-red-50 text-red-500"
           onClick={() => handleStatCardClick('EXPIRED')}
+          isActive={statusFilter === 'EXPIRED'}
+          activeType="EXPIRED"
         />
         <StatCard
           title="กำลังดำเนินการ"
@@ -217,6 +225,8 @@ export default function DashboardPage() {
           icon={<Clock size={28} />}
           iconClassName="bg-blue-50 text-blue-600"
           onClick={() => handleStatCardClick('PROCESSING')}
+          isActive={statusFilter === 'PROCESSING'}
+          activeType="PROCESSING"
         />
       </div>
 
