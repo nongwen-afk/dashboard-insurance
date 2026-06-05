@@ -20,7 +20,16 @@ interface PolicyTableProps {
 }
 
 // แปลงสถานะจาก helper ให้เป็นข้อความและสีสำหรับคอลัมน์สถานะในตาราง
-const getStatusBadge = (status: DocStatus, days: number) => {
+const getStatusBadge = (status: DocStatus, days: number, isAcknowledged?: boolean) => {
+  if (isAcknowledged) {
+    return {
+      label: 'กำลังดำเนินการ',
+      detail: 'รับทราบเรื่องแล้ว',
+      className: 'bg-blue-50 text-blue-700 border-blue-100',
+      detailClassName: 'text-blue-600',
+    };
+  }
+
   if (status === 'EXPIRED') {
     return {
       label: 'หมดอายุแล้ว',
@@ -396,7 +405,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
             {currentDocs.length > 0 ? (
               currentDocs.map((doc, index) => {
                 const { status, days } = getDocumentStatus(doc.expiryDate);
-                const statusBadge = getStatusBadge(status, days);
+                const statusBadge = getStatusBadge(status, days, doc.isAcknowledged);
                 return (
                   <tr key={index} className="hover:bg-gray-50/50 transition-colors group relative">
                     <td className="px-4 py-3 font-medium text-gray-700">{getDocTypeName(doc.docType)}</td>
@@ -414,7 +423,23 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
                     </td>
 
                     <td className="px-4 py-3">
-                      <div className="inline-flex flex-col items-start gap-1">
+                      <div 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (status === 'EXPIRED') {
+                            setStatusFilter('EXPIRED');
+                            toast.success('กรองเฉพาะเอกสารที่หมดอายุแล้ว', { id: 'status-filter-toast' });
+                          } else if (status === 'WARNING') {
+                            setStatusFilter('WARNING');
+                            toast.success('กรองเฉพาะเอกสารที่ใกล้หมดอายุ', { id: 'status-filter-toast' });
+                          } else if (status === 'ACTIVE' || status === 'NO_EXPIRY') {
+                            setStatusFilter('ACTIVE');
+                            toast.success('กรองเฉพาะเอกสารที่ใช้งานได้', { id: 'status-filter-toast' });
+                          }
+                        }}
+                        className="inline-flex flex-col items-start gap-1 cursor-pointer hover:scale-105 transition-all duration-200"
+                        title="คลิกเพื่อกรองข้อมูลตามสถานะนี้"
+                      >
                         <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold ${statusBadge.className}`}>
                           {statusBadge.label}
                         </span>
@@ -454,6 +479,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
                           <button 
                             className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-[#1a4d2e] flex items-center gap-2 transition-colors"
                             onClick={() => { 
+                              setDocuments(prev => prev.map(d => d.chassis === doc.chassis && d.docType === doc.docType ? { ...d, isAcknowledged: false } : d));
                               toast.success(`ซิงค์ข้อมูล ${doc.licensePlate || doc.chassis} แล้ว`, { duration: 3000 }); 
                               setOpenActionMenuIndex(null); 
                             }}
@@ -472,11 +498,12 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
                             <Eye size={14} /> ดูรายละเอียด
                           </button>
 
-                          {status === 'EXPIRED' && (
+                          {(status === 'EXPIRED' || status === 'WARNING') && !doc.isAcknowledged && (
                             <button 
                               className="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 flex items-center gap-2 transition-colors"
                               onClick={() => { 
-                                toast.success(`รับทราบแจ้งเตือน ${doc.licensePlate || doc.chassis}`); 
+                                setDocuments(prev => prev.map(d => d.chassis === doc.chassis && d.docType === doc.docType ? { ...d, isAcknowledged: true } : d));
+                                toast.success(`รับทราบการแจ้งเตือนรถ ${doc.licensePlate || doc.chassis} เรียบร้อย`, { icon: 'ℹ️' });
                                 setOpenActionMenuIndex(null); 
                               }}
                             >

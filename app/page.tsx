@@ -126,6 +126,7 @@ export default function DashboardPage() {
   const alertsList = useMemo<DocumentAlert[]>(() => {
     return documents
       .filter(doc => {
+        if (doc.isAcknowledged) return false; // ซ่อนจากการแจ้งเตือนหากกดรับทราบแล้ว
         if (!doc.expiryDate) return false;
         const diffDays = getDaysUntilExpiry(doc.expiryDate);
         return diffDays <= 30; 
