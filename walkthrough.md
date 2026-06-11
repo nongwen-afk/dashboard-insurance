@@ -172,3 +172,10 @@ We reviewed and fixed the issues found after the Antigravity update.
 - `pnpm run lint` passes.
 - `git diff --check` passes.
 - `pnpm run build` passes.
+
+### 11. Post-Push Neon Confirmation
+- **GitHub Push**: The Neon + Drizzle scaffold was committed and pushed to `origin/dev` as `c26a4c8 Add Neon Drizzle database scaffold`.
+- **Secret Rotation**: The exposed Neon connection password was rotated through the Vercel/Neon integration flow. The updated Vercel environment variables were pulled back into `.env.local` with `vercel env pull .env.local --yes`.
+- **Database State**: The Drizzle schema was applied to Neon and the current mock document set was seeded successfully, leaving 37 rows in `vehicle_documents`.
+- **Health Check**: `/api/db/health` returned `{"ok":true,...}` after rotation, confirming the app can connect with the new credential.
+- **Next Data Step**: The next implementation step is to replace the in-memory mock document flow with API/database reads from Neon, starting with a read endpoint for `vehicle_documents`.

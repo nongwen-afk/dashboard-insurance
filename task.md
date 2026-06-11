@@ -56,6 +56,10 @@
   - `[x]` Add Drizzle schema for vehicle documents and a server-side Neon client.
   - `[x]` Add database health API and mock-data seed script.
   - `[x]` Document Vercel Marketplace Neon setup and local env workflow.
+  - `[x]` Push scaffold to `origin/dev` in commit `c26a4c8`.
+  - `[x]` Rotate the exposed Neon/Vercel integration secrets and pull the updated `.env.local`.
+  - `[x]` Confirm Neon schema and seed data are usable with 37 seeded `vehicle_documents` rows.
+  - `[x]` Verify `/api/db/health` returns `ok: true` after secret rotation.
 - `[ ]` Support custom document additions (Add Document Form)
 - `[ ]` Implement real backend API / localstorage integration for persistence
 - `[ ]` Add more chart visualizations (e.g. status breakdown pie chart)
