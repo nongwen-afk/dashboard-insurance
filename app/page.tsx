@@ -11,7 +11,7 @@ import StatCard from '@/components/dashboard/StatCard';
 import UrgentAlerts from '@/components/dashboard/UrgentAlerts';
 import PolicyTable from '../components/PolicyTable';
 import type { DocumentAlert, ExpiryMonthGroup, FilterStatus, VehicleDocument } from '@/types';
-import { formatThaiDate, getDaysUntilExpiry, getDocTypeName, getSixMonthExpiryKey, isSameDocumentRecord } from '@/utils/documentUtils';
+import { formatThaiDate, getDaysUntilExpiry, getDocTypeName, getRenewedDocumentDates, getSixMonthExpiryKey, isSameDocumentRecord, parseDocumentDate } from '@/utils/documentUtils';
 import { initialDocs } from '@/utils/mockData';
 
 export default function DashboardPage() {
@@ -69,7 +69,8 @@ export default function DashboardPage() {
 
     documents.forEach(doc => {
       if (!doc.expiryDate) return;
-      const expDate = new Date(doc.expiryDate);
+      const expDate = parseDocumentDate(doc.expiryDate);
+      if (!expDate) return;
       const key = getSixMonthExpiryKey(expDate);
       if (dataMap[key] !== undefined) {
         dataMap[key].push(doc);
@@ -79,7 +80,7 @@ export default function DashboardPage() {
     return Object.keys(dataMap).map(key => ({
       name: key,
       value: dataMap[key].length,
-      docs: dataMap[key].sort((a, b) => new Date(a.expiryDate || 0).getTime() - new Date(b.expiryDate || 0).getTime())
+      docs: dataMap[key].sort((a, b) => (parseDocumentDate(a.expiryDate)?.getTime() || 0) - (parseDocumentDate(b.expiryDate)?.getTime() || 0))
     }));
   }, [documents]);
 
@@ -133,17 +134,15 @@ export default function DashboardPage() {
       if (isRenewed) {
         setDocuments(prev => prev.map(d => {
           if (isSameDocumentRecord(d, doc)) {
-            const currentExpiry = d.expiryDate ? new Date(d.expiryDate) : new Date();
-            const newExpiry = new Date(currentExpiry.getFullYear() + 1, currentExpiry.getMonth(), currentExpiry.getDate());
-            const newIssued = d.expiryDate ? d.expiryDate : new Date().toISOString().split('T')[0];
+            const renewedDates = getRenewedDocumentDates(d.expiryDate);
 
             return {
               ...d,
               isAcknowledged: false,
               acknowledgedAt: undefined,
               acknowledgedBy: undefined,
-              issuedDate: newIssued,
-              expiryDate: newExpiry.toISOString().split('T')[0]
+              issuedDate: renewedDates.issuedDate,
+              expiryDate: renewedDates.expiryDate
             };
           }
           return d;

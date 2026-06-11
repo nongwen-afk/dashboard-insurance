@@ -9,7 +9,7 @@ import {
 import toast from 'react-hot-toast';
 import DocumentDetailModal from '@/components/DocumentDetailModal';
 import type { DocStatus, FilterStatus, SortOption, VehicleDocument } from '@/types';
-import { formatThaiDate, getDocTypeName, getDocumentRecordKey, getDocumentStatus, isSameDocumentRecord } from '@/utils/documentUtils';
+import { formatThaiDate, getDocTypeName, getDocumentRecordKey, getDocumentStatus, getRenewedDocumentDates, isSameDocumentRecord, parseDocumentDate } from '@/utils/documentUtils';
 import { parseVehicleDocumentsFromFile } from '@/utils/importVehicleDocuments';
 
 interface PolicyTableProps {
@@ -124,7 +124,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('RELEVANCE');
 
-  const [openActionMenuIndex, setOpenActionMenuIndex] = useState<number | null>(null);
+  const [openActionMenuKey, setOpenActionMenuKey] = useState<string | null>(null);
 
   const [selectedDocForDetail, setSelectedDocForDetail] = useState<VehicleDocument | null>(null);
 
@@ -138,17 +138,15 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
       if (isRenewed) {
         setDocuments(prev => prev.map(d => {
           if (isSameDocumentRecord(d, doc)) {
-            const currentExpiry = d.expiryDate ? new Date(d.expiryDate) : new Date();
-            const newExpiry = new Date(currentExpiry.getFullYear() + 1, currentExpiry.getMonth(), currentExpiry.getDate());
-            const newIssued = d.expiryDate ? d.expiryDate : new Date().toISOString().split('T')[0];
+            const renewedDates = getRenewedDocumentDates(d.expiryDate);
 
             return {
               ...d,
               isAcknowledged: false,
               acknowledgedAt: undefined,
               acknowledgedBy: undefined,
-              issuedDate: newIssued,
-              expiryDate: newExpiry.toISOString().split('T')[0]
+              issuedDate: renewedDates.issuedDate,
+              expiryDate: renewedDates.expiryDate
             };
           }
           return d;
@@ -193,17 +191,15 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
           const isRenewed = Math.random() > 0.5;
           if (isRenewed) {
             renewedCount++;
-            const currentExpiry = d.expiryDate ? new Date(d.expiryDate) : new Date();
-            const newExpiry = new Date(currentExpiry.getFullYear() + 1, currentExpiry.getMonth(), currentExpiry.getDate());
-            const newIssued = d.expiryDate ? d.expiryDate : new Date().toISOString().split('T')[0];
+            const renewedDates = getRenewedDocumentDates(d.expiryDate);
 
             return {
               ...d,
               isAcknowledged: false,
               acknowledgedAt: undefined,
               acknowledgedBy: undefined,
-              issuedDate: newIssued,
-              expiryDate: newExpiry.toISOString().split('T')[0]
+              issuedDate: renewedDates.issuedDate,
+              expiryDate: renewedDates.expiryDate
             };
           } else {
             pendingCount++;
@@ -310,14 +306,20 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
         return 0;
       }
       else if (sortBy === 'DATE_ASC') {
-        if (!a.expiryDate) return 1;
-        if (!b.expiryDate) return -1;
-        return new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime();
+        const dateA = parseDocumentDate(a.expiryDate);
+        const dateB = parseDocumentDate(b.expiryDate);
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        return dateA.getTime() - dateB.getTime();
       }
       else if (sortBy === 'DATE_DESC') {
-        if (!a.expiryDate) return 1;
-        if (!b.expiryDate) return -1;
-        return new Date(b.expiryDate).getTime() - new Date(a.expiryDate).getTime();
+        const dateA = parseDocumentDate(a.expiryDate);
+        const dateB = parseDocumentDate(b.expiryDate);
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        return dateB.getTime() - dateA.getTime();
       }
       return 0;
     });
@@ -335,15 +337,15 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
   // ปิด action menu เมื่อคลิกนอกเมนู เพื่อไม่ให้ dropdown ค้างหลังเลือกงานอื่น
   useEffect(() => {
     const handleClickOutside = () => {
-      if (openActionMenuIndex !== null) {
-        setOpenActionMenuIndex(null);
+      if (openActionMenuKey !== null) {
+        setOpenActionMenuKey(null);
       }
     };
     document.addEventListener("click", handleClickOutside);
     return () => {
       document.removeEventListener("click", handleClickOutside);
     };
-  }, [openActionMenuIndex]);
+  }, [openActionMenuKey]);
 
   return (
     <>
@@ -603,14 +605,14 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          setOpenActionMenuIndex(openActionMenuIndex === index ? null : index);
+                          setOpenActionMenuKey(openActionMenuKey === documentKey ? null : documentKey);
                         }}
-                        className={`p-2 rounded-lg transition-colors ${openActionMenuIndex === index ? 'text-[#1a4d2e] bg-gray-100' : 'text-gray-400 hover:text-[#1a4d2e] hover:bg-gray-100'}`}
+                        className={`p-2 rounded-lg transition-colors ${openActionMenuKey === documentKey ? 'text-[#1a4d2e] bg-gray-100' : 'text-gray-400 hover:text-[#1a4d2e] hover:bg-gray-100'}`}
                       >
                         <MoreHorizontal size={18} />
                       </button>
 
-                      {openActionMenuIndex === index && (
+                      {openActionMenuKey === documentKey && (
                         <div
                           className={`absolute right-8 w-48 bg-white rounded-xl shadow-xl border border-gray-100 z-50 py-2 animate-in fade-in zoom-in-95 ${
                             index >= 4 ? 'bottom-full mb-1 origin-bottom-right' : 'top-10 origin-top-right'
@@ -620,9 +622,9 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
                         >
                           <button
                             className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-[#1a4d2e] flex items-center gap-2 transition-colors"
-                           onClick={() => {
+                            onClick={() => {
                               handleSingleSync(doc);
-                              setOpenActionMenuIndex(null);
+                              setOpenActionMenuKey(null);
                             }}
                           >
                             <RefreshCw size={14} /> ซิงค์ข้อมูลล่าสุด
@@ -633,7 +635,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
                             onClick={() => {
                               setSelectedDocForDetail(doc);
                               toast.success(`เปิดรายละเอียด ${doc.licensePlate || doc.chassis}`, { duration: 1800 });
-                              setOpenActionMenuIndex(null);
+                              setOpenActionMenuKey(null);
                             }}
                           >
                             <Eye size={14} /> ดูรายละเอียด
@@ -650,7 +652,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
                                   acknowledgedBy: 'testuser'
                                 } : d));
                                 toast.success(`รับทราบการแจ้งเตือนรถ ${doc.licensePlate || doc.chassis} เรียบร้อย`, { icon: 'ℹ️' });
-                                setOpenActionMenuIndex(null);
+                                setOpenActionMenuKey(null);
                               }}
                             >
                               <CheckCircle size={14} /> รับทราบการแจ้งเตือน
@@ -667,7 +669,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
                                 setDocuments(prev => prev.filter(d => !isSameDocumentRecord(d, doc)));
                                 toast.success(`ลบข้อมูล ${doc.licensePlate || doc.chassis} ออกจากระบบแล้ว`, { icon: '🗑️' });
                               }
-                              setOpenActionMenuIndex(null);
+                              setOpenActionMenuKey(null);
                             }}
                           >
                             <Trash2 size={14} /> ลบข้อมูลออกจากระบบ

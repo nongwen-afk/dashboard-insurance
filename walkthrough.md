@@ -156,7 +156,13 @@ We reviewed and fixed the issues found after the Antigravity update.
 ### 7. Search Usability Improvements (Latest Update)
 - **Search Query Extension**: Expanded the search query logic to check against `doc.project`, allowing users to quickly find documents by typing a project or contract name keyword (e.g. "MEA", "AOT", "จุฬาฯ") in the search input without altering the visual design of the table.
 
-### 8. Verification
+### 8. Date Handling and Stable UI Identity Fixes (Latest Update)
+- **Timezone-Safe Document Dates ([utils/documentUtils.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/documentUtils.ts))**: Added local date-only parsing helpers so `YYYY-MM-DD` expiry values are not parsed as UTC dates. This prevents yesterday's expiry date from being treated as still within the warning window in the Asia/Bangkok timezone.
+- **Shared Renewal Date Helper ([utils/documentUtils.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/documentUtils.ts))**: Added a reusable renewal helper and wired both row-level sync and global sync to it in [app/page.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/page.tsx) and [components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx).
+- **Import Date Validation ([utils/importVehicleDocuments.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/importVehicleDocuments.ts))**: Tightened Excel date normalization so impossible dates such as `31/02/2026` remain visible as raw input instead of silently rolling over into another month or year.
+- **Stable UI Record Identity ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx) & [ExpiryMonthModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/dashboard/ExpiryMonthModal.tsx))**: Updated table action-menu state and monthly expiry modal row keys to use `getDocumentRecordKey`, preventing duplicate vehicle/doc-type rows from sharing unstable UI identity.
+
+### 9. Verification
 - `pnpm run lint` passes.
 - `git diff --check` passes.
 - `pnpm run build` passes.

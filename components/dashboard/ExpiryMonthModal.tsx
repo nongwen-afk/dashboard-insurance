@@ -3,7 +3,7 @@
 import React from 'react';
 import { CalendarDays, X } from 'lucide-react';
 import type { ExpiryMonthGroup, VehicleDocument } from '@/types';
-import { formatThaiDate, getDocTypeName } from '@/utils/documentUtils';
+import { formatThaiDate, getDocTypeName, getDocumentRecordKey } from '@/utils/documentUtils';
 
 interface ExpiryMonthModalProps {
   month: ExpiryMonthGroup;
@@ -36,7 +36,7 @@ export default function ExpiryMonthModal({ month, onClose, onSelectDocument }: E
             month.docs.map((document) => (
               <button
                 type="button"
-                key={`${document.chassis}-${document.docType}-${document.expiryDate}`}
+                key={getDocumentRecordKey(document)}
                 onClick={() => onSelectDocument(document)}
                 className="w-full text-left bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-start justify-between gap-3 hover:border-[#1a4d2e]/30 hover:bg-[#e8f0eb]/30 transition-colors focus:outline-none focus:ring-2 focus:ring-[#1a4d2e]/30"
               >
