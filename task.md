@@ -51,6 +51,11 @@
   - `[x]` Validate imported Excel dates and keep invalid raw values instead of letting JavaScript roll them into another month/year.
   - `[x]` Use stable document record keys for monthly expiry modal rows and table action-menu state.
   - `[x]` Reuse the same renewal-date helper for row-level and global sync actions.
+- `[x]` Scaffold Neon + Drizzle database integration
+  - `[x]` Add Neon/Drizzle dependencies and database scripts.
+  - `[x]` Add Drizzle schema for vehicle documents and a server-side Neon client.
+  - `[x]` Add database health API and mock-data seed script.
+  - `[x]` Document Vercel Marketplace Neon setup and local env workflow.
 - `[ ]` Support custom document additions (Add Document Form)
 - `[ ]` Implement real backend API / localstorage integration for persistence
 - `[ ]` Add more chart visualizations (e.g. status breakdown pie chart)

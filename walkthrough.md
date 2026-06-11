@@ -162,7 +162,13 @@ We reviewed and fixed the issues found after the Antigravity update.
 - **Import Date Validation ([utils/importVehicleDocuments.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/importVehicleDocuments.ts))**: Tightened Excel date normalization so impossible dates such as `31/02/2026` remain visible as raw input instead of silently rolling over into another month or year.
 - **Stable UI Record Identity ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx) & [ExpiryMonthModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/dashboard/ExpiryMonthModal.tsx))**: Updated table action-menu state and monthly expiry modal row keys to use `getDocumentRecordKey`, preventing duplicate vehicle/doc-type rows from sharing unstable UI identity.
 
-### 9. Verification
+### 9. Neon + Drizzle Database Scaffold (Latest Update)
+- **Dependencies and Scripts ([package.json](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/package.json))**: Added `@neondatabase/serverless`, `drizzle-orm`, `drizzle-kit`, `dotenv`, and `tsx`, plus `pnpm db:generate`, `pnpm db:push`, `pnpm db:migrate`, `pnpm db:seed`, and `pnpm db:studio`.
+- **Schema and Client ([db/schema.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/db/schema.ts) & [db/index.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/db/index.ts))**: Added a Postgres `vehicle_documents` table schema mapped to the existing document model and a Neon HTTP client for server-side database access.
+- **Connection Check and Seed Flow ([app/api/db/health/route.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/api/db/health/route.ts) & [scripts/seed-db.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/scripts/seed-db.ts))**: Added an API endpoint that verifies the Neon connection with `select now()` and a script that seeds the current mock document set after the schema exists.
+- **Setup Notes ([README.md](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/README.md))**: Documented the Vercel Marketplace flow: `vercel link`, `vercel integration add neon`, `vercel env pull .env.local --yes`, `pnpm db:push`, `pnpm db:seed`, then open `/api/db/health`.
+
+### 10. Verification
 - `pnpm run lint` passes.
 - `git diff --check` passes.
 - `pnpm run build` passes.
