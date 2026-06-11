@@ -35,7 +35,14 @@ const fallbackColumns: ImportColumns = {
 const toIsoDate = (year: number, month: number, day: number) => {
   const normalizedYear = year > 2400 ? year - 543 : year;
   const date = new Date(normalizedYear, month - 1, day);
-  if (Number.isNaN(date.getTime())) return undefined;
+  if (
+    Number.isNaN(date.getTime()) ||
+    date.getFullYear() !== normalizedYear ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return undefined;
+  }
 
   return [
     date.getFullYear(),
@@ -67,7 +74,7 @@ const normalizeDateValue = (value?: SpreadsheetCell) => {
 
   if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(raw)) {
     const [year, month, day] = raw.split('-').map(Number);
-    return toIsoDate(year, month, day);
+    return toIsoDate(year, month, day) || raw;
   }
 
   if (/^\d+(\.\d+)?$/.test(raw)) {
@@ -82,7 +89,7 @@ const normalizeDateValue = (value?: SpreadsheetCell) => {
     const first = Number(slashMatch[1]);
     const second = Number(slashMatch[2]);
     const year = Number(slashMatch[3].length === 2 ? `20${slashMatch[3]}` : slashMatch[3]);
-    return first > 12 ? toIsoDate(year, second, first) : toIsoDate(year, first, second);
+    return (first > 12 ? toIsoDate(year, second, first) : toIsoDate(year, first, second)) || raw;
   }
 
   const parsed = new Date(raw);

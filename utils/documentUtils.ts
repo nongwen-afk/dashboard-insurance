@@ -1,6 +1,51 @@
 import type { DocStatus, VehicleDocument, VehicleDocType } from '@/types';
 
 const THAI_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+const DATE_ONLY_PATTERN = /^(\d{4})-(\d{1,2})-(\d{1,2})$/;
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
+export const formatDateOnly = (date: Date) => [
+  date.getFullYear(),
+  String(date.getMonth() + 1).padStart(2, '0'),
+  String(date.getDate()).padStart(2, '0'),
+].join('-');
+
+export const parseDocumentDate = (dateString?: string) => {
+  if (!dateString) return null;
+
+  const dateOnlyMatch = dateString.match(DATE_ONLY_PATTERN);
+  if (dateOnlyMatch) {
+    const [, rawYear, rawMonth, rawDay] = dateOnlyMatch;
+    const year = Number(rawYear);
+    const month = Number(rawMonth);
+    const day = Number(rawDay);
+    const date = new Date(year, month - 1, day);
+
+    if (
+      Number.isNaN(date.getTime()) ||
+      date.getFullYear() !== year ||
+      date.getMonth() !== month - 1 ||
+      date.getDate() !== day
+    ) {
+      return null;
+    }
+
+    return date;
+  }
+
+  const date = new Date(dateString);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+export const getRenewedDocumentDates = (expiryDate?: string) => {
+  const currentExpiry = parseDocumentDate(expiryDate) || new Date();
+  const newExpiry = new Date(currentExpiry.getFullYear() + 1, currentExpiry.getMonth(), currentExpiry.getDate());
+
+  return {
+    issuedDate: expiryDate || formatDateOnly(new Date()),
+    expiryDate: formatDateOnly(newExpiry),
+  };
+};
 
 // แปลง enum ประเภทเอกสารให้เป็นข้อความภาษาไทยที่ใช้แสดงบน UI
 export const getDocTypeName = (type: VehicleDocType) => {
@@ -19,8 +64,8 @@ export const getDocTypeName = (type: VehicleDocType) => {
 export const formatThaiDate = (dateString?: string) => {
   if (!dateString) return '-';
 
-  const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) return dateString;
+  const date = parseDocumentDate(dateString);
+  if (!date) return dateString;
 
   return `${date.getDate()} ${THAI_MONTHS[date.getMonth()]} ${date.getFullYear() + 543}`;
 };
@@ -29,10 +74,14 @@ export const formatThaiDate = (dateString?: string) => {
 export const getDaysUntilExpiry = (expiryDate?: string) => {
   if (!expiryDate) return 0;
 
+  const expiry = parseDocumentDate(expiryDate);
+  if (!expiry) return Number.NaN;
+  expiry.setHours(0, 0, 0, 0);
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  return Math.ceil((new Date(expiryDate).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.round((expiry.getTime() - today.getTime()) / MS_PER_DAY);
 };
 
 // รวมกฎสถานะเอกสารไว้จุดเดียว เพื่อให้ table, dashboard และ modal ใช้เกณฑ์เดียวกัน
@@ -40,6 +89,7 @@ export const getDocumentStatus = (expiryDate?: string): { status: DocStatus; day
   if (!expiryDate) return { status: 'NO_EXPIRY', days: 0 };
 
   const days = getDaysUntilExpiry(expiryDate);
+  if (Number.isNaN(days)) return { status: 'ACTIVE', days: 0 };
 
   if (days < 0) return { status: 'EXPIRED', days };
   if (days <= 30) return { status: 'WARNING', days };
@@ -53,8 +103,8 @@ export const getSixMonthExpiryKey = (date: Date) => `${THAI_MONTHS[date.getMonth
 export const formatThaiDateTime = (dateString?: string) => {
   if (!dateString) return '-';
 
-  const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) return dateString;
+  const date = parseDocumentDate(dateString);
+  if (!date) return dateString;
 
   const datePart = `${date.getDate()} ${THAI_MONTHS[date.getMonth()]} ${date.getFullYear() + 543}`;
   const hours = String(date.getHours()).padStart(2, '0');

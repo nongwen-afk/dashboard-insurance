@@ -46,6 +46,11 @@
   - `[x]` Upgrade ExpiryChart.tsx with smooth round-corner bars and bright emerald-to-forest-green gradients
 - `[x]` Improve search functionality in PolicyTable.tsx
   - `[x]` Enable search query matching on Project names (allows users to search vehicles by project/contract name)
+- `[x]` Fix review findings for date handling and stable document identity
+  - `[x]` Parse ISO date-only values as local document dates so expiry status does not shift from timezone conversion.
+  - `[x]` Validate imported Excel dates and keep invalid raw values instead of letting JavaScript roll them into another month/year.
+  - `[x]` Use stable document record keys for monthly expiry modal rows and table action-menu state.
+  - `[x]` Reuse the same renewal-date helper for row-level and global sync actions.
 - `[ ]` Support custom document additions (Add Document Form)
 - `[ ]` Implement real backend API / localstorage integration for persistence
 - `[ ]` Add more chart visualizations (e.g. status breakdown pie chart)
