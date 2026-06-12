@@ -4,6 +4,8 @@ import { vehicleDocuments, type NewVehicleDocumentRow, type VehicleDocumentRow }
 import type { VehicleDocType, VehicleDocument } from '@/types';
 
 type VehicleDocumentUpdate = {
+  issuedDate?: string | null;
+  expiryDate?: string | null;
   isAcknowledged?: boolean;
   acknowledgedAt?: Date | null;
   acknowledgedBy?: string | null;

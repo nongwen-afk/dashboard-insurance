@@ -223,31 +223,54 @@ export default function DashboardPage() {
     const syncToastId = `sync-doc-${doc.id || doc.chassis}-${doc.docType}`;
     toast.loading(`กำลังตรวจสอบข้อมูลการต่ออายุของ ${doc.licensePlate || doc.chassis || 'ไม่ระบุ'} กับระบบภายนอก...`, { id: syncToastId });
 
-    setTimeout(() => {
+    setTimeout(async () => {
       const isRenewed = Math.random() > 0.5;
 
       if (isRenewed) {
+        const renewedDates = getRenewedDocumentDates(doc.expiryDate);
+        const optimisticDocument: VehicleDocument = {
+          ...doc,
+          isAcknowledged: false,
+          acknowledgedAt: undefined,
+          acknowledgedBy: undefined,
+          issuedDate: renewedDates.issuedDate,
+          expiryDate: renewedDates.expiryDate
+        };
+
         setDocuments(prev => prev.map(d => {
           if (isSameDocumentRecord(d, doc)) {
-            const renewedDates = getRenewedDocumentDates(d.expiryDate);
-
-            return {
-              ...d,
-              isAcknowledged: false,
-              acknowledgedAt: undefined,
-              acknowledgedBy: undefined,
-              issuedDate: renewedDates.issuedDate,
-              expiryDate: renewedDates.expiryDate
-            };
+            return optimisticDocument;
           }
           return d;
         }));
 
-        toast.success(`ซิงค์สำเร็จ! พบการต่ออายุใหม่ของรถ ${doc.licensePlate || doc.chassis || 'ไม่ระบุ'} เรียบร้อย`, {
-          id: syncToastId,
-          icon: '✅',
-          duration: 4000
-        });
+        try {
+          if (!doc.id) {
+            throw new Error('Missing vehicle document id.');
+          }
+
+          const savedDocument = await updateVehicleDocumentRecord(doc.id, {
+            isAcknowledged: false,
+            acknowledgedAt: null,
+            acknowledgedBy: null,
+            issuedDate: renewedDates.issuedDate,
+            expiryDate: renewedDates.expiryDate,
+          });
+
+          setDocuments(prev => prev.map(d => isSameDocumentRecord(d, optimisticDocument) ? savedDocument : d));
+          toast.success(`ซิงค์สำเร็จ! พบการต่ออายุใหม่ของรถ ${doc.licensePlate || doc.chassis || 'ไม่ระบุ'} เรียบร้อย`, {
+            id: syncToastId,
+            icon: '✅',
+            duration: 4000
+          });
+        } catch {
+          setDocuments(prev => prev.map(d => isSameDocumentRecord(d, optimisticDocument) ? doc : d));
+          toast.error(`พบการต่ออายุ แต่บันทึกลง Neon ไม่สำเร็จ`, {
+            id: syncToastId,
+            icon: '⚠️',
+            duration: 5000
+          });
+        }
       } else {
         toast.error(`ซิงค์สำเร็จ: ยังไม่พบการชำระเงิน/ต่ออายุใหม่ในระบบของหน่วยงานภายนอก`, {
           id: syncToastId,

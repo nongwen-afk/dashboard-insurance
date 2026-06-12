@@ -8,6 +8,8 @@ type RouteContext = {
 };
 
 type VehicleDocumentPatchPayload = {
+  issuedDate?: unknown;
+  expiryDate?: unknown;
   isAcknowledged?: unknown;
   acknowledgedAt?: unknown;
   acknowledgedBy?: unknown;
@@ -25,6 +27,19 @@ const parseOptionalDate = (value: unknown) => {
   return date;
 };
 
+const parseOptionalDateOnly = (value: unknown, fieldName: string) => {
+  if (value === null) return null;
+  if (typeof value !== 'string') return undefined;
+  if (value === '') return null;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`Invalid ${fieldName} value.`);
+  }
+
+  return value;
+};
+
 export async function PATCH(request: Request, { params }: RouteContext) {
   try {
     const { id } = await params;
@@ -33,6 +48,14 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
     if (typeof payload.isAcknowledged === 'boolean') {
       updates.isAcknowledged = payload.isAcknowledged;
+    }
+
+    if ('issuedDate' in payload) {
+      updates.issuedDate = parseOptionalDateOnly(payload.issuedDate, 'issuedDate');
+    }
+
+    if ('expiryDate' in payload) {
+      updates.expiryDate = parseOptionalDateOnly(payload.expiryDate, 'expiryDate');
     }
 
     if ('acknowledgedAt' in payload) {

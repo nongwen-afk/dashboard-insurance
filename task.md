@@ -68,7 +68,7 @@
   - `[x]` Persist document acknowledgement updates back to Neon with optimistic UI rollback.
   - `[x]` Persist document deletion back to Neon with optimistic UI rollback.
   - `[x]` Persist Excel import records back to Neon before adding them to the dashboard state.
-  - `[ ]` Persist sync actions back to Neon.
+  - `[x]` Persist successful renewal sync actions back to Neon with rollback on save failure.
 - `[ ]` Add more chart visualizations (e.g. status breakdown pie chart)
 - `[ ]` **Git & Documentation Rules (กฎระเบียบการพัฒนา)**
   - `[ ]` Check out and work exclusively in the `dev` branch first (never commit to `main` directly).

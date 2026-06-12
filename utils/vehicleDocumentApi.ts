@@ -1,6 +1,8 @@
 import type { VehicleDocument } from '@/types';
 
 type VehicleDocumentUpdatePayload = {
+  issuedDate?: string | null;
+  expiryDate?: string | null;
   isAcknowledged?: boolean;
   acknowledgedAt?: string | null;
   acknowledgedBy?: string | null;

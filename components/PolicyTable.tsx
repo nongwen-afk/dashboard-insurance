@@ -11,7 +11,7 @@ import DocumentDetailModal from '@/components/DocumentDetailModal';
 import type { DocStatus, FilterStatus, SortOption, VehicleDocument } from '@/types';
 import { formatThaiDate, getDocTypeName, getDocumentRecordKey, getDocumentStatus, getRenewedDocumentDates, isSameDocumentRecord, parseDocumentDate } from '@/utils/documentUtils';
 import { parseVehicleDocumentsFromFile } from '@/utils/importVehicleDocuments';
-import { createVehicleDocumentRecords } from '@/utils/vehicleDocumentApi';
+import { createVehicleDocumentRecords, updateVehicleDocumentRecord } from '@/utils/vehicleDocumentApi';
 
 interface PolicyTableProps {
   documents: VehicleDocument[];
@@ -113,6 +113,11 @@ const matchesDocumentFilters = (
   return matchSearch && matchDocType && matchStatus;
 };
 
+type RenewalSyncResult = {
+  doc: VehicleDocument;
+  renewedDocument: VehicleDocument | null;
+};
+
 export default function PolicyTable({
   documents,
   setDocuments,
@@ -144,31 +149,54 @@ export default function PolicyTable({
     const syncToastId = `sync-doc-${doc.id || doc.chassis}-${doc.docType}`;
     toast.loading(`กำลังตรวจสอบข้อมูลการต่ออายุของ ${doc.licensePlate || doc.chassis || 'ไม่ระบุ'} กับระบบภายนอก...`, { id: syncToastId });
 
-    setTimeout(() => {
+    setTimeout(async () => {
       const isRenewed = Math.random() > 0.5;
 
       if (isRenewed) {
+        const renewedDates = getRenewedDocumentDates(doc.expiryDate);
+        const optimisticDocument: VehicleDocument = {
+          ...doc,
+          isAcknowledged: false,
+          acknowledgedAt: undefined,
+          acknowledgedBy: undefined,
+          issuedDate: renewedDates.issuedDate,
+          expiryDate: renewedDates.expiryDate
+        };
+
         setDocuments(prev => prev.map(d => {
           if (isSameDocumentRecord(d, doc)) {
-            const renewedDates = getRenewedDocumentDates(d.expiryDate);
-
-            return {
-              ...d,
-              isAcknowledged: false,
-              acknowledgedAt: undefined,
-              acknowledgedBy: undefined,
-              issuedDate: renewedDates.issuedDate,
-              expiryDate: renewedDates.expiryDate
-            };
+            return optimisticDocument;
           }
           return d;
         }));
 
-        toast.success(`ซิงค์สำเร็จ! พบการต่ออายุใหม่ของรถ ${doc.licensePlate || doc.chassis || 'ไม่ระบุ'} เรียบร้อย`, {
-          id: syncToastId,
-          icon: '✅',
-          duration: 4000
-        });
+        try {
+          if (!doc.id) {
+            throw new Error('Missing vehicle document id.');
+          }
+
+          const savedDocument = await updateVehicleDocumentRecord(doc.id, {
+            isAcknowledged: false,
+            acknowledgedAt: null,
+            acknowledgedBy: null,
+            issuedDate: renewedDates.issuedDate,
+            expiryDate: renewedDates.expiryDate,
+          });
+
+          setDocuments(prev => prev.map(d => isSameDocumentRecord(d, optimisticDocument) ? savedDocument : d));
+          toast.success(`ซิงค์สำเร็จ! พบการต่ออายุใหม่ของรถ ${doc.licensePlate || doc.chassis || 'ไม่ระบุ'} เรียบร้อย`, {
+            id: syncToastId,
+            icon: '✅',
+            duration: 4000
+          });
+        } catch {
+          setDocuments(prev => prev.map(d => isSameDocumentRecord(d, optimisticDocument) ? doc : d));
+          toast.error(`พบการต่ออายุ แต่บันทึกลง Neon ไม่สำเร็จ`, {
+            id: syncToastId,
+            icon: '⚠️',
+            duration: 5000
+          });
+        }
       } else {
         toast.error(`ซิงค์สำเร็จ: ยังไม่พบการชำระเงิน/ต่ออายุใหม่ในระบบของหน่วยงานภายนอก`, {
           id: syncToastId,
@@ -183,7 +211,7 @@ export default function PolicyTable({
     const syncToastId = 'global-sync-toast';
     toast.loading('กำลังตรวจเช็คการต่ออายุเอกสารทั้งหมดกับระบบภายนอก...', { id: syncToastId });
 
-    setTimeout(() => {
+    setTimeout(async () => {
       const processingDocs = documents.filter(d => d.isAcknowledged);
 
       if (processingDocs.length === 0) {
@@ -195,34 +223,78 @@ export default function PolicyTable({
         return;
       }
 
-      let renewedCount = 0;
-      let pendingCount = 0;
+      const syncResults: RenewalSyncResult[] = processingDocs.map((doc) => {
+        const isRenewed = Math.random() > 0.5;
+
+        if (!isRenewed) {
+          return { doc, renewedDocument: null };
+        }
+
+        const renewedDates = getRenewedDocumentDates(doc.expiryDate);
+
+        return {
+          doc,
+          renewedDocument: {
+            ...doc,
+            isAcknowledged: false,
+            acknowledgedAt: undefined,
+            acknowledgedBy: undefined,
+            issuedDate: renewedDates.issuedDate,
+            expiryDate: renewedDates.expiryDate
+          },
+        };
+      });
+
+      const renewedResults = syncResults.filter((result): result is { doc: VehicleDocument; renewedDocument: VehicleDocument } => result.renewedDocument !== null);
+      const pendingCount = syncResults.length - renewedResults.length;
+
+      if (renewedResults.length === 0) {
+        toast.error(
+          `ซิงค์เรียบร้อย: เอกสารทั้ง ${pendingCount} รายการที่กำลังดำเนินการ ยังไม่พบการชำระเงินเข้ามาในระบบ`,
+          {
+            id: syncToastId,
+            icon: 'ℹ️',
+            duration: 5000
+          }
+        );
+        return;
+      }
 
       setDocuments(prev => prev.map(d => {
-        if (d.isAcknowledged) {
-          const isRenewed = Math.random() > 0.5;
-          if (isRenewed) {
-            renewedCount++;
-            const renewedDates = getRenewedDocumentDates(d.expiryDate);
-
-            return {
-              ...d,
-              isAcknowledged: false,
-              acknowledgedAt: undefined,
-              acknowledgedBy: undefined,
-              issuedDate: renewedDates.issuedDate,
-              expiryDate: renewedDates.expiryDate
-            };
-          } else {
-            pendingCount++;
-          }
-        }
-        return d;
+        const result = renewedResults.find(item => isSameDocumentRecord(item.doc, d));
+        return result?.renewedDocument || d;
       }));
 
-      if (renewedCount > 0) {
+      const saveResults = await Promise.allSettled(renewedResults.map(({ doc, renewedDocument }) => {
+        if (!doc.id) {
+          return Promise.reject(new Error('Missing vehicle document id.'));
+        }
+
+        return updateVehicleDocumentRecord(doc.id, {
+          isAcknowledged: false,
+          acknowledgedAt: null,
+          acknowledgedBy: null,
+          issuedDate: renewedDocument.issuedDate,
+          expiryDate: renewedDocument.expiryDate,
+        });
+      }));
+
+      const savedDocuments = saveResults.flatMap((result) => result.status === 'fulfilled' ? [result.value] : []);
+      const failedRenewals = renewedResults.filter((_, index) => saveResults[index].status === 'rejected');
+
+      if (savedDocuments.length > 0 || failedRenewals.length > 0) {
+        setDocuments(prev => prev.map(d => {
+          const savedDocument = savedDocuments.find(saved => isSameDocumentRecord(saved, d));
+          if (savedDocument) return savedDocument;
+
+          const failedRenewal = failedRenewals.find(({ renewedDocument }) => isSameDocumentRecord(renewedDocument, d));
+          return failedRenewal?.doc || d;
+        }));
+      }
+
+      if (savedDocuments.length > 0) {
         toast.success(
-          `ซิงค์เรียบร้อย! อัปเดตข้อมูลต่ออายุสำเร็จ ${renewedCount} รายการ, รอการชำระเงินอีก ${pendingCount} รายการ`,
+          `ซิงค์เรียบร้อย! อัปเดตข้อมูลต่ออายุสำเร็จ ${savedDocuments.length} รายการ, รอการชำระเงินอีก ${pendingCount} รายการ`,
           {
             id: syncToastId,
             icon: '✅',
@@ -231,10 +303,10 @@ export default function PolicyTable({
         );
       } else {
         toast.error(
-          `ซิงค์เรียบร้อย: เอกสารทั้ง ${pendingCount} รายการที่กำลังดำเนินการ ยังไม่พบการชำระเงินเข้ามาในระบบ`,
+          `พบรายการต่ออายุ แต่บันทึกลง Neon ไม่สำเร็จ ${failedRenewals.length} รายการ`,
           {
             id: syncToastId,
-            icon: 'ℹ️',
+            icon: '⚠️',
             duration: 5000
           }
         );

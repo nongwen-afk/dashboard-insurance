@@ -211,3 +211,12 @@ We reviewed and fixed the issues found after the Antigravity update.
 - **Import Flow ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx))**: The Excel/CSV parser still normalizes the local file in-browser, but the parsed rows now save to Neon before they are prepended into dashboard state.
 - **Verification**: Inserted a temporary `codex-import-test-*` row through the POST route, confirmed the count increased from 37 to 38, then deleted the row and confirmed the count returned to 37.
 - **Remaining Persistence Work**: Renewal sync is the last write path still updating client state only.
+
+### 16. Neon-Backed Renewal Sync
+- **Patch Fields ([app/api/vehicle-documents/[id]/route.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/api/vehicle-documents/[id]/route.ts))**: Extended the existing document patch route to accept `issuedDate` and `expiryDate` alongside acknowledgement fields.
+- **Database Update Shape ([db/vehicleDocuments.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/db/vehicleDocuments.ts))**: Expanded update support so renewal dates can be saved through the same Drizzle helper used by acknowledgement updates.
+- **Client Update Helper ([utils/vehicleDocumentApi.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/vehicleDocumentApi.ts))**: Extended the update payload type for renewal date fields.
+- **Single Sync Persistence ([app/page.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/page.tsx) & [components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx))**: Successful renewal simulation now optimistically updates the row, patches Neon, then replaces the row with the saved database response. If saving fails, the row rolls back.
+- **Global Sync Persistence ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx))**: Batch sync now decides which acknowledged documents renewed, applies optimistic updates for those rows, saves each successful renewal to Neon, and rolls back only failed saves.
+- **Verification**: Temporarily patched `mock-001` to `2027-06-12`, confirmed the route returned the renewed date, then restored the original row state.
+- **Persistence Status**: Dashboard read, acknowledgement, delete, import, and successful renewal sync now all persist to Neon.
