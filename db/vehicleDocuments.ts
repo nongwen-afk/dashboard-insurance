@@ -55,3 +55,12 @@ export const updateVehicleDocument = async (id: string, updates: VehicleDocument
 
   return updatedRow ? toVehicleDocument(updatedRow) : null;
 };
+
+export const deleteVehicleDocument = async (id: string) => {
+  const [deletedRow] = await getDb()
+    .delete(vehicleDocuments)
+    .where(eq(vehicleDocuments.id, id))
+    .returning();
+
+  return deletedRow ? toVehicleDocument(deletedRow) : null;
+};

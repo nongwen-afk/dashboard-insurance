@@ -19,6 +19,7 @@ interface PolicyTableProps {
   setStatusFilter: (status: FilterStatus) => void;
   isLoading?: boolean;
   onAcknowledgeDocument: (document: VehicleDocument) => void | Promise<void>;
+  onDeleteDocument: (document: VehicleDocument) => void | Promise<void>;
 }
 
 // แปลงสถานะจาก helper ให้เป็นข้อความและสีสำหรับคอลัมน์สถานะในตาราง
@@ -111,7 +112,15 @@ const matchesDocumentFilters = (
   return matchSearch && matchDocType && matchStatus;
 };
 
-export default function PolicyTable({ documents, setDocuments, statusFilter, setStatusFilter, isLoading = false, onAcknowledgeDocument }: PolicyTableProps) {
+export default function PolicyTable({
+  documents,
+  setDocuments,
+  statusFilter,
+  setStatusFilter,
+  isLoading = false,
+  onAcknowledgeDocument,
+  onDeleteDocument,
+}: PolicyTableProps) {
   // searchInput คือค่าที่พิมพ์อยู่ ส่วน activeSearch คือค่าที่ debounce แล้วจึงนำไปกรองจริง
   const [searchInput, setSearchInput] = useState('');
   const [activeSearch, setActiveSearch] = useState('');
@@ -668,8 +677,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
                             onClick={() => {
                               const isConfirmed = window.confirm(`คุณแน่ใจหรือไม่ที่จะลบข้อมูลของรถทะเบียน/เลขตัวถัง ${doc.licensePlate || doc.chassis}?`);
                               if (isConfirmed) {
-                                setDocuments(prev => prev.filter(d => !isSameDocumentRecord(d, doc)));
-                                toast.success(`ลบข้อมูล ${doc.licensePlate || doc.chassis} ออกจากระบบแล้ว`, { icon: '🗑️' });
+                                void onDeleteDocument(doc);
                               }
                               setOpenActionMenuKey(null);
                             }}

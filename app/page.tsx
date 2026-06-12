@@ -12,7 +12,7 @@ import UrgentAlerts from '@/components/dashboard/UrgentAlerts';
 import PolicyTable from '../components/PolicyTable';
 import type { DocumentAlert, ExpiryMonthGroup, FilterStatus, VehicleDocument } from '@/types';
 import { formatThaiDate, getDaysUntilExpiry, getDocTypeName, getRenewedDocumentDates, getSixMonthExpiryKey, isSameDocumentRecord, parseDocumentDate } from '@/utils/documentUtils';
-import { updateVehicleDocumentRecord } from '@/utils/vehicleDocumentApi';
+import { deleteVehicleDocumentRecord, updateVehicleDocumentRecord } from '@/utils/vehicleDocumentApi';
 
 export default function DashboardPage() {
   // documents เป็น state หลักของทั้งหน้า: card, chart, alert และ table อ่านจากชุดเดียวกัน
@@ -102,6 +102,35 @@ export default function DashboardPage() {
     } catch {
       setDocuments(prev => prev.map(d => isSameDocumentRecord(d, optimisticDocument) ? doc : d));
       toast.error(`บันทึกการรับทราบของรถ ${doc.licensePlate || doc.chassis} ไปยัง Neon ไม่สำเร็จ`);
+    }
+  };
+
+  const handleDeleteDocument = async (doc: VehicleDocument) => {
+    const previousDocuments = documents;
+    const deletedIndex = previousDocuments.findIndex(d => isSameDocumentRecord(d, doc));
+
+    setDocuments(prev => prev.filter(d => !isSameDocumentRecord(d, doc)));
+    if (selectedDocForDetail && isSameDocumentRecord(selectedDocForDetail, doc)) {
+      setSelectedDocForDetail(null);
+    }
+
+    try {
+      if (!doc.id) {
+        throw new Error('Missing vehicle document id.');
+      }
+
+      await deleteVehicleDocumentRecord(doc.id);
+      toast.success(`ลบข้อมูล ${doc.licensePlate || doc.chassis} ออกจาก Neon แล้ว`, { icon: '🗑️' });
+    } catch {
+      setDocuments(prev => {
+        if (prev.some(d => isSameDocumentRecord(d, doc))) return prev;
+
+        const next = [...prev];
+        const insertIndex = deletedIndex >= 0 ? Math.min(deletedIndex, next.length) : next.length;
+        next.splice(insertIndex, 0, doc);
+        return next;
+      });
+      toast.error(`ลบข้อมูล ${doc.licensePlate || doc.chassis} จาก Neon ไม่สำเร็จ`);
     }
   };
 
@@ -315,6 +344,7 @@ export default function DashboardPage() {
           setStatusFilter={setStatusFilter}
           isLoading={isLoadingDocuments}
           onAcknowledgeDocument={handleAcknowledgeDocument}
+          onDeleteDocument={handleDeleteDocument}
         />
       </div>
 

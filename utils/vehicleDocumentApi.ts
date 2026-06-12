@@ -23,3 +23,17 @@ export const updateVehicleDocumentRecord = async (id: string, updates: VehicleDo
 
   return data.document;
 };
+
+export const deleteVehicleDocumentRecord = async (id: string) => {
+  const response = await fetch(`/api/vehicle-documents/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+
+  const data = await response.json() as { document?: VehicleDocument; error?: string };
+
+  if (!response.ok || !data.document) {
+    throw new Error(data.error || 'Unable to delete vehicle document.');
+  }
+
+  return data.document;
+};

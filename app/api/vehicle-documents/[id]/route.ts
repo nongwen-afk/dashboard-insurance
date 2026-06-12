@@ -1,4 +1,4 @@
-import { updateVehicleDocument } from '@/db/vehicleDocuments';
+import { deleteVehicleDocument, updateVehicleDocument } from '@/db/vehicleDocuments';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -52,6 +52,26 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     }
 
     const document = await updateVehicleDocument(id, updates);
+
+    if (!document) {
+      return Response.json({ error: 'Vehicle document not found.' }, { status: 404 });
+    }
+
+    return Response.json({ document });
+  } catch (error) {
+    return Response.json(
+      {
+        error: error instanceof Error ? error.message : 'Unknown database error',
+      },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(_request: Request, { params }: RouteContext) {
+  try {
+    const { id } = await params;
+    const document = await deleteVehicleDocument(id);
 
     if (!document) {
       return Response.json({ error: 'Vehicle document not found.' }, { status: 404 });
