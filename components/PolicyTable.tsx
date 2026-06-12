@@ -17,6 +17,7 @@ interface PolicyTableProps {
   setDocuments: React.Dispatch<React.SetStateAction<VehicleDocument[]>>;
   statusFilter: FilterStatus;
   setStatusFilter: (status: FilterStatus) => void;
+  isLoading?: boolean;
 }
 
 // แปลงสถานะจาก helper ให้เป็นข้อความและสีสำหรับคอลัมน์สถานะในตาราง
@@ -109,7 +110,7 @@ const matchesDocumentFilters = (
   return matchSearch && matchDocType && matchStatus;
 };
 
-export default function PolicyTable({ documents, setDocuments, statusFilter, setStatusFilter }: PolicyTableProps) {
+export default function PolicyTable({ documents, setDocuments, statusFilter, setStatusFilter, isLoading = false }: PolicyTableProps) {
   // searchInput คือค่าที่พิมพ์อยู่ ส่วน activeSearch คือค่าที่ debounce แล้วจึงนำไปกรองจริง
   const [searchInput, setSearchInput] = useState('');
   const [activeSearch, setActiveSearch] = useState('');
@@ -526,7 +527,13 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 text-sm">
-            {currentDocs.length > 0 ? (
+            {isLoading ? (
+              <tr>
+                <td colSpan={8} className="px-6 py-12 text-center text-gray-400">
+                  <p className="font-medium text-gray-500">กำลังโหลดข้อมูลจาก Neon...</p>
+                </td>
+              </tr>
+            ) : currentDocs.length > 0 ? (
               currentDocs.map((doc, index) => {
                 const { status, days } = getDocumentStatus(doc.expiryDate);
                 const statusBadge = getStatusBadge(status, days, doc.isAcknowledged);

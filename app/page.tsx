@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Files, CheckCircle2, AlertCircle, XCircle, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import DocumentDetailModal from '@/components/DocumentDetailModal';
@@ -12,11 +12,11 @@ import UrgentAlerts from '@/components/dashboard/UrgentAlerts';
 import PolicyTable from '../components/PolicyTable';
 import type { DocumentAlert, ExpiryMonthGroup, FilterStatus, VehicleDocument } from '@/types';
 import { formatThaiDate, getDaysUntilExpiry, getDocTypeName, getRenewedDocumentDates, getSixMonthExpiryKey, isSameDocumentRecord, parseDocumentDate } from '@/utils/documentUtils';
-import { initialDocs } from '@/utils/mockData';
 
 export default function DashboardPage() {
   // documents เป็น state หลักของทั้งหน้า: card, chart, alert และ table อ่านจากชุดเดียวกัน
-  const [documents, setDocuments] = useState<VehicleDocument[]>(initialDocs);
+  const [documents, setDocuments] = useState<VehicleDocument[]>([]);
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(true);
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
   const [selectedExpiryMonth, setSelectedExpiryMonth] = useState<ExpiryMonthGroup | null>(null);
   const [selectedDocForDetail, setSelectedDocForDetail] = useState<VehicleDocument | null>(null);
@@ -24,6 +24,40 @@ export default function DashboardPage() {
   // สถานะตัวกรองจาก stat card ที่ส่งไปควบคุม PolicyTable
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('ALL');
   const tableRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const abortController = new AbortController();
+
+    async function loadDocuments() {
+      try {
+        setIsLoadingDocuments(true);
+
+        const response = await fetch('/api/vehicle-documents', {
+          signal: abortController.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error('Unable to load vehicle documents from Neon.');
+        }
+
+        const data = await response.json() as { documents?: VehicleDocument[] };
+        setDocuments(data.documents ?? []);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        toast.error('โหลดข้อมูลจาก Neon ไม่สำเร็จ');
+      } finally {
+        if (!abortController.signal.aborted) {
+          setIsLoadingDocuments(false);
+        }
+      }
+    }
+
+    void loadDocuments();
+
+    return () => {
+      abortController.abort();
+    };
+  }, []);
 
   const handleStatCardClick = (status: FilterStatus) => {
     setStatusFilter(status);
@@ -247,6 +281,7 @@ export default function DashboardPage() {
           setDocuments={setDocuments}
           statusFilter={statusFilter}
           setStatusFilter={setStatusFilter}
+          isLoading={isLoadingDocuments}
         />
       </div>
 

@@ -179,3 +179,11 @@ We reviewed and fixed the issues found after the Antigravity update.
 - **Database State**: The Drizzle schema was applied to Neon and the current mock document set was seeded successfully, leaving 37 rows in `vehicle_documents`.
 - **Health Check**: `/api/db/health` returned `{"ok":true,...}` after rotation, confirming the app can connect with the new credential.
 - **Next Data Step**: The next implementation step is to replace the in-memory mock document flow with API/database reads from Neon, starting with a read endpoint for `vehicle_documents`.
+
+### 12. Neon-Backed Dashboard Read Path
+- **Database Query Helper ([db/vehicleDocuments.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/db/vehicleDocuments.ts))**: Added a shared server-side query helper that reads `vehicle_documents` through Drizzle, orders the rows by stable `id`, and maps nullable Postgres fields back into the existing `VehicleDocument` UI shape.
+- **Documents API ([app/api/vehicle-documents/route.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/api/vehicle-documents/route.ts))**: Added `GET /api/vehicle-documents` as a dynamic Node.js route that returns the current Neon document list as JSON.
+- **Dashboard Data Loading ([app/page.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/page.tsx))**: Changed the dashboard to start with an empty state, fetch `/api/vehicle-documents`, and then hydrate the stat cards, chart, alerts, and table from Neon-backed data.
+- **Loading State ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx))**: Added a table-level loading row so users see that document data is loading from Neon instead of seeing an empty-result message.
+- **Verification**: Confirmed the query helper and localhost API return 37 documents from Neon, then reran `pnpm run lint`, `pnpm exec tsc --noEmit`, and `pnpm run build`.
+- **Remaining Persistence Work**: Import, delete, acknowledgement, and sync actions still update client state only. The next backend step is to add write endpoints/actions so those UI changes persist to Neon.

@@ -62,6 +62,10 @@
   - `[x]` Verify `/api/db/health` returns `ok: true` after secret rotation.
 - `[ ]` Support custom document additions (Add Document Form)
 - `[ ]` Implement real backend API / localstorage integration for persistence
+  - `[x]` Add Neon-backed `GET /api/vehicle-documents` endpoint for reading `vehicle_documents`.
+  - `[x]` Load dashboard document state from the Neon API instead of booting directly from mock data.
+  - `[x]` Show a table loading state while the Neon data request is in flight.
+  - `[ ]` Persist import, delete, acknowledge, and sync actions back to Neon.
 - `[ ]` Add more chart visualizations (e.g. status breakdown pie chart)
 - `[ ]` **Git & Documentation Rules (กฎระเบียบการพัฒนา)**
   - `[ ]` Check out and work exclusively in the `dev` branch first (never commit to `main` directly).
