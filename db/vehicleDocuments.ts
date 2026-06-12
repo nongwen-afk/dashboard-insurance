@@ -1,7 +1,13 @@
-import { asc } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import { getDb } from '@/db';
 import { vehicleDocuments, type VehicleDocumentRow } from '@/db/schema';
 import type { VehicleDocument } from '@/types';
+
+type VehicleDocumentUpdate = {
+  isAcknowledged?: boolean;
+  acknowledgedAt?: Date | null;
+  acknowledgedBy?: string | null;
+};
 
 const optionalString = (value: string | null) => value ?? undefined;
 const optionalDate = (value: string | null) => value ?? undefined;
@@ -35,4 +41,17 @@ export const listVehicleDocuments = async () => {
     .orderBy(asc(vehicleDocuments.id));
 
   return rows.map(toVehicleDocument);
+};
+
+export const updateVehicleDocument = async (id: string, updates: VehicleDocumentUpdate) => {
+  const [updatedRow] = await getDb()
+    .update(vehicleDocuments)
+    .set({
+      ...updates,
+      updatedAt: new Date(),
+    })
+    .where(eq(vehicleDocuments.id, id))
+    .returning();
+
+  return updatedRow ? toVehicleDocument(updatedRow) : null;
 };

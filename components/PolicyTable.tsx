@@ -18,6 +18,7 @@ interface PolicyTableProps {
   statusFilter: FilterStatus;
   setStatusFilter: (status: FilterStatus) => void;
   isLoading?: boolean;
+  onAcknowledgeDocument: (document: VehicleDocument) => void | Promise<void>;
 }
 
 // แปลงสถานะจาก helper ให้เป็นข้อความและสีสำหรับคอลัมน์สถานะในตาราง
@@ -110,7 +111,7 @@ const matchesDocumentFilters = (
   return matchSearch && matchDocType && matchStatus;
 };
 
-export default function PolicyTable({ documents, setDocuments, statusFilter, setStatusFilter, isLoading = false }: PolicyTableProps) {
+export default function PolicyTable({ documents, setDocuments, statusFilter, setStatusFilter, isLoading = false, onAcknowledgeDocument }: PolicyTableProps) {
   // searchInput คือค่าที่พิมพ์อยู่ ส่วน activeSearch คือค่าที่ debounce แล้วจึงนำไปกรองจริง
   const [searchInput, setSearchInput] = useState('');
   const [activeSearch, setActiveSearch] = useState('');
@@ -652,13 +653,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
                             <button
                               className="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 flex items-center gap-2 transition-colors"
                               onClick={() => {
-                                setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? {
-                                  ...d,
-                                  isAcknowledged: true,
-                                  acknowledgedAt: new Date().toISOString(),
-                                  acknowledgedBy: 'testuser'
-                                } : d));
-                                toast.success(`รับทราบการแจ้งเตือนรถ ${doc.licensePlate || doc.chassis} เรียบร้อย`, { icon: 'ℹ️' });
+                                void onAcknowledgeDocument(doc);
                                 setOpenActionMenuKey(null);
                               }}
                             >
@@ -750,15 +745,7 @@ export default function PolicyTable({ documents, setDocuments, statusFilter, set
             : null
         }
         onClose={() => setSelectedDocForDetail(null)}
-        onAcknowledge={(doc) => {
-          setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? {
-            ...d,
-            isAcknowledged: true,
-            acknowledgedAt: new Date().toISOString(),
-            acknowledgedBy: 'testuser'
-          } : d));
-          toast.success(`รับทราบการแจ้งเตือนรถ ${doc.licensePlate || doc.chassis} เรียบร้อย`, { icon: 'ℹ️' });
-        }}
+        onAcknowledge={onAcknowledgeDocument}
         onSync={handleSingleSync}
       />
 

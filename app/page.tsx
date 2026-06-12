@@ -12,6 +12,7 @@ import UrgentAlerts from '@/components/dashboard/UrgentAlerts';
 import PolicyTable from '../components/PolicyTable';
 import type { DocumentAlert, ExpiryMonthGroup, FilterStatus, VehicleDocument } from '@/types';
 import { formatThaiDate, getDaysUntilExpiry, getDocTypeName, getRenewedDocumentDates, getSixMonthExpiryKey, isSameDocumentRecord, parseDocumentDate } from '@/utils/documentUtils';
+import { updateVehicleDocumentRecord } from '@/utils/vehicleDocumentApi';
 
 export default function DashboardPage() {
   // documents เป็น state หลักของทั้งหน้า: card, chart, alert และ table อ่านจากชุดเดียวกัน
@@ -70,6 +71,37 @@ export default function DashboardPage() {
         top: offsetPosition,
         behavior: 'smooth'
       });
+    }
+  };
+
+  const handleAcknowledgeDocument = async (doc: VehicleDocument) => {
+    const acknowledgedAt = new Date().toISOString();
+    const acknowledgedBy = 'testuser';
+    const optimisticDocument = {
+      ...doc,
+      isAcknowledged: true,
+      acknowledgedAt,
+      acknowledgedBy,
+    };
+
+    setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? optimisticDocument : d));
+
+    try {
+      if (!doc.id) {
+        throw new Error('Missing vehicle document id.');
+      }
+
+      const savedDocument = await updateVehicleDocumentRecord(doc.id, {
+        isAcknowledged: true,
+        acknowledgedAt,
+        acknowledgedBy,
+      });
+
+      setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? savedDocument : d));
+      toast.success(`รับทราบการแจ้งเตือนรถ ${doc.licensePlate || doc.chassis} เรียบร้อย`, { icon: 'ℹ️' });
+    } catch {
+      setDocuments(prev => prev.map(d => isSameDocumentRecord(d, optimisticDocument) ? doc : d));
+      toast.error(`บันทึกการรับทราบของรถ ${doc.licensePlate || doc.chassis} ไปยัง Neon ไม่สำเร็จ`);
     }
   };
 
@@ -282,6 +314,7 @@ export default function DashboardPage() {
           statusFilter={statusFilter}
           setStatusFilter={setStatusFilter}
           isLoading={isLoadingDocuments}
+          onAcknowledgeDocument={handleAcknowledgeDocument}
         />
       </div>
 
@@ -308,15 +341,7 @@ export default function DashboardPage() {
             : null
         }
         onClose={() => setSelectedDocForDetail(null)}
-        onAcknowledge={(doc) => {
-          setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? {
-            ...d,
-            isAcknowledged: true,
-            acknowledgedAt: new Date().toISOString(),
-            acknowledgedBy: 'testuser'
-          } : d));
-          toast.success(`รับทราบการแจ้งเตือนรถ ${doc.licensePlate || doc.chassis} เรียบร้อย`, { icon: 'ℹ️' });
-        }}
+        onAcknowledge={handleAcknowledgeDocument}
         onSync={handleSingleSync}
       />
 
