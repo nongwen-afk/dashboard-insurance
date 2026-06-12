@@ -11,6 +11,7 @@ import DocumentDetailModal from '@/components/DocumentDetailModal';
 import type { DocStatus, FilterStatus, SortOption, VehicleDocument } from '@/types';
 import { formatThaiDate, getDocTypeName, getDocumentRecordKey, getDocumentStatus, getRenewedDocumentDates, isSameDocumentRecord, parseDocumentDate } from '@/utils/documentUtils';
 import { parseVehicleDocumentsFromFile } from '@/utils/importVehicleDocuments';
+import { createVehicleDocumentRecords } from '@/utils/vehicleDocumentApi';
 
 interface PolicyTableProps {
   documents: VehicleDocument[];
@@ -280,9 +281,11 @@ export default function PolicyTable({
       const newImportedDocs = await parseVehicleDocumentsFromFile(file);
 
       if (newImportedDocs.length > 0) {
-        setDocuments(prev => [...newImportedDocs, ...prev]);
+        const savedDocs = await createVehicleDocumentRecords(newImportedDocs);
+
+        setDocuments(prev => [...savedDocs, ...prev]);
         setCurrentPage(1);
-        toast.success(`นำเข้าข้อมูลสำเร็จ ${newImportedDocs.length} รายการ`, { id: loadingToast });
+        toast.success(`นำเข้าข้อมูลสำเร็จ ${savedDocs.length} รายการ`, { id: loadingToast });
       } else {
         toast.error('ไม่พบข้อมูลในไฟล์ Excel', { id: loadingToast });
       }

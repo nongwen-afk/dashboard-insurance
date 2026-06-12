@@ -1,13 +1,21 @@
 import { asc, eq } from 'drizzle-orm';
 import { getDb } from '@/db';
-import { vehicleDocuments, type VehicleDocumentRow } from '@/db/schema';
-import type { VehicleDocument } from '@/types';
+import { vehicleDocuments, type NewVehicleDocumentRow, type VehicleDocumentRow } from '@/db/schema';
+import type { VehicleDocType, VehicleDocument } from '@/types';
 
 type VehicleDocumentUpdate = {
   isAcknowledged?: boolean;
   acknowledgedAt?: Date | null;
   acknowledgedBy?: string | null;
 };
+
+const supportedDocTypes = new Set<VehicleDocType>([
+  'act',
+  'tax',
+  'insurance',
+  'inspection',
+  'registration_book',
+]);
 
 const optionalString = (value: string | null) => value ?? undefined;
 const optionalDate = (value: string | null) => value ?? undefined;
@@ -34,6 +42,59 @@ export const toVehicleDocument = (row: VehicleDocumentRow): VehicleDocument => (
   acknowledgedBy: optionalString(row.acknowledgedBy),
 });
 
+const nullableString = (value?: string) => {
+  if (value === undefined || value === null || value === '') return null;
+  return value;
+};
+
+const nullableDate = (value?: string) => {
+  if (value === undefined || value === null || value === '') return null;
+  return value;
+};
+
+const nullableDateTime = (value?: string) => {
+  if (!value) return null;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error('Invalid acknowledgedAt value.');
+  }
+
+  return date;
+};
+
+export const toNewVehicleDocumentRow = (document: VehicleDocument): NewVehicleDocumentRow => {
+  if (!document.id) {
+    throw new Error('Vehicle document id is required.');
+  }
+
+  if (!document.chassis) {
+    throw new Error('Vehicle document chassis is required.');
+  }
+
+  if (!supportedDocTypes.has(document.docType)) {
+    throw new Error('Unsupported vehicle document type.');
+  }
+
+  return {
+    id: document.id,
+    chassis: document.chassis,
+    licensePlate: nullableString(document.licensePlate),
+    project: nullableString(document.project),
+    docType: document.docType,
+    issuer: nullableString(document.issuer),
+    docNumber: nullableString(document.docNumber),
+    issuedDate: nullableDate(document.issuedDate),
+    expiryDate: nullableDate(document.expiryDate),
+    note: nullableString(document.note),
+    driverName: nullableString(document.driverName),
+    hasAttachment: Boolean(document.hasAttachment),
+    isAcknowledged: Boolean(document.isAcknowledged),
+    acknowledgedAt: nullableDateTime(document.acknowledgedAt),
+    acknowledgedBy: nullableString(document.acknowledgedBy),
+  };
+};
+
 export const listVehicleDocuments = async () => {
   const rows = await getDb()
     .select()
@@ -41,6 +102,18 @@ export const listVehicleDocuments = async () => {
     .orderBy(asc(vehicleDocuments.id));
 
   return rows.map(toVehicleDocument);
+};
+
+export const createVehicleDocuments = async (documents: VehicleDocument[]) => {
+  if (documents.length === 0) return [];
+
+  const rows = documents.map(toNewVehicleDocumentRow);
+  const insertedRows = await getDb()
+    .insert(vehicleDocuments)
+    .values(rows)
+    .returning();
+
+  return insertedRows.map(toVehicleDocument);
 };
 
 export const updateVehicleDocument = async (id: string, updates: VehicleDocumentUpdate) => {

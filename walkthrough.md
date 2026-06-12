@@ -203,3 +203,11 @@ We reviewed and fixed the issues found after the Antigravity update.
 - **Optimistic UI ([app/page.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/page.tsx) & [components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx))**: Routed table deletes through the dashboard page, removed the row immediately, closed any open detail view for that row, and restored the row if Neon deletion fails.
 - **Verification**: Inserted a temporary `codex-delete-test-*` row into Neon, deleted it through the route handler, and confirmed the document count returned from 38 back to 37.
 - **Remaining Persistence Work**: Excel import and renewal sync still need write paths.
+
+### 15. Neon-Backed Excel Import
+- **Bulk Create Helper ([db/vehicleDocuments.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/db/vehicleDocuments.ts))**: Added validation and mapping from `VehicleDocument` into Drizzle insert rows, including nullable strings, date-only values, timestamps, booleans, and supported document types.
+- **Create API ([app/api/vehicle-documents/route.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/api/vehicle-documents/route.ts))**: Added `POST /api/vehicle-documents` to insert imported document rows into Neon and return the saved rows as the existing UI shape.
+- **Client Create Helper ([utils/vehicleDocumentApi.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/vehicleDocumentApi.ts))**: Added a fetch wrapper for bulk document creation.
+- **Import Flow ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx))**: The Excel/CSV parser still normalizes the local file in-browser, but the parsed rows now save to Neon before they are prepended into dashboard state.
+- **Verification**: Inserted a temporary `codex-import-test-*` row through the POST route, confirmed the count increased from 37 to 38, then deleted the row and confirmed the count returned to 37.
+- **Remaining Persistence Work**: Renewal sync is the last write path still updating client state only.
