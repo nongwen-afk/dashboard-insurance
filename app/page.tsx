@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Files, CheckCircle2, AlertCircle, XCircle, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import DocumentDetailModal from '@/components/DocumentDetailModal';
@@ -12,11 +12,12 @@ import UrgentAlerts from '@/components/dashboard/UrgentAlerts';
 import PolicyTable from '../components/PolicyTable';
 import type { DocumentAlert, ExpiryMonthGroup, FilterStatus, VehicleDocument } from '@/types';
 import { formatThaiDate, getDaysUntilExpiry, getDocTypeName, getRenewedDocumentDates, getSixMonthExpiryKey, isSameDocumentRecord, parseDocumentDate } from '@/utils/documentUtils';
-import { initialDocs } from '@/utils/mockData';
+import { deleteVehicleDocumentRecord, updateVehicleDocumentRecord } from '@/utils/vehicleDocumentApi';
 
 export default function DashboardPage() {
   // documents เป็น state หลักของทั้งหน้า: card, chart, alert และ table อ่านจากชุดเดียวกัน
-  const [documents, setDocuments] = useState<VehicleDocument[]>(initialDocs);
+  const [documents, setDocuments] = useState<VehicleDocument[]>([]);
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(true);
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
   const [selectedExpiryMonth, setSelectedExpiryMonth] = useState<ExpiryMonthGroup | null>(null);
   const [selectedDocForDetail, setSelectedDocForDetail] = useState<VehicleDocument | null>(null);
@@ -24,6 +25,40 @@ export default function DashboardPage() {
   // สถานะตัวกรองจาก stat card ที่ส่งไปควบคุม PolicyTable
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('ALL');
   const tableRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const abortController = new AbortController();
+
+    async function loadDocuments() {
+      try {
+        setIsLoadingDocuments(true);
+
+        const response = await fetch('/api/vehicle-documents', {
+          signal: abortController.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error('Unable to load vehicle documents from Neon.');
+        }
+
+        const data = await response.json() as { documents?: VehicleDocument[] };
+        setDocuments(data.documents ?? []);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        toast.error('โหลดข้อมูลจาก Neon ไม่สำเร็จ');
+      } finally {
+        if (!abortController.signal.aborted) {
+          setIsLoadingDocuments(false);
+        }
+      }
+    }
+
+    void loadDocuments();
+
+    return () => {
+      abortController.abort();
+    };
+  }, []);
 
   const handleStatCardClick = (status: FilterStatus) => {
     setStatusFilter(status);
@@ -36,6 +71,66 @@ export default function DashboardPage() {
         top: offsetPosition,
         behavior: 'smooth'
       });
+    }
+  };
+
+  const handleAcknowledgeDocument = async (doc: VehicleDocument) => {
+    const acknowledgedAt = new Date().toISOString();
+    const acknowledgedBy = 'testuser';
+    const optimisticDocument = {
+      ...doc,
+      isAcknowledged: true,
+      acknowledgedAt,
+      acknowledgedBy,
+    };
+
+    setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? optimisticDocument : d));
+
+    try {
+      if (!doc.id) {
+        throw new Error('Missing vehicle document id.');
+      }
+
+      const savedDocument = await updateVehicleDocumentRecord(doc.id, {
+        isAcknowledged: true,
+        acknowledgedAt,
+        acknowledgedBy,
+      });
+
+      setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? savedDocument : d));
+      toast.success(`รับทราบการแจ้งเตือนรถ ${doc.licensePlate || doc.chassis} เรียบร้อย`, { icon: 'ℹ️' });
+    } catch {
+      setDocuments(prev => prev.map(d => isSameDocumentRecord(d, optimisticDocument) ? doc : d));
+      toast.error(`บันทึกการรับทราบของรถ ${doc.licensePlate || doc.chassis} ไปยัง Neon ไม่สำเร็จ`);
+    }
+  };
+
+  const handleDeleteDocument = async (doc: VehicleDocument) => {
+    const previousDocuments = documents;
+    const deletedIndex = previousDocuments.findIndex(d => isSameDocumentRecord(d, doc));
+
+    setDocuments(prev => prev.filter(d => !isSameDocumentRecord(d, doc)));
+    if (selectedDocForDetail && isSameDocumentRecord(selectedDocForDetail, doc)) {
+      setSelectedDocForDetail(null);
+    }
+
+    try {
+      if (!doc.id) {
+        throw new Error('Missing vehicle document id.');
+      }
+
+      await deleteVehicleDocumentRecord(doc.id);
+      toast.success(`ลบข้อมูล ${doc.licensePlate || doc.chassis} ออกจาก Neon แล้ว`, { icon: '🗑️' });
+    } catch {
+      setDocuments(prev => {
+        if (prev.some(d => isSameDocumentRecord(d, doc))) return prev;
+
+        const next = [...prev];
+        const insertIndex = deletedIndex >= 0 ? Math.min(deletedIndex, next.length) : next.length;
+        next.splice(insertIndex, 0, doc);
+        return next;
+      });
+      toast.error(`ลบข้อมูล ${doc.licensePlate || doc.chassis} จาก Neon ไม่สำเร็จ`);
     }
   };
 
@@ -128,31 +223,54 @@ export default function DashboardPage() {
     const syncToastId = `sync-doc-${doc.id || doc.chassis}-${doc.docType}`;
     toast.loading(`กำลังตรวจสอบข้อมูลการต่ออายุของ ${doc.licensePlate || doc.chassis || 'ไม่ระบุ'} กับระบบภายนอก...`, { id: syncToastId });
 
-    setTimeout(() => {
+    setTimeout(async () => {
       const isRenewed = Math.random() > 0.5;
 
       if (isRenewed) {
+        const renewedDates = getRenewedDocumentDates(doc.expiryDate);
+        const optimisticDocument: VehicleDocument = {
+          ...doc,
+          isAcknowledged: false,
+          acknowledgedAt: undefined,
+          acknowledgedBy: undefined,
+          issuedDate: renewedDates.issuedDate,
+          expiryDate: renewedDates.expiryDate
+        };
+
         setDocuments(prev => prev.map(d => {
           if (isSameDocumentRecord(d, doc)) {
-            const renewedDates = getRenewedDocumentDates(d.expiryDate);
-
-            return {
-              ...d,
-              isAcknowledged: false,
-              acknowledgedAt: undefined,
-              acknowledgedBy: undefined,
-              issuedDate: renewedDates.issuedDate,
-              expiryDate: renewedDates.expiryDate
-            };
+            return optimisticDocument;
           }
           return d;
         }));
 
-        toast.success(`ซิงค์สำเร็จ! พบการต่ออายุใหม่ของรถ ${doc.licensePlate || doc.chassis || 'ไม่ระบุ'} เรียบร้อย`, {
-          id: syncToastId,
-          icon: '✅',
-          duration: 4000
-        });
+        try {
+          if (!doc.id) {
+            throw new Error('Missing vehicle document id.');
+          }
+
+          const savedDocument = await updateVehicleDocumentRecord(doc.id, {
+            isAcknowledged: false,
+            acknowledgedAt: null,
+            acknowledgedBy: null,
+            issuedDate: renewedDates.issuedDate,
+            expiryDate: renewedDates.expiryDate,
+          });
+
+          setDocuments(prev => prev.map(d => isSameDocumentRecord(d, optimisticDocument) ? savedDocument : d));
+          toast.success(`ซิงค์สำเร็จ! พบการต่ออายุใหม่ของรถ ${doc.licensePlate || doc.chassis || 'ไม่ระบุ'} เรียบร้อย`, {
+            id: syncToastId,
+            icon: '✅',
+            duration: 4000
+          });
+        } catch {
+          setDocuments(prev => prev.map(d => isSameDocumentRecord(d, optimisticDocument) ? doc : d));
+          toast.error(`พบการต่ออายุ แต่บันทึกลง Neon ไม่สำเร็จ`, {
+            id: syncToastId,
+            icon: '⚠️',
+            duration: 5000
+          });
+        }
       } else {
         toast.error(`ซิงค์สำเร็จ: ยังไม่พบการชำระเงิน/ต่ออายุใหม่ในระบบของหน่วยงานภายนอก`, {
           id: syncToastId,
@@ -247,6 +365,9 @@ export default function DashboardPage() {
           setDocuments={setDocuments}
           statusFilter={statusFilter}
           setStatusFilter={setStatusFilter}
+          isLoading={isLoadingDocuments}
+          onAcknowledgeDocument={handleAcknowledgeDocument}
+          onDeleteDocument={handleDeleteDocument}
         />
       </div>
 
@@ -273,15 +394,7 @@ export default function DashboardPage() {
             : null
         }
         onClose={() => setSelectedDocForDetail(null)}
-        onAcknowledge={(doc) => {
-          setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? {
-            ...d,
-            isAcknowledged: true,
-            acknowledgedAt: new Date().toISOString(),
-            acknowledgedBy: 'testuser'
-          } : d));
-          toast.success(`รับทราบการแจ้งเตือนรถ ${doc.licensePlate || doc.chassis} เรียบร้อย`, { icon: 'ℹ️' });
-        }}
+        onAcknowledge={handleAcknowledgeDocument}
         onSync={handleSingleSync}
       />
 

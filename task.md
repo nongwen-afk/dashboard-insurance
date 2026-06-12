@@ -51,8 +51,24 @@
   - `[x]` Validate imported Excel dates and keep invalid raw values instead of letting JavaScript roll them into another month/year.
   - `[x]` Use stable document record keys for monthly expiry modal rows and table action-menu state.
   - `[x]` Reuse the same renewal-date helper for row-level and global sync actions.
+- `[x]` Scaffold Neon + Drizzle database integration
+  - `[x]` Add Neon/Drizzle dependencies and database scripts.
+  - `[x]` Add Drizzle schema for vehicle documents and a server-side Neon client.
+  - `[x]` Add database health API and mock-data seed script.
+  - `[x]` Document Vercel Marketplace Neon setup and local env workflow.
+  - `[x]` Push scaffold to `origin/dev` in commit `c26a4c8`.
+  - `[x]` Rotate the exposed Neon/Vercel integration secrets and pull the updated `.env.local`.
+  - `[x]` Confirm Neon schema and seed data are usable with 37 seeded `vehicle_documents` rows.
+  - `[x]` Verify `/api/db/health` returns `ok: true` after secret rotation.
 - `[ ]` Support custom document additions (Add Document Form)
 - `[ ]` Implement real backend API / localstorage integration for persistence
+  - `[x]` Add Neon-backed `GET /api/vehicle-documents` endpoint for reading `vehicle_documents`.
+  - `[x]` Load dashboard document state from the Neon API instead of booting directly from mock data.
+  - `[x]` Show a table loading state while the Neon data request is in flight.
+  - `[x]` Persist document acknowledgement updates back to Neon with optimistic UI rollback.
+  - `[x]` Persist document deletion back to Neon with optimistic UI rollback.
+  - `[x]` Persist Excel import records back to Neon before adding them to the dashboard state.
+  - `[x]` Persist successful renewal sync actions back to Neon with rollback on save failure.
 - `[ ]` Add more chart visualizations (e.g. status breakdown pie chart)
 - `[ ]` **Git & Documentation Rules (กฎระเบียบการพัฒนา)**
   - `[ ]` Check out and work exclusively in the `dev` branch first (never commit to `main` directly).

@@ -162,7 +162,61 @@ We reviewed and fixed the issues found after the Antigravity update.
 - **Import Date Validation ([utils/importVehicleDocuments.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/importVehicleDocuments.ts))**: Tightened Excel date normalization so impossible dates such as `31/02/2026` remain visible as raw input instead of silently rolling over into another month or year.
 - **Stable UI Record Identity ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx) & [ExpiryMonthModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/dashboard/ExpiryMonthModal.tsx))**: Updated table action-menu state and monthly expiry modal row keys to use `getDocumentRecordKey`, preventing duplicate vehicle/doc-type rows from sharing unstable UI identity.
 
-### 9. Verification
+### 9. Neon + Drizzle Database Scaffold (Latest Update)
+- **Dependencies and Scripts ([package.json](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/package.json))**: Added `@neondatabase/serverless`, `drizzle-orm`, `drizzle-kit`, `dotenv`, and `tsx`, plus `pnpm db:generate`, `pnpm db:push`, `pnpm db:migrate`, `pnpm db:seed`, and `pnpm db:studio`.
+- **Schema and Client ([db/schema.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/db/schema.ts) & [db/index.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/db/index.ts))**: Added a Postgres `vehicle_documents` table schema mapped to the existing document model and a Neon HTTP client for server-side database access.
+- **Connection Check and Seed Flow ([app/api/db/health/route.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/api/db/health/route.ts) & [scripts/seed-db.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/scripts/seed-db.ts))**: Added an API endpoint that verifies the Neon connection with `select now()` and a script that seeds the current mock document set after the schema exists.
+- **Setup Notes ([README.md](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/README.md))**: Documented the Vercel Marketplace flow: `vercel link`, `vercel integration add neon`, `vercel env pull .env.local --yes`, `pnpm db:push`, `pnpm db:seed`, then open `/api/db/health`.
+
+### 10. Verification
 - `pnpm run lint` passes.
 - `git diff --check` passes.
 - `pnpm run build` passes.
+
+### 11. Post-Push Neon Confirmation
+- **GitHub Push**: The Neon + Drizzle scaffold was committed and pushed to `origin/dev` as `c26a4c8 Add Neon Drizzle database scaffold`.
+- **Secret Rotation**: The exposed Neon connection password was rotated through the Vercel/Neon integration flow. The updated Vercel environment variables were pulled back into `.env.local` with `vercel env pull .env.local --yes`.
+- **Database State**: The Drizzle schema was applied to Neon and the current mock document set was seeded successfully, leaving 37 rows in `vehicle_documents`.
+- **Health Check**: `/api/db/health` returned `{"ok":true,...}` after rotation, confirming the app can connect with the new credential.
+- **Next Data Step**: The next implementation step is to replace the in-memory mock document flow with API/database reads from Neon, starting with a read endpoint for `vehicle_documents`.
+
+### 12. Neon-Backed Dashboard Read Path
+- **Database Query Helper ([db/vehicleDocuments.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/db/vehicleDocuments.ts))**: Added a shared server-side query helper that reads `vehicle_documents` through Drizzle, orders the rows by stable `id`, and maps nullable Postgres fields back into the existing `VehicleDocument` UI shape.
+- **Documents API ([app/api/vehicle-documents/route.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/api/vehicle-documents/route.ts))**: Added `GET /api/vehicle-documents` as a dynamic Node.js route that returns the current Neon document list as JSON.
+- **Dashboard Data Loading ([app/page.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/page.tsx))**: Changed the dashboard to start with an empty state, fetch `/api/vehicle-documents`, and then hydrate the stat cards, chart, alerts, and table from Neon-backed data.
+- **Loading State ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx))**: Added a table-level loading row so users see that document data is loading from Neon instead of seeing an empty-result message.
+- **Verification**: Confirmed the query helper and localhost API return 37 documents from Neon, then reran `pnpm run lint`, `pnpm exec tsc --noEmit`, and `pnpm run build`.
+- **Remaining Persistence Work**: Import, delete, acknowledgement, and sync actions still update client state only. The next backend step is to add write endpoints/actions so those UI changes persist to Neon.
+
+### 13. Neon-Backed Acknowledgement Updates
+- **Patch API ([app/api/vehicle-documents/[id]/route.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/api/vehicle-documents/[id]/route.ts))**: Added `PATCH /api/vehicle-documents/[id]` for supported document updates, starting with acknowledgement fields.
+- **Database Update Helper ([db/vehicleDocuments.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/db/vehicleDocuments.ts))**: Added a Drizzle update helper that writes acknowledgement changes, refreshes `updated_at`, and maps the returned row back to `VehicleDocument`.
+- **Client API Helper ([utils/vehicleDocumentApi.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/vehicleDocumentApi.ts))**: Added a small fetch wrapper so client components can update one document and receive the saved Neon-backed row.
+- **Optimistic UI ([app/page.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/page.tsx) & [components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx))**: Centralized acknowledgement handling in the dashboard page, applied the UI update immediately, then patched Neon. If the API call fails, the UI rolls back and shows an error toast.
+- **Verification**: Ran a temporary PATCH against `mock-001`, confirmed it saved successfully, and restored the original row state. `pnpm run lint`, `pnpm exec tsc --noEmit`, `git diff --check`, and `pnpm run build` pass after clearing stale `.next` generated type duplicates.
+- **Remaining Persistence Work**: Delete, Excel import, and renewal sync still need write paths before all dashboard actions survive refreshes.
+
+### 14. Neon-Backed Delete Updates
+- **Delete API ([app/api/vehicle-documents/[id]/route.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/api/vehicle-documents/[id]/route.ts))**: Added `DELETE /api/vehicle-documents/[id]` beside the existing patch route so one document row can be removed from Neon by stable `id`.
+- **Database Delete Helper ([db/vehicleDocuments.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/db/vehicleDocuments.ts))**: Added a Drizzle delete helper that returns the deleted row for confirmation and consistent error handling.
+- **Client Delete Helper ([utils/vehicleDocumentApi.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/vehicleDocumentApi.ts))**: Added a fetch wrapper for the delete route, mirroring the acknowledgement update helper.
+- **Optimistic UI ([app/page.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/page.tsx) & [components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx))**: Routed table deletes through the dashboard page, removed the row immediately, closed any open detail view for that row, and restored the row if Neon deletion fails.
+- **Verification**: Inserted a temporary `codex-delete-test-*` row into Neon, deleted it through the route handler, and confirmed the document count returned from 38 back to 37.
+- **Remaining Persistence Work**: Excel import and renewal sync still need write paths.
+
+### 15. Neon-Backed Excel Import
+- **Bulk Create Helper ([db/vehicleDocuments.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/db/vehicleDocuments.ts))**: Added validation and mapping from `VehicleDocument` into Drizzle insert rows, including nullable strings, date-only values, timestamps, booleans, and supported document types.
+- **Create API ([app/api/vehicle-documents/route.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/api/vehicle-documents/route.ts))**: Added `POST /api/vehicle-documents` to insert imported document rows into Neon and return the saved rows as the existing UI shape.
+- **Client Create Helper ([utils/vehicleDocumentApi.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/vehicleDocumentApi.ts))**: Added a fetch wrapper for bulk document creation.
+- **Import Flow ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx))**: The Excel/CSV parser still normalizes the local file in-browser, but the parsed rows now save to Neon before they are prepended into dashboard state.
+- **Verification**: Inserted a temporary `codex-import-test-*` row through the POST route, confirmed the count increased from 37 to 38, then deleted the row and confirmed the count returned to 37.
+- **Remaining Persistence Work**: Renewal sync is the last write path still updating client state only.
+
+### 16. Neon-Backed Renewal Sync
+- **Patch Fields ([app/api/vehicle-documents/[id]/route.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/api/vehicle-documents/[id]/route.ts))**: Extended the existing document patch route to accept `issuedDate` and `expiryDate` alongside acknowledgement fields.
+- **Database Update Shape ([db/vehicleDocuments.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/db/vehicleDocuments.ts))**: Expanded update support so renewal dates can be saved through the same Drizzle helper used by acknowledgement updates.
+- **Client Update Helper ([utils/vehicleDocumentApi.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/vehicleDocumentApi.ts))**: Extended the update payload type for renewal date fields.
+- **Single Sync Persistence ([app/page.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/page.tsx) & [components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx))**: Successful renewal simulation now optimistically updates the row, patches Neon, then replaces the row with the saved database response. If saving fails, the row rolls back.
+- **Global Sync Persistence ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx))**: Batch sync now decides which acknowledged documents renewed, applies optimistic updates for those rows, saves each successful renewal to Neon, and rolls back only failed saves.
+- **Verification**: Temporarily patched `mock-001` to `2027-06-12`, confirmed the route returned the renewed date, then restored the original row state.
+- **Persistence Status**: Dashboard read, acknowledgement, delete, import, and successful renewal sync now all persist to Neon.

@@ -16,6 +16,45 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Neon + Drizzle Quick Start
+
+This project is scaffolded for Neon Postgres with Drizzle ORM.
+
+1. Link the local project to Vercel if it is not linked yet:
+
+```bash
+vercel link
+```
+
+2. Add Neon from Vercel Marketplace:
+
+```bash
+vercel integration add neon
+```
+
+3. Pull the generated environment variables locally:
+
+```bash
+vercel env pull .env.local --yes
+```
+
+If you use an existing Neon project instead, copy `.env.example` to `.env.local` and set `DATABASE_URL`.
+
+4. Push the schema and seed mock documents:
+
+```bash
+pnpm db:push
+pnpm db:seed
+```
+
+5. Start the app and test the database connection:
+
+```bash
+pnpm dev
+```
+
+Open [http://localhost:3000/api/db/health](http://localhost:3000/api/db/health). A successful connection returns `{ "ok": true }`.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
