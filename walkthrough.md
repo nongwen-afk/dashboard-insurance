@@ -220,3 +220,24 @@ We reviewed and fixed the issues found after the Antigravity update.
 - **Global Sync Persistence ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx))**: Batch sync now decides which acknowledged documents renewed, applies optimistic updates for those rows, saves each successful renewal to Neon, and rolls back only failed saves.
 - **Verification**: Temporarily patched `mock-001` to `2027-06-12`, confirmed the route returned the renewed date, then restored the original row state.
 - **Persistence Status**: Dashboard read, acknowledgement, delete, import, and successful renewal sync now all persist to Neon.
+
+### 17. Dev/Production Database Separation
+- **Goal**: Keep day-to-day testing on `dev` from changing the live production database used by `main`.
+- **Neon Branches**:
+  - `main` remains the production database branch.
+  - `dev` was created as a long-lived branch from `main` for local development and Preview deployments.
+- **Vercel Environment Mapping**:
+  - `DATABASE_URL` and `POSTGRES_URL` now have separate Vercel entries:
+    - `Production` -> Neon `main` branch.
+    - `Preview (git branch: dev)` -> Neon `dev` branch.
+    - `Development` -> Neon `dev` branch.
+  - Other Neon integration-generated variables may still appear as `Production, Preview, Development`; the application currently reads `DATABASE_URL` first and falls back to `POSTGRES_URL`, so those two variables are the active database routing controls.
+- **Local Development**: Ran `vercel env pull .env.local --environment=development --yes` after the split so local commands use the Neon `dev` branch.
+- **Preview Redeploy**: Redeployed the latest Preview deployment after the env change because Vercel env updates apply to new builds/deployments, not already-built deployments.
+  - New Preview URL checked: `https://dashboard-insurance-nor1u4as1-nontpat-s-projects.vercel.app`
+- **Verification**:
+  - Production/main backup connection metadata pointed to Neon branch `br-orange-silence-aogjcyjs` / endpoint `ep-falling-violet-ao5k40wj`.
+  - Development/local connection metadata pointed to Neon branch `br-little-sunset-aodyq0bj` / endpoint `ep-icy-dawn-aoafq2qh`.
+  - Both branches had 136 `vehicle_documents` rows immediately after branching.
+  - The redeployed Preview `/api/db/health` endpoint returned `{"ok":true,...}`.
+- **Workflow Note**: When changing Vercel env values again, redeploy the affected Preview/Production deployment before testing the new database target.

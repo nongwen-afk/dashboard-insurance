@@ -60,6 +60,15 @@
   - `[x]` Rotate the exposed Neon/Vercel integration secrets and pull the updated `.env.local`.
   - `[x]` Confirm Neon schema and seed data are usable with 37 seeded `vehicle_documents` rows.
   - `[x]` Verify `/api/db/health` returns `ok: true` after secret rotation.
+- `[x]` Separate dev and production Neon database usage
+  - `[x]` Create a long-lived Neon `dev` branch from the existing `main` branch.
+  - `[x]` Keep Neon `main` as the production database branch.
+  - `[x]` Update Vercel `DATABASE_URL` and `POSTGRES_URL` so Production uses the Neon `main` branch.
+  - `[x]` Update Vercel `DATABASE_URL` and `POSTGRES_URL` so Development and Preview deployments from Git branch `dev` use the Neon `dev` branch.
+  - `[x]` Pull the updated Development env back into `.env.local` so local work uses the dev database branch.
+  - `[x]` Redeploy the latest Preview deployment so the new dev database env takes effect.
+  - `[x]` Verify Production and Development connection metadata point to different Neon branch/endpoint IDs.
+  - `[x]` Verify the redeployed Preview `/api/db/health` endpoint returns `ok: true`.
 - `[ ]` Support custom document additions (Add Document Form)
 - `[ ]` Implement real backend API / localstorage integration for persistence
   - `[x]` Add Neon-backed `GET /api/vehicle-documents` endpoint for reading `vehicle_documents`.
