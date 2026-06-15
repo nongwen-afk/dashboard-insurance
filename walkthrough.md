@@ -247,16 +247,15 @@ We reviewed and fixed the issues found after the Antigravity update.
 - **V1 Status Model**:
   - `ต่อแล้ว` means the document is currently valid and does not need renewal work right now.
   - `ยังไม่ต่อ` means renewal work is still unresolved, including expired documents and acknowledged documents that have not synced a successful renewal yet.
-  - `รับเรื่องแล้ว` is a secondary workflow detail for acknowledged rows, not a completed state.
   - `ไม่ต้องต่อ` is used for document types with no expiry date.
 - **Acknowledged Documents**:
   - Replaced the user-facing `กำลังดำเนินการ` / `รอต่ออายุ` wording with `ยังไม่ต่อ`.
-  - Kept acknowledgement as a secondary detail by showing `รับเรื่องแล้ว`, so users know the alert has been seen but renewal is not completed.
+  - Removed the separate acknowledged card/filter for V1, so acknowledged-but-not-renewed rows are counted and filtered under `ยังไม่ต่อ`.
 - **Dashboard Stat Cards ([app/page.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/page.tsx))**:
-  - Updated the main cards to `ต่อแล้ว`, `ใกล้ถึงรอบต่อ`, `ยังไม่ต่อ`, and `รับเรื่องแล้ว`.
-  - Kept captions short and operational, such as `ยังไม่ต้องต่อ`, `ต้องต่ออายุ`, and `ยังไม่ต่อ`.
+  - Updated the main cards to `ต่อแล้ว`, `ใกล้ถึงรอบต่อ`, and `ยังไม่ต่อ`.
+  - Kept captions short and operational, such as `ยังไม่ต้องต่อ` and `ต้องต่ออายุ`.
 - **Table Status Copy ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx))**:
-  - Updated status badges and status-filter toast copy so filtering acknowledged rows says `รับเรื่องแล้วแต่ยังไม่ต่อ`.
+  - Updated status badges and status-filter toast copy so acknowledged rows are grouped directly under `ยังไม่ต่อ`.
   - Updated active/no-expiry filtering copy to say `ต่อแล้วหรือไม่ต้องต่อ`.
   - Updated sync copy for acknowledged rows that still have no external renewal/payment record.
 - **Detail Modal Copy ([components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:

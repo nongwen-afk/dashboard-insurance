@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { Files, CheckCircle2, AlertCircle, XCircle, Clock } from 'lucide-react';
+import { Files, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import DocumentDetailModal from '@/components/DocumentDetailModal';
 import AlertsModal from '@/components/dashboard/AlertsModal';
@@ -134,22 +134,22 @@ export default function DashboardPage() {
     }
   };
 
-  // สรุปจำนวนเอกสารตามสถานะ เพื่อให้ 5 cards ด้านบนสะท้อนข้อมูลหลัง import Excel ทันที
+  // สรุปจำนวนเอกสารตาม workflow หลัก เพื่อให้ cards ด้านบนสะท้อนข้อมูลหลัง import Excel ทันที
   const stats = useMemo(() => {
-    let active = 0, warning = 0, expired = 0, processing = 0;
+    let active = 0, warning = 0, notRenewed = 0;
 
     documents.forEach(doc => {
       if (doc.isAcknowledged) {
-        processing++;
+        notRenewed++;
         return;
       }
       if (!doc.expiryDate) { active++; return; }
       const diffDays = getDaysUntilExpiry(doc.expiryDate);
-      if (diffDays < 0) expired++;
+      if (diffDays < 0) notRenewed++;
       else if (diffDays <= 30) warning++;
       else active++;
     });
-    return { total: documents.length, active, warning, expired, processing };
+    return { total: documents.length, active, warning, notRenewed };
   }, [documents]);
 
   // จัดกลุ่มเอกสารที่จะหมดอายุใน 6 เดือนข้างหน้า เพื่อแสดงบนกราฟและใช้เปิด modal รายเดือน
@@ -294,7 +294,7 @@ export default function DashboardPage() {
         </h1>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="เอกสารทั้งหมด"
           value={stats.total}
@@ -327,23 +327,13 @@ export default function DashboardPage() {
         />
         <StatCard
           title="ยังไม่ต่อ"
-          value={stats.expired}
+          value={stats.notRenewed}
           caption="ต้องต่ออายุ"
           icon={<XCircle size={28} />}
           iconClassName="bg-red-50 text-red-500"
           onClick={() => handleStatCardClick('EXPIRED')}
           isActive={statusFilter === 'EXPIRED'}
           activeType="EXPIRED"
-        />
-        <StatCard
-          title="รับเรื่องแล้ว"
-          value={stats.processing}
-          caption="ยังไม่ต่อ"
-          icon={<Clock size={28} />}
-          iconClassName="bg-blue-50 text-blue-600"
-          onClick={() => handleStatCardClick('PROCESSING')}
-          isActive={statusFilter === 'PROCESSING'}
-          activeType="PROCESSING"
         />
       </div>
 

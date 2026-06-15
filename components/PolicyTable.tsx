@@ -28,7 +28,7 @@ const getStatusBadge = (status: DocStatus, days: number, isAcknowledged?: boolea
   if (isAcknowledged) {
     return {
       label: 'ยังไม่ต่อ',
-      detail: 'รับเรื่องแล้ว',
+      detail: 'ต้องต่ออายุ',
       className: 'bg-blue-50 text-blue-700 border-blue-100',
       detailClassName: 'text-blue-600',
     };
@@ -75,7 +75,6 @@ const getStatusFilterLabel = (status: FilterStatus) => {
     ACTIVE: 'ต่อแล้ว / ไม่ต้องต่อ',
     WARNING: 'ใกล้ถึงรอบต่อ',
     EXPIRED: 'ยังไม่ต่อ',
-    PROCESSING: 'รับเรื่องแล้ว',
   };
 
   return labels[status];
@@ -99,8 +98,8 @@ const matchesDocumentFilters = (
   let matchStatus = true;
 
   if (statusFilter !== 'ALL') {
-    if (statusFilter === 'PROCESSING') {
-      matchStatus = !!doc.isAcknowledged;
+    if (statusFilter === 'EXPIRED') {
+      matchStatus = !!doc.isAcknowledged || status === 'EXPIRED';
     } else if (doc.isAcknowledged) {
       matchStatus = false;
     } else if (statusFilter === 'ACTIVE') {
@@ -250,7 +249,7 @@ export default function PolicyTable({
 
       if (renewedResults.length === 0) {
         toast.error(
-          `ยังไม่ต่อ: เอกสารที่รับเรื่องแล้วทั้ง ${pendingCount} รายการยังไม่พบการชำระเงิน/ต่ออายุใหม่ในระบบ`,
+          `ยังไม่ต่อ: เอกสารทั้ง ${pendingCount} รายการยังไม่พบการชำระเงิน/ต่ออายุใหม่ในระบบ`,
           {
             id: syncToastId,
             icon: 'ℹ️',
@@ -651,8 +650,8 @@ export default function PolicyTable({
                         onClick={(e) => {
                           e.stopPropagation();
                           if (doc.isAcknowledged) {
-                            setStatusFilter('PROCESSING');
-                            toast.success('กรองเฉพาะเอกสารที่รับเรื่องแล้วแต่ยังไม่ต่อ', { id: 'status-filter-toast' });
+                            setStatusFilter('EXPIRED');
+                            toast.success('กรองเฉพาะเอกสารที่ยังไม่ต่อ', { id: 'status-filter-toast' });
                           } else if (status === 'EXPIRED') {
                             setStatusFilter('EXPIRED');
                             toast.success('กรองเฉพาะเอกสารที่ยังไม่ต่อ', { id: 'status-filter-toast' });

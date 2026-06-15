@@ -10,7 +10,7 @@ interface StatCardProps {
   iconClassName: string;
   onClick?: () => void;
   isActive?: boolean;
-  activeType?: 'ALL' | 'ACTIVE' | 'WARNING' | 'EXPIRED' | 'PROCESSING';
+  activeType?: 'ALL' | 'ACTIVE' | 'WARNING' | 'EXPIRED';
 }
 
 export default function StatCard({
@@ -34,8 +34,6 @@ export default function StatCard({
         return 'border-orange-400 bg-orange-50/25 shadow-md shadow-orange-500/5 ring-4 ring-orange-500/5';
       case 'EXPIRED':
         return 'border-red-400 bg-red-50/25 shadow-md shadow-red-500/5 ring-4 ring-red-500/5';
-      case 'PROCESSING':
-        return 'border-blue-400 bg-blue-50/25 shadow-md shadow-blue-500/5 ring-4 ring-blue-500/5';
       case 'ALL':
       default:
         return 'border-slate-300 bg-slate-50/40 shadow-md shadow-slate-500/5 ring-4 ring-slate-500/5';

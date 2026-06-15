@@ -9,7 +9,7 @@ export const initialDocsSeed: VehicleDocument[] = [
   { chassis: 'CHAS-EXP-003', licensePlate: '', docType: 'insurance', issuedDate: '2025-05-15', expiryDate: '2026-05-15', driverName: 'วิชัย เก่งกล้า' }, // ไม่มีทะเบียน
   { chassis: 'CHAS-EXP-004', licensePlate: '4กข 4444', docType: 'inspection', issuedDate: '2025-05-20', expiryDate: '2026-05-20', driverName: '' }, // ไม่มีคนขับ
 
-  // 2. กลุ่มหมดอายุแล้วแต่ได้รับการกดยอมรับแล้ว (Expired but Acknowledged) -> จะเป็นสถานะ "ยังไม่ต่อ" พร้อมรายละเอียด "รับเรื่องแล้ว"
+  // 2. กลุ่มหมดอายุแล้วแต่ได้รับการกดยอมรับแล้ว (Expired but Acknowledged) -> จะถูกรวมใน workflow "ยังไม่ต่อ"
   { chassis: 'CHAS-ACK-001', licensePlate: '9กง 9090', docType: 'act', issuedDate: '2025-05-10', expiryDate: '2026-05-10', driverName: 'สมเกียรติ ยอดเยี่ยม', isAcknowledged: true, acknowledgedAt: '2026-06-04T10:30:00Z', acknowledgedBy: 'testuser' },
   { chassis: 'CHAS-ACK-002', licensePlate: '8กข 8080', docType: 'tax', issuedDate: '2025-05-05', expiryDate: '2026-05-05', driverName: '', isAcknowledged: true, acknowledgedAt: '2026-06-04T11:15:00Z', acknowledgedBy: 'testuser' }, // ไม่มีคนขับแต่อ่านรับทราบแล้ว
 

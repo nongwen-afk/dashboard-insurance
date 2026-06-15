@@ -26,7 +26,7 @@ export default function DocumentDetailModal({ document, onClose, onAcknowledge, 
         bg: 'bg-blue-50 border-blue-200 text-blue-800',
         icon: <Info className="text-blue-500 shrink-0" size={20} />,
         title: 'ยังไม่ต่อ',
-        description: `รับเรื่องโดย ${ackUserText} เมื่อวันที่ ${ackDateText} แต่ยังไม่พบข้อมูลต่ออายุสำเร็จ`,
+        description: `บันทึกการตรวจสอบโดย ${ackUserText} เมื่อวันที่ ${ackDateText} แต่ยังไม่พบข้อมูลต่ออายุสำเร็จ`,
         badgeClassName: 'bg-blue-50 text-blue-700 border-blue-100'
       };
     }
