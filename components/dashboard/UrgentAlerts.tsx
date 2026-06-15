@@ -35,7 +35,7 @@ export default function UrgentAlerts({ alerts, onOpenAll, onSelectDocument }: Ur
                 <div className="flex justify-between items-start mb-1">
                   <span className="font-bold text-gray-800 line-clamp-1 flex-1 pr-2">{alert.text.split(' - ')[0]}</span>
                   <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold shrink-0 ${isExpired ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>
-                    {isExpired ? 'หมดอายุแล้ว' : 'ใกล้หมด'}
+                    {isExpired ? 'ยังไม่ต่อ' : 'ใกล้ถึงรอบต่อ'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-gray-500 text-xs mt-2 font-medium">

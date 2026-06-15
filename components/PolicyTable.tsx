@@ -27,8 +27,8 @@ interface PolicyTableProps {
 const getStatusBadge = (status: DocStatus, days: number, isAcknowledged?: boolean) => {
   if (isAcknowledged) {
     return {
-      label: 'กำลังดำเนินการ',
-      detail: 'รับทราบเรื่องแล้ว',
+      label: 'ยังไม่ต่อ',
+      detail: 'รับเรื่องแล้ว',
       className: 'bg-blue-50 text-blue-700 border-blue-100',
       detailClassName: 'text-blue-600',
     };
@@ -36,7 +36,7 @@ const getStatusBadge = (status: DocStatus, days: number, isAcknowledged?: boolea
 
   if (status === 'EXPIRED') {
     return {
-      label: 'หมดอายุแล้ว',
+      label: 'ยังไม่ต่อ',
       detail: `เลยกำหนดมาแล้ว ${Math.abs(days)} วัน`,
       className: 'bg-red-50 text-red-700 border-red-100',
       detailClassName: 'text-red-600',
@@ -45,7 +45,7 @@ const getStatusBadge = (status: DocStatus, days: number, isAcknowledged?: boolea
 
   if (status === 'WARNING') {
     return {
-      label: 'ใกล้หมดอายุ',
+      label: 'ใกล้ถึงรอบต่อ',
       detail: `เหลืออีก ${days} วัน`,
       className: 'bg-orange-50 text-orange-700 border-orange-100',
       detailClassName: 'text-orange-600',
@@ -54,7 +54,7 @@ const getStatusBadge = (status: DocStatus, days: number, isAcknowledged?: boolea
 
   if (status === 'NO_EXPIRY') {
     return {
-      label: 'ไม่มีวันหมดอายุ',
+      label: 'ไม่ต้องต่อ',
       detail: 'ตรวจสอบตามรอบเอกสาร',
       className: 'bg-slate-50 text-slate-600 border-slate-200',
       detailClassName: 'text-slate-500',
@@ -62,8 +62,8 @@ const getStatusBadge = (status: DocStatus, days: number, isAcknowledged?: boolea
   }
 
   return {
-    label: 'ใช้งานได้',
-    detail: 'ยังไม่ถึงกำหนด',
+    label: 'ต่อแล้ว',
+    detail: 'ยังไม่ต้องต่อ',
     className: 'bg-green-50 text-green-700 border-green-100',
     detailClassName: 'text-green-600',
   };
@@ -72,10 +72,10 @@ const getStatusBadge = (status: DocStatus, days: number, isAcknowledged?: boolea
 const getStatusFilterLabel = (status: FilterStatus) => {
   const labels: Record<FilterStatus, string> = {
     ALL: 'ทั้งหมด',
-    ACTIVE: 'ใช้งานได้',
-    WARNING: 'ใกล้หมดอายุ',
-    EXPIRED: 'หมดอายุแล้ว',
-    PROCESSING: 'กำลังดำเนินการ',
+    ACTIVE: 'ต่อแล้ว / ไม่ต้องต่อ',
+    WARNING: 'ใกล้ถึงรอบต่อ',
+    EXPIRED: 'ยังไม่ต่อ',
+    PROCESSING: 'รับเรื่องแล้ว',
   };
 
   return labels[status];
@@ -184,7 +184,7 @@ export default function PolicyTable({
           });
 
           setDocuments(prev => prev.map(d => isSameDocumentRecord(d, optimisticDocument) ? savedDocument : d));
-          toast.success(`ซิงค์สำเร็จ! พบการต่ออายุใหม่ของรถ ${doc.licensePlate || doc.chassis || 'ไม่ระบุ'} เรียบร้อย`, {
+          toast.success(`ต่อแล้ว: อัปเดตวันต่ออายุของรถ ${doc.licensePlate || doc.chassis || 'ไม่ระบุ'} เรียบร้อย`, {
             id: syncToastId,
             icon: '✅',
             duration: 4000
@@ -198,7 +198,7 @@ export default function PolicyTable({
           });
         }
       } else {
-        toast.error(`ซิงค์สำเร็จ: ยังไม่พบการชำระเงิน/ต่ออายุใหม่ในระบบของหน่วยงานภายนอก`, {
+        toast.error(`ยังไม่ต่อ: ยังไม่พบการชำระเงิน/ต่ออายุใหม่ในระบบของหน่วยงานภายนอก`, {
           id: syncToastId,
           icon: 'ℹ️',
           duration: 4000
@@ -250,7 +250,7 @@ export default function PolicyTable({
 
       if (renewedResults.length === 0) {
         toast.error(
-          `ซิงค์เรียบร้อย: เอกสารทั้ง ${pendingCount} รายการที่กำลังดำเนินการ ยังไม่พบการชำระเงินเข้ามาในระบบ`,
+          `ยังไม่ต่อ: เอกสารที่รับเรื่องแล้วทั้ง ${pendingCount} รายการยังไม่พบการชำระเงิน/ต่ออายุใหม่ในระบบ`,
           {
             id: syncToastId,
             icon: 'ℹ️',
@@ -294,7 +294,7 @@ export default function PolicyTable({
 
       if (savedDocuments.length > 0) {
         toast.success(
-          `ซิงค์เรียบร้อย! อัปเดตข้อมูลต่ออายุสำเร็จ ${savedDocuments.length} รายการ, รอการชำระเงินอีก ${pendingCount} รายการ`,
+          `ต่อแล้ว ${savedDocuments.length} รายการ, ยังไม่ต่ออีก ${pendingCount} รายการ`,
           {
             id: syncToastId,
             icon: '✅',
@@ -652,16 +652,16 @@ export default function PolicyTable({
                           e.stopPropagation();
                           if (doc.isAcknowledged) {
                             setStatusFilter('PROCESSING');
-                            toast.success('กรองเฉพาะเอกสารที่กำลังดำเนินการ', { id: 'status-filter-toast' });
+                            toast.success('กรองเฉพาะเอกสารที่รับเรื่องแล้วแต่ยังไม่ต่อ', { id: 'status-filter-toast' });
                           } else if (status === 'EXPIRED') {
                             setStatusFilter('EXPIRED');
-                            toast.success('กรองเฉพาะเอกสารที่หมดอายุแล้ว', { id: 'status-filter-toast' });
+                            toast.success('กรองเฉพาะเอกสารที่ยังไม่ต่อ', { id: 'status-filter-toast' });
                           } else if (status === 'WARNING') {
                             setStatusFilter('WARNING');
-                            toast.success('กรองเฉพาะเอกสารที่ใกล้หมดอายุ', { id: 'status-filter-toast' });
+                            toast.success('กรองเฉพาะเอกสารที่ใกล้ถึงรอบต่อ', { id: 'status-filter-toast' });
                           } else if (status === 'ACTIVE' || status === 'NO_EXPIRY') {
                             setStatusFilter('ACTIVE');
-                            toast.success('กรองเฉพาะเอกสารที่ใช้งานได้', { id: 'status-filter-toast' });
+                            toast.success('กรองเฉพาะเอกสารที่ต่อแล้วหรือไม่ต้องต่อ', { id: 'status-filter-toast' });
                           }
                         }}
                         className="inline-flex flex-col items-start gap-1 cursor-pointer hover:scale-105 transition-all duration-200"

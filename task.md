@@ -69,6 +69,11 @@
   - `[x]` Redeploy the latest Preview deployment so the new dev database env takes effect.
   - `[x]` Verify Production and Development connection metadata point to different Neon branch/endpoint IDs.
   - `[x]` Verify the redeployed Preview `/api/db/health` endpoint returns `ok: true`.
+- `[x]` Clarify renewal status wording for V1
+  - `[x]` Replace ambiguous user-facing "กำลังดำเนินการ" labels with V1 workflow language: "ต่อแล้ว", "ยังไม่ต่อ", "รับเรื่องแล้ว", and "ไม่ต้องต่อ".
+  - `[x]` Keep acknowledged documents out of the urgent queue but show them as "รับเรื่องแล้ว" with the clear secondary state "ยังไม่ต่อ".
+  - `[x]` Update dashboard stat-card titles, table badges, active filter chips, and status-filter toast copy to use the same workflow wording.
+  - `[x]` Update document detail modal banner copy so acknowledged documents are not implied to be completed.
 - `[ ]` Support custom document additions (Add Document Form)
 - `[ ]` Implement real backend API / localstorage integration for persistence
   - `[x]` Add Neon-backed `GET /api/vehicle-documents` endpoint for reading `vehicle_documents`.

@@ -38,9 +38,9 @@ We have resolved layout issues on mobile, optimized desktop layout density, and 
 ### 5. Interactive Stat Cards (New Feature)
 - **Interactive Filtering**: Clicking any of the 4 stat cards now filters the document table by status:
   - **เอกสารทั้งหมด** -> Shows all records.
-  - **ใช้งานได้** -> Shows active records and those with no expiry dates.
-  - **ใกล้หมดอายุ** -> Shows documents expiring within 30 days.
-  - **หมดอายุแล้ว** -> Shows documents that have passed their expiration dates.
+  - **ต่อแล้ว** -> Shows currently valid records and those with no expiry dates.
+  - **ใกล้ถึงรอบต่อ** -> Shows documents expiring within 30 days.
+  - **ยังไม่ต่อ** -> Shows documents that have passed their expiration dates and still need renewal.
 - **Auto Smooth Scroll**: When a card is clicked, the page smoothly scrolls down to the table. An offset of `90px` is applied to ensure the table header is not covered by the fixed header bar.
 - **Active Filter Badge**: Added a green badge next to the table sorting/filtering controls showing the active status filter. Users can clear this filter by clicking the `X` button on the badge.
 
@@ -129,8 +129,8 @@ We reviewed and fixed the issues found after the Antigravity update.
     - Added a sleek slate-colored information card inside the details grid displaying the acknowledgement user and timestamp.
     - **Row Detail Modal Bug Fix**: Fixed an issue where clicking "รับทราบการแจ้งเตือน" inside the `DocumentDetailModal` that was opened directly from a table row (rendered in `PolicyTable.tsx`) did not update the acknowledgement metadata due to outdated handler callbacks. Synchronized the `onAcknowledge` and `onSync` handlers in the duplicate `DocumentDetailModal` component inside `PolicyTable.tsx`.
     - **Randomized DLT Sync Simulation (Idea 3)**: Modified the "ซิงค์ข้อมูลล่าสุด" (Sync Latest) action to simulate a real API integration check. When clicked (globally or per document), it displays a loading toast ("กำลังตรวจสอบข้อมูลกับระบบภายนอก...") for 1.5 seconds, then randomly (50% chance) decides to either:
-      1. **ต่ออายุสำเร็จ (Renewal Success)**: Extends the expiry date by exactly 1 year, updates the issued date to the current date, clears the acknowledgement metadata, and changes the document status to green **ใช้งานได้ปกติ** (Active).
-      2. **ค้างชำระเงิน/ไม่มีรายการอัปเดต (Pending Check)**: Retains the processing status and alerts the user that no payment or renewal record was found in the external DLT/insurer database.
+      1. **ต่ออายุสำเร็จ (Renewal Success)**: Extends the expiry date by exactly 1 year, updates the issued date to the current date, clears the acknowledgement metadata, and changes the document status to green **ต่อแล้ว** (Active).
+      2. **ค้างชำระเงิน/ไม่มีรายการอัปเดต (Pending Check)**: Retains the **ยังไม่ต่อ** workflow state and alerts the user that no payment or renewal record was found in the external DLT/insurer database.
 
 ### 6. Dashboard UI Beautification & Aesthetic Polish (Latest Update)
 - **Header Upgrade ([Header.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/Header.tsx))**:
@@ -241,3 +241,24 @@ We reviewed and fixed the issues found after the Antigravity update.
   - Both branches had 136 `vehicle_documents` rows immediately after branching.
   - The redeployed Preview `/api/db/health` endpoint returned `{"ok":true,...}`.
 - **Workflow Note**: When changing Vercel env values again, redeploy the affected Preview/Production deployment before testing the new database target.
+
+### 18. Clearer Renewal Status Wording for V1
+- **Goal**: Make document statuses easier to understand for the first production workflow without introducing the later date/import validation work yet.
+- **V1 Status Model**:
+  - `ต่อแล้ว` means the document is currently valid and does not need renewal work right now.
+  - `ยังไม่ต่อ` means renewal work is still unresolved, including expired documents and acknowledged documents that have not synced a successful renewal yet.
+  - `รับเรื่องแล้ว` is a secondary workflow detail for acknowledged rows, not a completed state.
+  - `ไม่ต้องต่อ` is used for document types with no expiry date.
+- **Acknowledged Documents**:
+  - Replaced the user-facing `กำลังดำเนินการ` / `รอต่ออายุ` wording with `ยังไม่ต่อ`.
+  - Kept acknowledgement as a secondary detail by showing `รับเรื่องแล้ว`, so users know the alert has been seen but renewal is not completed.
+- **Dashboard Stat Cards ([app/page.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/page.tsx))**:
+  - Updated the main cards to `ต่อแล้ว`, `ใกล้ถึงรอบต่อ`, `ยังไม่ต่อ`, and `รับเรื่องแล้ว`.
+  - Kept captions short and operational, such as `ยังไม่ต้องต่อ`, `ต้องต่ออายุ`, and `ยังไม่ต่อ`.
+- **Table Status Copy ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx))**:
+  - Updated status badges and status-filter toast copy so filtering acknowledged rows says `รับเรื่องแล้วแต่ยังไม่ต่อ`.
+  - Updated active/no-expiry filtering copy to say `ต่อแล้วหรือไม่ต้องต่อ`.
+  - Updated sync copy for acknowledged rows that still have no external renewal/payment record.
+- **Detail Modal Copy ([components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
+  - Updated the acknowledged banner to `ยังไม่ต่อ` and explicitly says renewal success has not yet been found.
+- **Deferred**: Import/date validation is intentionally not included in this pass and should be revisited separately.

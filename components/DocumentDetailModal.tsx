@@ -25,8 +25,8 @@ export default function DocumentDetailModal({ document, onClose, onAcknowledge, 
       return {
         bg: 'bg-blue-50 border-blue-200 text-blue-800',
         icon: <Info className="text-blue-500 shrink-0" size={20} />,
-        title: 'กำลังดำเนินการ',
-        description: `รับทราบการแจ้งเตือนโดย ${ackUserText} เมื่อวันที่ ${ackDateText} (อยู่ระหว่างดำเนินการต่ออายุ)`,
+        title: 'ยังไม่ต่อ',
+        description: `รับเรื่องโดย ${ackUserText} เมื่อวันที่ ${ackDateText} แต่ยังไม่พบข้อมูลต่ออายุสำเร็จ`,
         badgeClassName: 'bg-blue-50 text-blue-700 border-blue-100'
       };
     }
@@ -36,7 +36,7 @@ export default function DocumentDetailModal({ document, onClose, onAcknowledge, 
         return {
           bg: 'bg-red-50 border-red-200 text-red-950',
           icon: <AlertTriangle className="text-red-500 shrink-0 animate-bounce" size={20} />,
-          title: 'หมดอายุแล้ว!',
+          title: 'ยังไม่ต่อ',
           description: `เอกสารหมดอายุเมื่อวันที่ ${formatThaiDate(document.expiryDate)} (เลยกำหนดมาแล้ว ${Math.abs(days)} วัน)`,
           badgeClassName: 'bg-red-50 text-red-700 border-red-100'
         };
@@ -44,7 +44,7 @@ export default function DocumentDetailModal({ document, onClose, onAcknowledge, 
         return {
           bg: 'bg-orange-50 border-orange-200 text-orange-950',
           icon: <Clock className="text-orange-500 shrink-0" size={20} />,
-          title: 'ใกล้หมดอายุ',
+          title: 'ใกล้ถึงรอบต่อ',
           description: `จะหมดอายุในอีก ${days} วัน กรุณาเตรียมการดำเนินการต่ออายุ`,
           badgeClassName: 'bg-orange-50 text-orange-700 border-orange-100'
         };
@@ -52,7 +52,7 @@ export default function DocumentDetailModal({ document, onClose, onAcknowledge, 
         return {
           bg: 'bg-green-50 border-green-200 text-green-950',
           icon: <CheckCircle2 className="text-green-500 shrink-0" size={20} />,
-          title: 'ใช้งานได้ปกติ',
+          title: 'ต่อแล้ว',
           description: `เอกสารยังมีผลบังคับใช้ (เหลือเวลาอีก ${days} วัน)`,
           badgeClassName: 'bg-green-50 text-green-700 border-green-100'
         };
@@ -61,7 +61,7 @@ export default function DocumentDetailModal({ document, onClose, onAcknowledge, 
         return {
           bg: 'bg-slate-50 border-slate-200 text-slate-800',
           icon: <CheckCircle2 className="text-slate-400 shrink-0" size={20} />,
-          title: 'ไม่มีวันหมดอายุ',
+          title: 'ไม่ต้องต่อ',
           description: 'เอกสารประเภทนี้ไม่มีกำหนดวันหมดอายุ',
           badgeClassName: 'bg-slate-50 text-slate-600 border-slate-200'
         };

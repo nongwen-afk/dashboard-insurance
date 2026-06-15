@@ -179,7 +179,7 @@ export default function DashboardPage() {
     }));
   }, [documents]);
 
-  // สร้างรายการแจ้งเตือนจากเอกสารที่หมดอายุแล้วหรือใกล้หมดอายุใน 30 วัน
+  // สร้างรายการแจ้งเตือนจากเอกสารที่ยังไม่ต่อหรือใกล้ถึงรอบต่อใน 30 วัน
   const alertsList = useMemo<DocumentAlert[]>(() => {
     return documents
       .filter(doc => {
@@ -205,7 +205,7 @@ export default function DashboardPage() {
 
         return {
           id: `alert-${index}`,
-          text: `${doc.licensePlate ? 'รถทะเบียน' : 'เลขตัวถัง'} ${doc.licensePlate || doc.chassis} - ${docName} ${isExpired ? 'หมดอายุ' : 'ใกล้หมดอายุ'}`,
+          text: `${doc.licensePlate ? 'รถทะเบียน' : 'เลขตัวถัง'} ${doc.licensePlate || doc.chassis} - ${docName} ${isExpired ? 'ยังไม่ต่อ' : 'ใกล้ถึงรอบต่อ'}`,
           type: isExpired ? 'error' as const : 'warning' as const,
           date: formatThaiDate(doc.expiryDate),
           daysText: daysText,
@@ -306,9 +306,9 @@ export default function DashboardPage() {
           activeType="ALL"
         />
         <StatCard
-          title="ใช้งานได้"
+          title="ต่อแล้ว"
           value={stats.active}
-          caption="ยังไม่ถึงกำหนด"
+          caption="ยังไม่ต้องต่อ"
           icon={<CheckCircle2 size={28} />}
           iconClassName="bg-green-50 text-green-500"
           onClick={() => handleStatCardClick('ACTIVE')}
@@ -316,7 +316,7 @@ export default function DashboardPage() {
           activeType="ACTIVE"
         />
         <StatCard
-          title="ใกล้หมดอายุ"
+          title="ใกล้ถึงรอบต่อ"
           value={stats.warning}
           caption="ภายใน 30 วัน"
           icon={<AlertCircle size={28} />}
@@ -326,9 +326,9 @@ export default function DashboardPage() {
           activeType="WARNING"
         />
         <StatCard
-          title="หมดอายุแล้ว"
+          title="ยังไม่ต่อ"
           value={stats.expired}
-          caption="ต้องดำเนินการ"
+          caption="ต้องต่ออายุ"
           icon={<XCircle size={28} />}
           iconClassName="bg-red-50 text-red-500"
           onClick={() => handleStatCardClick('EXPIRED')}
@@ -336,9 +336,9 @@ export default function DashboardPage() {
           activeType="EXPIRED"
         />
         <StatCard
-          title="กำลังดำเนินการ"
+          title="รับเรื่องแล้ว"
           value={stats.processing}
-          caption="รับทราบเรื่องแล้ว"
+          caption="ยังไม่ต่อ"
           icon={<Clock size={28} />}
           iconClassName="bg-blue-50 text-blue-600"
           onClick={() => handleStatCardClick('PROCESSING')}
