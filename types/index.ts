@@ -37,7 +37,7 @@ export interface DocumentAlert {
   doc: VehicleDocument;
 }
 
-// กลุ่มเอกสารตามเดือน ใช้กับกราฟและ modal รายการเอกสารหมดอายุรายเดือน
+// กลุ่มเอกสารตามเดือน ใช้กับปฏิทินต่ออายุและรายการตามวัน
 export interface ExpiryMonthGroup {
   name: string;
   docs: VehicleDocument[];

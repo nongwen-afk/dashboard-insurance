@@ -74,6 +74,11 @@
   - `[x]` Remove the separate acknowledged card/filter and count acknowledged-but-not-renewed documents under "ยังไม่ต่อ".
   - `[x]` Update dashboard stat-card titles, table badges, active filter chips, and status-filter toast copy to use the same workflow wording.
   - `[x]` Update document detail modal banner copy so acknowledged documents are not implied to be completed.
+- `[x]` Replace the expiry bar chart with a renewal calendar and daily agenda
+  - `[x]` Rework `ExpiryChart.tsx` into a month calendar that marks each day with the number of expiring documents.
+  - `[x]` Add a daily agenda panel showing vehicle, document type, project, expiry date, and days remaining/overdue.
+  - `[x]` Keep calendar list item clicks opening the existing document detail modal.
+  - `[x]` Add month-level quick counts for "ยังไม่ต่อ", "7 วัน", and "8-30 วัน".
 - `[ ]` Support custom document additions (Add Document Form)
 - `[ ]` Implement real backend API / localstorage integration for persistence
   - `[x]` Add Neon-backed `GET /api/vehicle-documents` endpoint for reading `vehicle_documents`.

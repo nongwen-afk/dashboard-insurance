@@ -59,7 +59,7 @@ We implemented several important fixes, distributed the mock data, integrated an
 - **Issue**: Notification alerts and expiry modals hardcoded "รถทะเบียน" even if the vehicle only had a chassis number and no license plate.
 - **Solution**: Replaced hardcoded strings with conditional labels (`document.licensePlate ? 'รถทะเบียน' : 'เลขตัวถัง'`) in:
   - Main Alerts Generator ([page.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/page.tsx))
-  - Monthly Expiry Modal ([ExpiryMonthModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/dashboard/ExpiryMonthModal.tsx))
+  - The former monthly expiry modal flow, which was later replaced by the renewal calendar.
 
 ### 2. Mock Data Optimization
 - **Data Distribution**: Updated [mockData.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/mockData.ts) to distribute active documents unevenly across the 6-month chart window (June: 5, July: 4, August: 3, Sept: 1, Oct: 7, Nov: 2) to look like a realistic fleet operation.
@@ -160,7 +160,7 @@ We reviewed and fixed the issues found after the Antigravity update.
 - **Timezone-Safe Document Dates ([utils/documentUtils.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/documentUtils.ts))**: Added local date-only parsing helpers so `YYYY-MM-DD` expiry values are not parsed as UTC dates. This prevents yesterday's expiry date from being treated as still within the warning window in the Asia/Bangkok timezone.
 - **Shared Renewal Date Helper ([utils/documentUtils.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/documentUtils.ts))**: Added a reusable renewal helper and wired both row-level sync and global sync to it in [app/page.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/page.tsx) and [components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx).
 - **Import Date Validation ([utils/importVehicleDocuments.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/importVehicleDocuments.ts))**: Tightened Excel date normalization so impossible dates such as `31/02/2026` remain visible as raw input instead of silently rolling over into another month or year.
-- **Stable UI Record Identity ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx) & [ExpiryMonthModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/dashboard/ExpiryMonthModal.tsx))**: Updated table action-menu state and monthly expiry modal row keys to use `getDocumentRecordKey`, preventing duplicate vehicle/doc-type rows from sharing unstable UI identity.
+- **Stable UI Record Identity ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx))**: Updated table action-menu state and the former monthly expiry modal row keys to use `getDocumentRecordKey`, preventing duplicate vehicle/doc-type rows from sharing unstable UI identity.
 
 ### 9. Neon + Drizzle Database Scaffold (Latest Update)
 - **Dependencies and Scripts ([package.json](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/package.json))**: Added `@neondatabase/serverless`, `drizzle-orm`, `drizzle-kit`, `dotenv`, and `tsx`, plus `pnpm db:generate`, `pnpm db:push`, `pnpm db:migrate`, `pnpm db:seed`, and `pnpm db:studio`.
@@ -261,3 +261,20 @@ We reviewed and fixed the issues found after the Antigravity update.
 - **Detail Modal Copy ([components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
   - Updated the acknowledged banner to `ยังไม่ต่อ` and explicitly says renewal success has not yet been found.
 - **Deferred**: Import/date validation is intentionally not included in this pass and should be revisited separately.
+
+### 19. Renewal Calendar and Daily Agenda
+- **Goal**: Replace the month-level expiry bar chart with a workflow surface that answers which day needs renewal work and which vehicles/documents are due on that day.
+- **Calendar View ([components/dashboard/ExpiryChart.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/dashboard/ExpiryChart.tsx))**:
+  - Reworked the existing chart component into `ปฏิทินต่ออายุ` while keeping the file name to minimize import churn.
+  - Displays a month grid with document-count badges on dates that have expiring documents.
+  - Adds previous/next month controls and resets the selected day when users change month.
+- **Daily Agenda**:
+  - Shows the selected day's documents beside the calendar.
+  - Each row shows the vehicle identifier, document type, project, workflow status, expiry date, and a days label such as `เหลืออีก 7 วัน` or `เลยกำหนด 3 วัน`.
+  - Clicking an agenda row opens the existing `DocumentDetailModal`, so the detail workflow stays unchanged.
+- **Month Summary Chips**:
+  - Added compact counts for `ยังไม่ต่อ`, `7 วัน`, and `8-30 วัน` inside the visible month.
+- **Dashboard Wiring ([app/page.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/page.tsx))**:
+  - Removed the old monthly expiry modal from the active dashboard flow.
+  - Deleted the obsolete monthly expiry modal component so the calendar is the single renewal schedule surface.
+  - The renewal calendar now receives the existing six-month grouped document data and calls `setSelectedDocForDetail` directly.

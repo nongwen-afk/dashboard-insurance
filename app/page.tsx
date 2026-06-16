@@ -6,11 +6,10 @@ import toast from 'react-hot-toast';
 import DocumentDetailModal from '@/components/DocumentDetailModal';
 import AlertsModal from '@/components/dashboard/AlertsModal';
 import ExpiryChart from '@/components/dashboard/ExpiryChart';
-import ExpiryMonthModal from '@/components/dashboard/ExpiryMonthModal';
 import StatCard from '@/components/dashboard/StatCard';
 import UrgentAlerts from '@/components/dashboard/UrgentAlerts';
 import PolicyTable from '../components/PolicyTable';
-import type { DocumentAlert, ExpiryMonthGroup, FilterStatus, VehicleDocument } from '@/types';
+import type { DocumentAlert, FilterStatus, VehicleDocument } from '@/types';
 import { formatThaiDate, getDaysUntilExpiry, getDocTypeName, getRenewedDocumentDates, getSixMonthExpiryKey, isSameDocumentRecord, parseDocumentDate } from '@/utils/documentUtils';
 import { deleteVehicleDocumentRecord, updateVehicleDocumentRecord } from '@/utils/vehicleDocumentApi';
 
@@ -19,7 +18,6 @@ export default function DashboardPage() {
   const [documents, setDocuments] = useState<VehicleDocument[]>([]);
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(true);
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
-  const [selectedExpiryMonth, setSelectedExpiryMonth] = useState<ExpiryMonthGroup | null>(null);
   const [selectedDocForDetail, setSelectedDocForDetail] = useState<VehicleDocument | null>(null);
 
   // สถานะตัวกรองจาก stat card ที่ส่งไปควบคุม PolicyTable
@@ -152,7 +150,7 @@ export default function DashboardPage() {
     return { total: documents.length, active, warning, notRenewed };
   }, [documents]);
 
-  // จัดกลุ่มเอกสารที่จะหมดอายุใน 6 เดือนข้างหน้า เพื่อแสดงบนกราฟและใช้เปิด modal รายเดือน
+  // จัดกลุ่มเอกสารที่จะถึงรอบต่ออายุใน 6 เดือนข้างหน้า เพื่อป้อนปฏิทินต่ออายุ
   const chartData = useMemo(() => {
     const dataMap: Record<string, VehicleDocument[]> = {};
 
@@ -340,7 +338,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <ExpiryChart
           chartData={chartData}
-          onSelectMonth={setSelectedExpiryMonth}
+          onSelectDocument={setSelectedDocForDetail}
         />
         <UrgentAlerts
           alerts={topUrgentDocs}
@@ -365,14 +363,6 @@ export default function DashboardPage() {
         <AlertsModal
           alerts={alertsList}
           onClose={() => setIsAlertModalOpen(false)}
-          onSelectDocument={setSelectedDocForDetail}
-        />
-      )}
-
-      {selectedExpiryMonth && (
-        <ExpiryMonthModal
-          month={selectedExpiryMonth}
-          onClose={() => setSelectedExpiryMonth(null)}
           onSelectDocument={setSelectedDocForDetail}
         />
       )}
