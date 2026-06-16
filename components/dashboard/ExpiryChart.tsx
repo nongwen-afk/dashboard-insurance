@@ -44,7 +44,7 @@ const getCalendarStart = (month: Date) => {
 const getRenewalTone = (document: VehicleDocument) => {
   if (document.isAcknowledged) {
     return {
-      label: 'ยังไม่ต่อ',
+      label: 'ต้องต่อแล้ว',
       className: 'border-red-100 bg-red-50/70 text-red-700',
       dotClassName: 'bg-red-500',
     };
@@ -53,7 +53,7 @@ const getRenewalTone = (document: VehicleDocument) => {
   const days = getDaysUntilExpiry(document.expiryDate);
   if (days < 0) {
     return {
-      label: 'ยังไม่ต่อ',
+      label: 'ต้องต่อแล้ว',
       className: 'border-red-100 bg-red-50/70 text-red-700',
       dotClassName: 'bg-red-500',
     };
@@ -120,11 +120,12 @@ export default function ExpiryChart({ chartData, onSelectDocument }: ExpiryChart
       const date = new Date(start);
       date.setDate(start.getDate() + index);
       const key = formatDateOnly(date);
+      const isCurrentMonth = date.getMonth() === visibleMonth.getMonth();
       return {
         date,
         key,
-        docs: docsByDay.get(key) || [],
-        isCurrentMonth: date.getMonth() === visibleMonth.getMonth(),
+        docs: isCurrentMonth ? docsByDay.get(key) || [] : [],
+        isCurrentMonth,
       };
     });
   }, [docsByDay, visibleMonth]);
@@ -138,16 +139,11 @@ export default function ExpiryChart({ chartData, onSelectDocument }: ExpiryChart
     .filter((day) => day.isCurrentMonth)
     .flatMap((day) => day.docs);
 
-  const overdueCount = monthDocs.filter((document) => document.isAcknowledged || getDaysUntilExpiry(document.expiryDate) < 0).length;
-  const urgentRenewalCount = monthDocs.filter((document) => {
-    if (document.isAcknowledged) return false;
-    const days = getDaysUntilExpiry(document.expiryDate);
-    return days >= 0 && days <= 7;
-  }).length;
+  const dueNowCount = monthDocs.filter((document) => document.isAcknowledged || getDaysUntilExpiry(document.expiryDate) < 0).length;
   const upcomingRenewalCount = monthDocs.filter((document) => {
     if (document.isAcknowledged) return false;
     const days = getDaysUntilExpiry(document.expiryDate);
-    return days > 7 && days <= 30;
+    return days >= 0 && days <= 30;
   }).length;
 
   const handleMonthChange = (direction: -1 | 1) => {
@@ -185,18 +181,14 @@ export default function ExpiryChart({ chartData, onSelectDocument }: ExpiryChart
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
         <div className="rounded-xl border border-red-100 bg-red-50/60 px-3 py-2">
-          <p className="text-[11px] font-bold text-red-600">ยังไม่ต่อ</p>
-          <p className="text-xl font-extrabold text-red-700">{overdueCount}</p>
+          <p className="text-[11px] font-bold text-red-600">ต้องต่อแล้ว</p>
+          <p className="text-xl font-extrabold text-red-700">{dueNowCount}</p>
         </div>
         <div className="rounded-xl border border-orange-100 bg-orange-50/60 px-3 py-2">
           <p className="text-[11px] font-bold leading-tight text-orange-600">ใกล้ถึงรอบต่อ</p>
-          <p className="text-xl font-extrabold text-orange-700">{urgentRenewalCount}</p>
-        </div>
-        <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 px-3 py-2">
-          <p className="text-[11px] font-bold leading-tight text-emerald-700">เตรียมต่อ</p>
-          <p className="text-xl font-extrabold text-emerald-800">{upcomingRenewalCount}</p>
+          <p className="text-xl font-extrabold text-orange-700">{upcomingRenewalCount}</p>
         </div>
       </div>
 
@@ -225,12 +217,13 @@ export default function ExpiryChart({ chartData, onSelectDocument }: ExpiryChart
                   type="button"
                   key={day.key}
                   onClick={() => setSelectedDayKey(day.key)}
+                  disabled={!day.isCurrentMonth}
                   className={`aspect-square min-h-11 rounded-xl border p-1.5 text-left transition-all ${
                     isSelected
                       ? 'border-[#1a4d2e] bg-[#e8f0eb] shadow-sm'
                       : day.isCurrentMonth
                         ? 'border-slate-100 bg-white hover:border-[#1a4d2e]/30 hover:bg-[#e8f0eb]/30'
-                        : 'border-slate-50 bg-slate-50/60 text-slate-300'
+                        : 'border-slate-50 bg-slate-50/60 text-slate-300 cursor-default'
                   }`}
                   aria-label={`${formatThaiDate(day.key)} ${day.docs.length} รายการ`}
                 >
@@ -315,7 +308,7 @@ export default function ExpiryChart({ chartData, onSelectDocument }: ExpiryChart
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4 text-xs font-bold text-slate-500">
-        <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-500" /> ยังไม่ต่อ</span>
+        <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-500" /> ต้องต่อแล้ว</span>
         <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-orange-500" /> ใกล้ถึงรอบต่อ</span>
         <span className="inline-flex items-center gap-1"><AlertTriangle size={13} className="text-slate-400" /> จำนวนบนวันคือจำนวนเอกสาร</span>
       </div>

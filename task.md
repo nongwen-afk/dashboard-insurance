@@ -78,7 +78,8 @@
   - `[x]` Rework `ExpiryChart.tsx` into a month calendar that marks each day with the number of expiring documents.
   - `[x]` Add a daily agenda panel showing vehicle, document type, project, expiry date, and days remaining/overdue.
   - `[x]` Keep calendar list item clicks opening the existing document detail modal.
-  - `[x]` Add month-level quick counts for "ยังไม่ต่อ", "ใกล้ถึงรอบต่อ", and "เตรียมต่อ".
+  - `[x]` Add month-level quick counts for "ต้องต่อแล้ว" and "ใกล้ถึงรอบต่อ" only.
+  - `[x]` Keep document-count badges limited to days inside the visible month so adjacent-month dates stay contextual only.
 - `[ ]` Support custom document additions (Add Document Form)
 - `[ ]` Implement real backend API / localstorage integration for persistence
   - `[x]` Add Neon-backed `GET /api/vehicle-documents` endpoint for reading `vehicle_documents`.

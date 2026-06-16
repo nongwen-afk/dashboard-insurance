@@ -266,14 +266,16 @@ We reviewed and fixed the issues found after the Antigravity update.
 - **Goal**: Replace the month-level expiry bar chart with a workflow surface that answers which day needs renewal work and which vehicles/documents are due on that day.
 - **Calendar View ([components/dashboard/ExpiryChart.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/dashboard/ExpiryChart.tsx))**:
   - Reworked the existing chart component into `ปฏิทินต่ออายุ` while keeping the file name to minimize import churn.
-  - Displays a month grid with document-count badges on dates that have expiring documents.
+  - Displays a month grid with document-count badges only on dates inside the visible month that have expiring documents.
+  - Adjacent-month dates remain visible for calendar context but no longer show badges or open agenda items.
   - Adds previous/next month controls and resets the selected day when users change month.
 - **Daily Agenda**:
   - Shows the selected day's documents beside the calendar.
   - Each row shows the vehicle identifier, document type, project, workflow status, expiry date, and a days label such as `เหลืออีก 7 วัน` or `เลยกำหนด 3 วัน`.
   - Clicking an agenda row opens the existing `DocumentDetailModal`, so the detail workflow stays unchanged.
 - **Month Summary Chips**:
-  - Added compact counts for `ยังไม่ต่อ`, `ใกล้ถึงรอบต่อ`, and `เตรียมต่อ` inside the visible month.
+  - Added compact counts for `ต้องต่อแล้ว` and `ใกล้ถึงรอบต่อ` inside the visible month.
+  - Removed the separate green summary chip so green stays reserved for already-renewed or non-urgent documents in the item list.
 - **Dashboard Wiring ([app/page.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/page.tsx))**:
   - Removed the old monthly expiry modal from the active dashboard flow.
   - Deleted the obsolete monthly expiry modal component so the calendar is the single renewal schedule surface.
