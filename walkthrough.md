@@ -273,7 +273,7 @@ We reviewed and fixed the issues found after the Antigravity update.
   - Each row shows the vehicle identifier, document type, project, workflow status, expiry date, and a days label such as `เหลืออีก 7 วัน` or `เลยกำหนด 3 วัน`.
   - Clicking an agenda row opens the existing `DocumentDetailModal`, so the detail workflow stays unchanged.
 - **Month Summary Chips**:
-  - Added compact counts for `ยังไม่ต่อ`, `7 วัน`, and `8-30 วัน` inside the visible month.
+  - Added compact counts for `ยังไม่ต่อ`, `ใกล้ถึงรอบต่อ`, and `เตรียมต่อ` inside the visible month.
 - **Dashboard Wiring ([app/page.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/page.tsx))**:
   - Removed the old monthly expiry modal from the active dashboard flow.
   - Deleted the obsolete monthly expiry modal component so the calendar is the single renewal schedule surface.

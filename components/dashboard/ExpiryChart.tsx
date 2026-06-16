@@ -139,12 +139,12 @@ export default function ExpiryChart({ chartData, onSelectDocument }: ExpiryChart
     .flatMap((day) => day.docs);
 
   const overdueCount = monthDocs.filter((document) => document.isAcknowledged || getDaysUntilExpiry(document.expiryDate) < 0).length;
-  const nextSevenDaysCount = monthDocs.filter((document) => {
+  const urgentRenewalCount = monthDocs.filter((document) => {
     if (document.isAcknowledged) return false;
     const days = getDaysUntilExpiry(document.expiryDate);
     return days >= 0 && days <= 7;
   }).length;
-  const nextThirtyDaysCount = monthDocs.filter((document) => {
+  const upcomingRenewalCount = monthDocs.filter((document) => {
     if (document.isAcknowledged) return false;
     const days = getDaysUntilExpiry(document.expiryDate);
     return days > 7 && days <= 30;
@@ -191,12 +191,12 @@ export default function ExpiryChart({ chartData, onSelectDocument }: ExpiryChart
           <p className="text-xl font-extrabold text-red-700">{overdueCount}</p>
         </div>
         <div className="rounded-xl border border-orange-100 bg-orange-50/60 px-3 py-2">
-          <p className="text-[11px] font-bold text-orange-600">7 วัน</p>
-          <p className="text-xl font-extrabold text-orange-700">{nextSevenDaysCount}</p>
+          <p className="text-[11px] font-bold leading-tight text-orange-600">ใกล้ถึงรอบต่อ</p>
+          <p className="text-xl font-extrabold text-orange-700">{urgentRenewalCount}</p>
         </div>
         <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 px-3 py-2">
-          <p className="text-[11px] font-bold text-emerald-700">8-30 วัน</p>
-          <p className="text-xl font-extrabold text-emerald-800">{nextThirtyDaysCount}</p>
+          <p className="text-[11px] font-bold leading-tight text-emerald-700">เตรียมต่อ</p>
+          <p className="text-xl font-extrabold text-emerald-800">{upcomingRenewalCount}</p>
         </div>
       </div>
 
