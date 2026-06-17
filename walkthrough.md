@@ -25,15 +25,17 @@ We have resolved layout issues on mobile, optimized desktop layout density, and 
   - Added `w-full overflow-hidden` classes to the container card.
   - Added `w-full min-w-0 overflow-hidden` to the direct parent of `ResponsiveContainer` to prevent Recharts from breaking the horizontal page boundaries.
 - **Urgent Alerts ([UrgentAlerts.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/dashboard/UrgentAlerts.tsx))**: Made container padding responsive.
+- **Urgent Alerts Capacity ([UrgentAlerts.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/dashboard/UrgentAlerts.tsx) & [page.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/page.tsx))**: Increased the dashboard preview from 4 to 6 urgent items and removed the fixed 250px list cap so the taller alert card uses its available space.
 
 ### 4. Table Layout Density Optimization ([PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx))
 - **Issue**: Columns felt too far apart on wide screens, creating massive blank gaps between table values.
 - **Solution**:
-  - Redistributed column percentage widths inside the `<colgroup>` to make them tighter and more proportional (Document Type: 10%, Chassis: 14%, License Plate: 12%, Issued Date: 14%, Expiry Date: 14%, Status: 24%, Attachment: 7%, Action: 5%).
+  - Redistributed column percentage widths inside the `<colgroup>` to make them tighter and more proportional while adding a dedicated Project column (Document Type: 9%, Chassis: 13%, License Plate: 10%, Project: 14%, Issued Date: 12%, Expiry Date: 12%, Status: 21%, Attachment: 5%, Action: 4%).
   - Reduced cell padding from `px-5 py-4` to `px-4 py-3` for a tighter vertical and horizontal density.
-  - Reduced table minimum width to `min-w-[1000px]`.
+  - Set table minimum width to `min-w-[1120px]` so the added project information stays readable inside the horizontal table surface.
   - **Pagination Size Reduction**: Changed the table pagination size from `10` to `6` items per page to make the screen layout more compact.
   - **Constant Table Height Fix**: Set table wrapper min-height to `min-h-[465px]`. This matches the actual height of 6 table rows (including status badges), ensuring the container height remains completely constant. This prevents layout shifting and scroll position jumping when users switch between pages with different row counts (e.g. Page 3 which only has 2 rows).
+  - **Project Column**: Added a visible `โครงการ` column between license plate and issue date, with long project names truncated and available via hover title for scan-friendly comparison.
 
 ### 5. Interactive Stat Cards (New Feature)
 - **Interactive Filtering**: Clicking any of the 4 stat cards now filters the document table by status:
@@ -266,8 +268,9 @@ We reviewed and fixed the issues found after the Antigravity update.
 - **Goal**: Replace the month-level expiry bar chart with a workflow surface that answers which day needs renewal work and which vehicles/documents are due on that day.
 - **Calendar View ([components/dashboard/ExpiryChart.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/dashboard/ExpiryChart.tsx))**:
   - Reworked the existing chart component into `ปฏิทินต่ออายุ` while keeping the file name to minimize import churn.
-  - Displays a month grid with document-count badges only on dates inside the visible month that have expiring documents.
+  - Displays a month grid with document-count badges only on dates inside the visible month that have renewal work to handle.
   - Adjacent-month dates remain visible for calendar context but no longer show badges or open agenda items.
+  - Filters out already-renewed and non-urgent documents so the calendar does not show green `ต่อแล้ว` work.
   - Adds previous/next month controls and resets the selected day when users change month.
 - **Daily Agenda**:
   - Shows the selected day's documents beside the calendar.
@@ -280,3 +283,33 @@ We reviewed and fixed the issues found after the Antigravity update.
   - Removed the old monthly expiry modal from the active dashboard flow.
   - Deleted the obsolete monthly expiry modal component so the calendar is the single renewal schedule surface.
   - The renewal calendar now receives the existing six-month grouped document data and calls `setSelectedDocForDetail` directly.
+
+### 20. Historical Event Log for Future Analysis
+- **Goal**: Preserve operational history instead of only keeping the latest document state, so future dashboards can analyze renewal lead time, overdue patterns, import volume, sync outcomes, and project-level bottlenecks.
+- **Schema ([db/schema.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/db/schema.ts))**:
+  - Added `vehicle_document_history_event` enum with `created`, `acknowledged`, `renewed`, `sync_no_update`, `deleted`, and `updated`.
+  - Added `vehicle_document_history` table with document id, chassis, license plate, project, document type, actor, previous/next issue dates, previous/next expiry dates, JSON details, and event timestamp.
+- **Migration ([drizzle/0001_white_metal_master.sql](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/drizzle/0001_white_metal_master.sql))**:
+  - Generated the Drizzle migration for the history enum and table.
+- **Server Logging ([db/vehicleDocuments.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/db/vehicleDocuments.ts))**:
+  - Import creates `created` events.
+  - Acknowledge actions create `acknowledged` events.
+  - Successful renewal sync creates `renewed` events.
+  - Delete actions create `deleted` events while preserving document snapshot fields for later reporting.
+  - History writes are best-effort so the main document action does not fail just because audit logging is temporarily unavailable.
+- **Sync-Miss Events ([app/api/vehicle-documents/[id]/history/route.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/api/vehicle-documents/[id]/history/route.ts))**:
+  - Added a lightweight history endpoint for event-only records, starting with `sync_no_update` when an external renewal/payment check returns no new renewal.
+  - Added `GET /api/vehicle-documents/[id]/history` so the UI can read the timeline for one document.
+  - Wired row-level, modal-level, and global sync miss paths to record the event through [utils/vehicleDocumentApi.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/vehicleDocumentApi.ts).
+- **History Button ([components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
+  - Added a `ประวัติ` button in the document detail modal footer.
+  - The button loads and toggles a timeline panel showing event type, actor, timestamp, and expiry-date changes for the selected document.
+  - Empty and error states are shown inside the same panel so users understand whether the document has no history yet or the Neon history load failed.
+- **Analysis Value**:
+  - Can later group events by month, project, document type, actor, and event type.
+  - Can compare `previous_expiry_date` and `next_expiry_date` for renewal cycle analysis.
+  - Can count repeated `sync_no_update` events to see which projects or vehicles are stuck before renewal completion.
+- **Operational Note**:
+  - Applied the migration to the active Neon `dev` branch with `pnpm db:push`.
+  - Verified history writes by creating a temporary `sync_no_update` event with actor `codex-verify`, confirming the history count increased from `0` to `1`, then deleting the verification row so the count returned to `0`.
+  - Apply the same migration to Neon `main` only when promoting the release to Production.

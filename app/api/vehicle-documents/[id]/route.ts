@@ -13,6 +13,7 @@ type VehicleDocumentPatchPayload = {
   isAcknowledged?: unknown;
   acknowledgedAt?: unknown;
   acknowledgedBy?: unknown;
+  actor?: unknown;
 };
 
 const parseOptionalDate = (value: unknown) => {
@@ -74,7 +75,12 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       return Response.json({ error: 'No supported fields to update.' }, { status: 400 });
     }
 
-    const document = await updateVehicleDocument(id, updates);
+    const document = await updateVehicleDocument(id, updates, {
+      actor: typeof payload.actor === 'string' ? payload.actor : 'testuser',
+      historyDetails: {
+        fields: Object.keys(updates),
+      },
+    });
 
     if (!document) {
       return Response.json({ error: 'Vehicle document not found.' }, { status: 404 });
@@ -91,10 +97,13 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   }
 }
 
-export async function DELETE(_request: Request, { params }: RouteContext) {
+export async function DELETE(request: Request, { params }: RouteContext) {
   try {
     const { id } = await params;
-    const document = await deleteVehicleDocument(id);
+    const actor = new URL(request.url).searchParams.get('actor') || 'testuser';
+    const document = await deleteVehicleDocument(id, {
+      actor,
+    });
 
     if (!document) {
       return Response.json({ error: 'Vehicle document not found.' }, { status: 404 });

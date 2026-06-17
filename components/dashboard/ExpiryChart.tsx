@@ -41,6 +41,13 @@ const getCalendarStart = (month: Date) => {
   return new Date(firstDay.getFullYear(), firstDay.getMonth(), firstDay.getDate() - mondayOffset);
 };
 
+const isRenewalActionDocument = (document: VehicleDocument) => {
+  if (document.isAcknowledged) return true;
+
+  const days = getDaysUntilExpiry(document.expiryDate);
+  return days <= 30;
+};
+
 const getRenewalTone = (document: VehicleDocument) => {
   if (document.isAcknowledged) {
     return {
@@ -68,9 +75,9 @@ const getRenewalTone = (document: VehicleDocument) => {
   }
 
   return {
-    label: 'ต่อแล้ว',
-    className: 'border-emerald-100 bg-emerald-50/70 text-emerald-700',
-    dotClassName: 'bg-emerald-500',
+    label: 'ใกล้ถึงรอบต่อ',
+    className: 'border-orange-100 bg-orange-50/70 text-orange-700',
+    dotClassName: 'bg-orange-500',
   };
 };
 
@@ -91,6 +98,7 @@ export default function ExpiryChart({ chartData, onSelectDocument }: ExpiryChart
     return chartData
       .flatMap((month) => month.docs)
       .filter((document) => parseDocumentDate(document.expiryDate))
+      .filter(isRenewalActionDocument)
       .sort((a, b) => {
         const dateA = parseDocumentDate(a.expiryDate)?.getTime() || 0;
         const dateB = parseDocumentDate(b.expiryDate)?.getTime() || 0;
@@ -156,7 +164,7 @@ export default function ExpiryChart({ chartData, onSelectDocument }: ExpiryChart
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5">
         <div>
           <h3 className="text-lg font-bold text-gray-800">ปฏิทินต่ออายุ</h3>
-          <p className="text-sm text-gray-500">รายการตามวันหมดอายุในช่วง 6 เดือนข้างหน้า</p>
+          <p className="text-sm text-gray-500">แสดงเฉพาะรายการที่ต้องต่อหรือใกล้ถึงรอบต่อ</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -206,11 +214,6 @@ export default function ExpiryChart({ chartData, onSelectDocument }: ExpiryChart
               const isSelected = day.key === activeDayKey;
               const hasDocs = day.docs.length > 0;
               const hasOverdue = day.docs.some((document) => document.isAcknowledged || getDaysUntilExpiry(document.expiryDate) < 0);
-              const hasWarning = day.docs.some((document) => {
-                if (document.isAcknowledged) return false;
-                const days = getDaysUntilExpiry(document.expiryDate);
-                return days >= 0 && days <= 30;
-              });
 
               return (
                 <button
@@ -234,9 +237,7 @@ export default function ExpiryChart({ chartData, onSelectDocument }: ExpiryChart
                     <span className={`mt-1 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-extrabold ${
                       hasOverdue
                         ? 'bg-red-100 text-red-700'
-                        : hasWarning
-                          ? 'bg-orange-100 text-orange-700'
-                          : 'bg-emerald-100 text-emerald-700'
+                        : 'bg-orange-100 text-orange-700'
                     }`}>
                       {day.docs.length}
                     </span>

@@ -8,6 +8,13 @@
       "when": 1781145438550,
       "tag": "0000_robust_moon_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1781670141679,
+      "tag": "0001_white_metal_master",
+      "breakpoints": true
     }
   ]
 }

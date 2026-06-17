@@ -1,8 +1,10 @@
 "use client";
 
-import { Building2, CalendarDays, Car, FileText, User, X, AlertTriangle, Clock, CheckCircle2, Info, RefreshCw } from 'lucide-react';
-import type { VehicleDocument } from '@/types';
+import { useState } from 'react';
+import { Building2, CalendarDays, Car, FileText, User, X, AlertTriangle, Clock, CheckCircle2, Info, RefreshCw, History, Loader2 } from 'lucide-react';
+import type { VehicleDocument, VehicleDocumentHistoryEvent, VehicleDocumentHistoryRecord } from '@/types';
 import { formatThaiDate, formatThaiDateTime, getDocTypeName, getDocumentStatus } from '@/utils/documentUtils';
+import { listVehicleDocumentHistoryRecords } from '@/utils/vehicleDocumentApi';
 
 interface DocumentDetailModalProps {
   document: VehicleDocument | null;
@@ -12,10 +14,62 @@ interface DocumentDetailModalProps {
 }
 
 export default function DocumentDetailModal({ document, onClose, onAcknowledge, onSync }: DocumentDetailModalProps) {
+  const [historyDocumentId, setHistoryDocumentId] = useState<string | null>(null);
+  const [historyRecords, setHistoryRecords] = useState<VehicleDocumentHistoryRecord[]>([]);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+
   // ใช้ document null เป็นสัญญาณปิด modal เพื่อให้ caller ไม่ต้องมี state boolean แยกอีกตัว
   if (!document) return null;
 
   const { status, days } = getDocumentStatus(document.expiryDate);
+  const currentHistoryKey = document.id || 'missing-id';
+  const isHistoryOpen = historyDocumentId === currentHistoryKey;
+
+  const getHistoryEventDetails = (eventType: VehicleDocumentHistoryEvent) => {
+    switch (eventType) {
+      case 'created':
+        return { label: 'นำเข้าข้อมูล', dotClassName: 'bg-slate-500', textClassName: 'text-slate-700' };
+      case 'acknowledged':
+        return { label: 'รับทราบแล้ว', dotClassName: 'bg-blue-500', textClassName: 'text-blue-700' };
+      case 'renewed':
+        return { label: 'ต่อสำเร็จ', dotClassName: 'bg-emerald-500', textClassName: 'text-emerald-700' };
+      case 'sync_no_update':
+        return { label: 'ซิงค์แล้ว ยังไม่พบรายการต่อ', dotClassName: 'bg-orange-500', textClassName: 'text-orange-700' };
+      case 'deleted':
+        return { label: 'ลบเอกสาร', dotClassName: 'bg-red-500', textClassName: 'text-red-700' };
+      default:
+        return { label: 'อัปเดตข้อมูล', dotClassName: 'bg-gray-500', textClassName: 'text-gray-700' };
+    }
+  };
+
+  const handleToggleHistory = async () => {
+    if (!document.id) {
+      setHistoryDocumentId(currentHistoryKey);
+      setHistoryRecords([]);
+      setHistoryError('รายการนี้ยังไม่มีรหัสเอกสาร จึงยังดึงประวัติไม่ได้');
+      return;
+    }
+
+    if (isHistoryOpen) {
+      setHistoryDocumentId(null);
+      return;
+    }
+
+    setHistoryDocumentId(document.id);
+    setHistoryRecords([]);
+    setHistoryError(null);
+    setIsHistoryLoading(true);
+
+    try {
+      const records = await listVehicleDocumentHistoryRecords(document.id);
+      setHistoryRecords(records);
+    } catch {
+      setHistoryError('โหลดประวัติจาก Neon ไม่สำเร็จ');
+    } finally {
+      setIsHistoryLoading(false);
+    }
+  };
 
   // กำหนดรูปแบบเนื้อหาแบนเนอร์และป้ายสถานะ
   const getBannerDetails = () => {
@@ -121,6 +175,57 @@ export default function DocumentDetailModal({ document, onClose, onAcknowledge, 
             </div>
           </div>
 
+          {isHistoryOpen && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <History size={16} /> สมุดบันทึกประวัติ
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-1">เหตุการณ์ย้อนหลังของเอกสารใบนี้</p>
+                </div>
+                {isHistoryLoading && <Loader2 className="animate-spin text-slate-400" size={18} />}
+              </div>
+
+              {historyError ? (
+                <p className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+                  {historyError}
+                </p>
+              ) : historyRecords.length === 0 && !isHistoryLoading ? (
+                <p className="rounded-lg border border-slate-200 bg-white px-3 py-3 text-sm font-medium text-slate-500">
+                  ยังไม่มีประวัติของเอกสารใบนี้
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {historyRecords.map((record) => {
+                    const event = getHistoryEventDetails(record.eventType);
+                    const hasExpiryChange = record.previousExpiryDate !== record.nextExpiryDate;
+
+                    return (
+                      <div key={record.id} className="relative rounded-xl border border-slate-100 bg-white p-3 shadow-sm">
+                        <div className="flex items-start gap-3">
+                          <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${event.dotClassName}`} />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className={`text-sm font-bold ${event.textClassName}`}>{event.label}</p>
+                              <p className="text-xs font-semibold text-slate-400">{formatThaiDateTime(record.eventAt)}</p>
+                            </div>
+                            <p className="mt-1 text-xs text-slate-500">โดย {record.actor || 'system'}</p>
+                            {hasExpiryChange && (
+                              <p className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
+                                วันหมดอายุ: {formatThaiDate(record.previousExpiryDate)} → {formatThaiDate(record.nextExpiryDate)}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           <div>
             <h4 className="text-sm font-bold text-[#1a4d2e] mb-3 flex items-center gap-2">
               <Car size={16} /> ข้อมูลยานพาหนะ
@@ -206,36 +311,50 @@ export default function DocumentDetailModal({ document, onClose, onAcknowledge, 
           </div>
         </div>
 
-        <div className="px-6 pt-5 pb-8 border-t bg-gray-50 flex flex-wrap items-center justify-end gap-3 shrink-0">
-          {document.isAcknowledged ? (
-            onSync && (
-              <button
-                type="button"
-                onClick={() => onSync(document)}
-                className="h-11 px-5 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:text-gray-900 font-bold transition-all shadow-sm flex items-center gap-2 shrink-0"
-              >
-                <RefreshCw size={16} />
-                ซิงค์ข้อมูลล่าสุด
-              </button>
-            )
-          ) : (
-            (status === 'EXPIRED' || status === 'WARNING') && onAcknowledge && (
-              <button
-                type="button"
-                onClick={() => onAcknowledge(document)}
-                className="h-11 px-5 text-white bg-[#1a4d2e] hover:bg-[#123620] rounded-xl font-bold transition-all shadow-sm flex items-center gap-2 shrink-0"
-              >
-                <CheckCircle2 size={16} />
-                รับทราบการแจ้งเตือน
-              </button>
-            )
-          )}
+        <div className="px-6 pt-5 pb-8 border-t bg-gray-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
           <button
-            onClick={onClose}
-            className="min-w-24 h-11 px-6 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:text-gray-900 font-bold transition-all shadow-sm shrink-0"
+            type="button"
+            onClick={handleToggleHistory}
+            className={`h-11 px-5 rounded-xl font-bold transition-all shadow-sm flex items-center justify-center gap-2 shrink-0 border ${
+              isHistoryOpen
+                ? 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800'
+                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+            }`}
           >
-            ปิด
+            <History size={16} />
+            {isHistoryOpen ? 'ซ่อนประวัติ' : 'ประวัติ'}
           </button>
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            {document.isAcknowledged ? (
+              onSync && (
+                <button
+                  type="button"
+                  onClick={() => onSync(document)}
+                  className="h-11 px-5 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:text-gray-900 font-bold transition-all shadow-sm flex items-center gap-2 shrink-0"
+                >
+                  <RefreshCw size={16} />
+                  ซิงค์ข้อมูลล่าสุด
+                </button>
+              )
+            ) : (
+              (status === 'EXPIRED' || status === 'WARNING') && onAcknowledge && (
+                <button
+                  type="button"
+                  onClick={() => onAcknowledge(document)}
+                  className="h-11 px-5 text-white bg-[#1a4d2e] hover:bg-[#123620] rounded-xl font-bold transition-all shadow-sm flex items-center gap-2 shrink-0"
+                >
+                  <CheckCircle2 size={16} />
+                  รับทราบการแจ้งเตือน
+                </button>
+              )
+            )}
+            <button
+              onClick={onClose}
+              className="min-w-24 h-11 px-6 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:text-gray-900 font-bold transition-all shadow-sm shrink-0"
+            >
+              ปิด
+            </button>
+          </div>
         </div>
       </div>
     </div>

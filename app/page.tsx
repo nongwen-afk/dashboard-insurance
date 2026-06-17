@@ -11,7 +11,7 @@ import UrgentAlerts from '@/components/dashboard/UrgentAlerts';
 import PolicyTable from '../components/PolicyTable';
 import type { DocumentAlert, FilterStatus, VehicleDocument } from '@/types';
 import { formatThaiDate, getDaysUntilExpiry, getDocTypeName, getRenewedDocumentDates, getSixMonthExpiryKey, isSameDocumentRecord, parseDocumentDate } from '@/utils/documentUtils';
-import { deleteVehicleDocumentRecord, updateVehicleDocumentRecord } from '@/utils/vehicleDocumentApi';
+import { deleteVehicleDocumentRecord, recordVehicleDocumentHistoryEvent, updateVehicleDocumentRecord } from '@/utils/vehicleDocumentApi';
 
 export default function DashboardPage() {
   // documents เป็น state หลักของทั้งหน้า: card, chart, alert และ table อ่านจากชุดเดียวกัน
@@ -214,8 +214,8 @@ export default function DashboardPage() {
       .sort((a, b) => a.diffDays - b.diffDays);
   }, [documents]);
 
-  // หน้า dashboard แสดงเฉพาะ 4 รายการที่ด่วนที่สุด ส่วนรายการเต็มเปิดใน AlertsModal
-  const topUrgentDocs = alertsList.slice(0, 4);
+  // หน้า dashboard แสดงรายการด่วนให้เต็มพื้นที่การ์ด ส่วนรายการเต็มเปิดใน AlertsModal
+  const topUrgentDocs = alertsList.slice(0, 6);
 
   const handleSingleSync = (doc: VehicleDocument) => {
     const syncToastId = `sync-doc-${doc.id || doc.chassis}-${doc.docType}`;
@@ -270,6 +270,15 @@ export default function DashboardPage() {
           });
         }
       } else {
+        if (doc.id) {
+          void recordVehicleDocumentHistoryEvent(doc.id, 'sync_no_update', {
+            source: 'external_sync',
+            scope: 'detail_modal',
+          }).catch((error) => {
+            console.error('Unable to record sync history.', error);
+          });
+        }
+
         toast.error(`ซิงค์สำเร็จ: ยังไม่พบการชำระเงิน/ต่ออายุใหม่ในระบบของหน่วยงานภายนอก`, {
           id: syncToastId,
           icon: 'ℹ️',

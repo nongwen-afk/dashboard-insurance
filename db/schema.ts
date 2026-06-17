@@ -1,4 +1,4 @@
-import { boolean, date, pgEnum, pgTable, text, timestamp, varchar } from 'drizzle-orm/pg-core';
+import { boolean, date, jsonb, pgEnum, pgTable, text, timestamp, varchar } from 'drizzle-orm/pg-core';
 
 export const vehicleDocTypeEnum = pgEnum('vehicle_doc_type', [
   'act',
@@ -6,6 +6,15 @@ export const vehicleDocTypeEnum = pgEnum('vehicle_doc_type', [
   'insurance',
   'inspection',
   'registration_book',
+]);
+
+export const vehicleDocumentHistoryEventEnum = pgEnum('vehicle_document_history_event', [
+  'created',
+  'acknowledged',
+  'renewed',
+  'sync_no_update',
+  'deleted',
+  'updated',
 ]);
 
 export const vehicleDocuments = pgTable('vehicle_documents', {
@@ -28,5 +37,24 @@ export const vehicleDocuments = pgTable('vehicle_documents', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const vehicleDocumentHistory = pgTable('vehicle_document_history', {
+  id: varchar('id', { length: 128 }).primaryKey(),
+  documentId: varchar('document_id', { length: 128 }),
+  chassis: varchar('chassis', { length: 128 }).notNull(),
+  licensePlate: varchar('license_plate', { length: 64 }),
+  project: text('project'),
+  docType: vehicleDocTypeEnum('doc_type').notNull(),
+  eventType: vehicleDocumentHistoryEventEnum('event_type').notNull(),
+  actor: text('actor').default('system').notNull(),
+  previousIssuedDate: date('previous_issued_date'),
+  nextIssuedDate: date('next_issued_date'),
+  previousExpiryDate: date('previous_expiry_date'),
+  nextExpiryDate: date('next_expiry_date'),
+  details: jsonb('details'),
+  eventAt: timestamp('event_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
 export type VehicleDocumentRow = typeof vehicleDocuments.$inferSelect;
 export type NewVehicleDocumentRow = typeof vehicleDocuments.$inferInsert;
+export type VehicleDocumentHistoryRow = typeof vehicleDocumentHistory.$inferSelect;
+export type NewVehicleDocumentHistoryRow = typeof vehicleDocumentHistory.$inferInsert;

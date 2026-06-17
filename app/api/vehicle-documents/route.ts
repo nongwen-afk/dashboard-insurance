@@ -21,6 +21,7 @@ export async function GET() {
 
 type VehicleDocumentsPostPayload = {
   documents?: unknown;
+  actor?: unknown;
 };
 
 export async function POST(request: Request) {
@@ -31,7 +32,12 @@ export async function POST(request: Request) {
       return Response.json({ error: 'documents must be an array.' }, { status: 400 });
     }
 
-    const documents = await createVehicleDocuments(payload.documents as VehicleDocument[]);
+    const documents = await createVehicleDocuments(payload.documents as VehicleDocument[], {
+      actor: typeof payload.actor === 'string' ? payload.actor : 'testuser',
+      historyDetails: {
+        importedCount: payload.documents.length,
+      },
+    });
 
     return Response.json({ documents }, { status: 201 });
   } catch (error) {

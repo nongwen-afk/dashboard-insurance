@@ -25,6 +25,24 @@ export type DocStatus = 'EXPIRED' | 'WARNING' | 'ACTIVE' | 'NO_EXPIRY';
 export type FilterStatus = 'ALL' | 'ACTIVE' | 'WARNING' | 'EXPIRED';
 export type SortOption = 'RELEVANCE' | 'DATE_ASC' | 'DATE_DESC';
 export type AlertSeverity = 'error' | 'warning';
+export type VehicleDocumentHistoryEvent = 'created' | 'acknowledged' | 'renewed' | 'sync_no_update' | 'deleted' | 'updated';
+
+export interface VehicleDocumentHistoryRecord {
+  id: string;
+  documentId?: string;
+  chassis: string;
+  licensePlate?: string;
+  project?: string;
+  docType: VehicleDocType;
+  eventType: VehicleDocumentHistoryEvent;
+  actor: string;
+  previousIssuedDate?: string;
+  nextIssuedDate?: string;
+  previousExpiryDate?: string;
+  nextExpiryDate?: string;
+  details?: Record<string, unknown>;
+  eventAt: string;
+}
 
 // รูปแบบข้อมูลแจ้งเตือนที่แปลงจาก VehicleDocument เพื่อให้ component แสดงผลได้ตรงกัน
 export interface DocumentAlert {

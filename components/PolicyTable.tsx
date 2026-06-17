@@ -11,7 +11,7 @@ import DocumentDetailModal from '@/components/DocumentDetailModal';
 import type { DocStatus, FilterStatus, SortOption, VehicleDocument } from '@/types';
 import { formatThaiDate, getDocTypeName, getDocumentRecordKey, getDocumentStatus, getRenewedDocumentDates, isSameDocumentRecord, parseDocumentDate } from '@/utils/documentUtils';
 import { parseVehicleDocumentsFromFile } from '@/utils/importVehicleDocuments';
-import { createVehicleDocumentRecords, updateVehicleDocumentRecord } from '@/utils/vehicleDocumentApi';
+import { createVehicleDocumentRecords, recordVehicleDocumentHistoryEvent, updateVehicleDocumentRecord } from '@/utils/vehicleDocumentApi';
 
 interface PolicyTableProps {
   documents: VehicleDocument[];
@@ -197,6 +197,15 @@ export default function PolicyTable({
           });
         }
       } else {
+        if (doc.id) {
+          void recordVehicleDocumentHistoryEvent(doc.id, 'sync_no_update', {
+            source: 'external_sync',
+            scope: 'table_row',
+          }).catch((error) => {
+            console.error('Unable to record sync history.', error);
+          });
+        }
+
         toast.error(`ยังไม่ต่อ: ยังไม่พบการชำระเงิน/ต่ออายุใหม่ในระบบของหน่วยงานภายนอก`, {
           id: syncToastId,
           icon: 'ℹ️',
@@ -245,7 +254,19 @@ export default function PolicyTable({
       });
 
       const renewedResults = syncResults.filter((result): result is { doc: VehicleDocument; renewedDocument: VehicleDocument } => result.renewedDocument !== null);
+      const pendingResults = syncResults.filter((result) => result.renewedDocument === null);
       const pendingCount = syncResults.length - renewedResults.length;
+
+      if (pendingResults.length > 0) {
+        void Promise.allSettled(pendingResults.map(({ doc }) => {
+          if (!doc.id) return Promise.resolve(false);
+
+          return recordVehicleDocumentHistoryEvent(doc.id, 'sync_no_update', {
+            source: 'external_sync',
+            scope: 'global_sync',
+          });
+        }));
+      }
 
       if (renewedResults.length === 0) {
         toast.error(
@@ -442,7 +463,7 @@ export default function PolicyTable({
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input
               type="text"
-              placeholder="ค้นหาทะเบียน, ประเภทเอกสาร..."
+              placeholder="ค้นหาทะเบียน, โครงการ, ประเภทเอกสาร..."
               className="h-11 w-full pl-11 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a4d2e] transition-all"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
@@ -587,22 +608,24 @@ export default function PolicyTable({
       </div>
 
       <div className="overflow-x-auto overflow-y-hidden min-h-[465px]">
-        <table className="w-full min-w-[1000px] table-fixed text-left border-collapse">
+        <table className="w-full min-w-[1120px] table-fixed text-left border-collapse">
           <colgroup>
+            <col className="w-[9%]" />
+            <col className="w-[13%]" />
             <col className="w-[10%]" />
             <col className="w-[14%]" />
             <col className="w-[12%]" />
-            <col className="w-[14%]" />
-            <col className="w-[14%]" />
-            <col className="w-[24%]" />
-            <col className="w-[7%]" />
+            <col className="w-[12%]" />
+            <col className="w-[21%]" />
             <col className="w-[5%]" />
+            <col className="w-[4%]" />
           </colgroup>
           <thead className="bg-gray-50/50 border-y border-gray-100">
             <tr className="text-gray-500 text-xs uppercase tracking-wider">
               <th className="px-4 py-3 font-semibold">ประเภทเอกสาร</th>
               <th className="px-4 py-3 font-semibold">เลขตัวถัง</th>
               <th className="px-4 py-3 font-semibold">ทะเบียนรถ</th>
+              <th className="px-4 py-3 font-semibold">โครงการ</th>
               <th className="px-4 py-3 font-semibold">วันที่มีผล</th>
               <th className="px-4 py-3 font-semibold">วันหมดอายุ</th>
               <th className="px-4 py-3 font-semibold">สถานะ</th>
@@ -613,7 +636,7 @@ export default function PolicyTable({
           <tbody className="divide-y divide-gray-100 text-sm">
             {isLoading ? (
               <tr>
-                <td colSpan={8} className="px-6 py-12 text-center text-gray-400">
+                <td colSpan={9} className="px-6 py-12 text-center text-gray-400">
                   <p className="font-medium text-gray-500">กำลังโหลดข้อมูลจาก Neon...</p>
                 </td>
               </tr>
@@ -635,6 +658,12 @@ export default function PolicyTable({
                     <td className="px-4 py-3 text-gray-500 font-mono text-xs">{doc.chassis}</td>
                     <td className="px-4 py-3">
                       <span className="font-bold text-gray-800">{doc.licensePlate || '-'}</span>
+                    </td>
+
+                    <td className="px-4 py-3">
+                      <span className="block truncate font-medium text-gray-700" title={doc.project || 'ไม่ระบุโครงการ'}>
+                        {doc.project || 'ไม่ระบุโครงการ'}
+                      </span>
                     </td>
 
                     <td className="px-4 py-3">
@@ -766,7 +795,7 @@ export default function PolicyTable({
               })
             ) : (
               <tr>
-                <td colSpan={8} className="px-6 py-12 text-center text-gray-400 flex-col items-center justify-center">
+                <td colSpan={9} className="px-6 py-12 text-center text-gray-400 flex-col items-center justify-center">
                   <p className="font-medium text-gray-500">ไม่พบข้อมูลที่คุณค้นหา หรือ ไม่ตรงกับตัวกรอง</p>
                 </td>
               </tr>

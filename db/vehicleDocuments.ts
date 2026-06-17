@@ -1,7 +1,15 @@
-import { asc, eq } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
+import { asc, desc, eq } from 'drizzle-orm';
 import { getDb } from '@/db';
-import { vehicleDocuments, type NewVehicleDocumentRow, type VehicleDocumentRow } from '@/db/schema';
-import type { VehicleDocType, VehicleDocument } from '@/types';
+import {
+  vehicleDocumentHistory,
+  vehicleDocuments,
+  type NewVehicleDocumentHistoryRow,
+  type NewVehicleDocumentRow,
+  type VehicleDocumentHistoryRow,
+  type VehicleDocumentRow,
+} from '@/db/schema';
+import type { VehicleDocType, VehicleDocument, VehicleDocumentHistoryEvent, VehicleDocumentHistoryRecord } from '@/types';
 
 type VehicleDocumentUpdate = {
   issuedDate?: string | null;
@@ -9,6 +17,11 @@ type VehicleDocumentUpdate = {
   isAcknowledged?: boolean;
   acknowledgedAt?: Date | null;
   acknowledgedBy?: string | null;
+};
+
+type VehicleDocumentWriteOptions = {
+  actor?: string;
+  historyDetails?: Record<string, unknown>;
 };
 
 const supportedDocTypes = new Set<VehicleDocType>([
@@ -24,6 +37,71 @@ const optionalDate = (value: string | null) => value ?? undefined;
 const optionalDateTime = (value: Date | string | null) => {
   if (!value) return undefined;
   return value instanceof Date ? value.toISOString() : value;
+};
+
+const getVehicleDocumentRow = async (id: string) => {
+  const [row] = await getDb()
+    .select()
+    .from(vehicleDocuments)
+    .where(eq(vehicleDocuments.id, id));
+
+  return row ?? null;
+};
+
+const toHistoryRow = (
+  document: VehicleDocumentRow,
+  eventType: VehicleDocumentHistoryEvent,
+  options: VehicleDocumentWriteOptions = {},
+  beforeDocument?: VehicleDocumentRow | null,
+  afterDocument?: VehicleDocumentRow | null,
+): NewVehicleDocumentHistoryRow => ({
+  id: randomUUID(),
+  documentId: document.id,
+  chassis: document.chassis,
+  licensePlate: document.licensePlate,
+  project: document.project,
+  docType: document.docType,
+  eventType,
+  actor: options.actor || 'system',
+  previousIssuedDate: beforeDocument?.issuedDate ?? null,
+  nextIssuedDate: afterDocument?.issuedDate ?? document.issuedDate ?? null,
+  previousExpiryDate: beforeDocument?.expiryDate ?? null,
+  nextExpiryDate: afterDocument?.expiryDate ?? document.expiryDate ?? null,
+  details: options.historyDetails || null,
+});
+
+const safeRecordVehicleDocumentHistory = async (
+  document: VehicleDocumentRow,
+  eventType: VehicleDocumentHistoryEvent,
+  options: VehicleDocumentWriteOptions = {},
+  beforeDocument?: VehicleDocumentRow | null,
+  afterDocument?: VehicleDocumentRow | null,
+) => {
+  try {
+    await getDb().insert(vehicleDocumentHistory).values(
+      toHistoryRow(document, eventType, options, beforeDocument, afterDocument),
+    );
+    return true;
+  } catch (error) {
+    console.error('Unable to record vehicle document history.', error);
+    return false;
+  }
+};
+
+const getHistoryEventForUpdate = (
+  beforeDocument: VehicleDocumentRow,
+  afterDocument: VehicleDocumentRow,
+  updates: VehicleDocumentUpdate,
+): VehicleDocumentHistoryEvent => {
+  if ('expiryDate' in updates && beforeDocument.expiryDate !== afterDocument.expiryDate) {
+    return 'renewed';
+  }
+
+  if (updates.isAcknowledged === true && !beforeDocument.isAcknowledged) {
+    return 'acknowledged';
+  }
+
+  return 'updated';
 };
 
 export const toVehicleDocument = (row: VehicleDocumentRow): VehicleDocument => ({
@@ -42,6 +120,23 @@ export const toVehicleDocument = (row: VehicleDocumentRow): VehicleDocument => (
   isAcknowledged: row.isAcknowledged,
   acknowledgedAt: optionalDateTime(row.acknowledgedAt),
   acknowledgedBy: optionalString(row.acknowledgedBy),
+});
+
+export const toVehicleDocumentHistoryRecord = (row: VehicleDocumentHistoryRow): VehicleDocumentHistoryRecord => ({
+  id: row.id,
+  documentId: optionalString(row.documentId),
+  chassis: row.chassis,
+  licensePlate: optionalString(row.licensePlate),
+  project: optionalString(row.project),
+  docType: row.docType,
+  eventType: row.eventType,
+  actor: row.actor,
+  previousIssuedDate: optionalDate(row.previousIssuedDate),
+  nextIssuedDate: optionalDate(row.nextIssuedDate),
+  previousExpiryDate: optionalDate(row.previousExpiryDate),
+  nextExpiryDate: optionalDate(row.nextExpiryDate),
+  details: typeof row.details === 'object' && row.details !== null ? row.details as Record<string, unknown> : undefined,
+  eventAt: optionalDateTime(row.eventAt) || new Date().toISOString(),
 });
 
 const nullableString = (value?: string) => {
@@ -106,7 +201,17 @@ export const listVehicleDocuments = async () => {
   return rows.map(toVehicleDocument);
 };
 
-export const createVehicleDocuments = async (documents: VehicleDocument[]) => {
+export const listVehicleDocumentHistory = async (documentId: string) => {
+  const rows = await getDb()
+    .select()
+    .from(vehicleDocumentHistory)
+    .where(eq(vehicleDocumentHistory.documentId, documentId))
+    .orderBy(desc(vehicleDocumentHistory.eventAt));
+
+  return rows.map(toVehicleDocumentHistoryRecord);
+};
+
+export const createVehicleDocuments = async (documents: VehicleDocument[], options: VehicleDocumentWriteOptions = {}) => {
   if (documents.length === 0) return [];
 
   const rows = documents.map(toNewVehicleDocumentRow);
@@ -115,10 +220,25 @@ export const createVehicleDocuments = async (documents: VehicleDocument[]) => {
     .values(rows)
     .returning();
 
+  await Promise.all(insertedRows.map((row) => safeRecordVehicleDocumentHistory(row, 'created', {
+    actor: options.actor,
+    historyDetails: {
+      source: 'document_import',
+      ...(options.historyDetails || {}),
+    },
+  }, null, row)));
+
   return insertedRows.map(toVehicleDocument);
 };
 
-export const updateVehicleDocument = async (id: string, updates: VehicleDocumentUpdate) => {
+export const updateVehicleDocument = async (
+  id: string,
+  updates: VehicleDocumentUpdate,
+  options: VehicleDocumentWriteOptions = {},
+) => {
+  const beforeDocument = await getVehicleDocumentRow(id);
+  if (!beforeDocument) return null;
+
   const [updatedRow] = await getDb()
     .update(vehicleDocuments)
     .set({
@@ -128,14 +248,44 @@ export const updateVehicleDocument = async (id: string, updates: VehicleDocument
     .where(eq(vehicleDocuments.id, id))
     .returning();
 
-  return updatedRow ? toVehicleDocument(updatedRow) : null;
+  if (!updatedRow) return null;
+
+  await safeRecordVehicleDocumentHistory(
+    updatedRow,
+    getHistoryEventForUpdate(beforeDocument, updatedRow, updates),
+    options,
+    beforeDocument,
+    updatedRow,
+  );
+
+  return toVehicleDocument(updatedRow);
 };
 
-export const deleteVehicleDocument = async (id: string) => {
+export const deleteVehicleDocument = async (id: string, options: VehicleDocumentWriteOptions = {}) => {
+  const beforeDocument = await getVehicleDocumentRow(id);
+  if (!beforeDocument) return null;
+
   const [deletedRow] = await getDb()
     .delete(vehicleDocuments)
     .where(eq(vehicleDocuments.id, id))
     .returning();
 
-  return deletedRow ? toVehicleDocument(deletedRow) : null;
+  if (!deletedRow) return null;
+
+  await safeRecordVehicleDocumentHistory(deletedRow, 'deleted', options, beforeDocument, null);
+
+  return toVehicleDocument(deletedRow);
+};
+
+export const recordVehicleDocumentHistoryForId = async (
+  id: string,
+  eventType: VehicleDocumentHistoryEvent,
+  options: VehicleDocumentWriteOptions = {},
+) => {
+  const document = await getVehicleDocumentRow(id);
+  if (!document) return null;
+
+  const isRecorded = await safeRecordVehicleDocumentHistory(document, eventType, options, document, document);
+
+  return { document: toVehicleDocument(document), isRecorded };
 };
