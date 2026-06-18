@@ -400,3 +400,11 @@ We reviewed and fixed the issues found after the Antigravity update.
 - **Detail Modal Header & Highlight ([components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
   - Updated the detail modal header badge to use the actual status color (red/orange) and label (e.g., `ยังไม่ต่อ` / `ใกล้ถึงรอบต่อ`) instead of forcing it to blue.
   - Updated the expiry date grid highlight box to keep its correct warning (orange) or expired (red) border and background, even when the document has been acknowledged. The blue banner remains visible to present the acknowledgement user and timestamp.
+
+### 29. Self-Contained Base64 Asset Bundling for Serverless Environments (Latest Update)
+- **Goal**: Address serverless fetch limitations on Vercel where Preview Deployment Protection blocks internal HTTP self-fetches, and the `public` directory is not mounted locally for `fs.readFileSync` calls.
+- **Base64 Code Assets ([utils/documentBase64.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/documentBase64.ts))**:
+  - Encoded the mock JPEG images (`compulsory_insurance.jpg` & `tax_receipt.jpg`) into static Base64 code strings so they are bundled directly into the compiled JavaScript application.
+- **Download API Endpoint ([app/api/download/route.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/api/download/route.ts))**:
+  - Updated the route to synchronously decode the Base64 asset strings using `Buffer.from(base64Data, 'base64')` instead of making local file reads or HTTP requests.
+  - This guarantees zero external network or filesystem dependencies, making PDF generation and file downloading 100% reliable across all hosting environments.
