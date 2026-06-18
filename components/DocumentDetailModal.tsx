@@ -237,7 +237,7 @@ export default function DocumentDetailModal({ document, onClose, onAcknowledge, 
                         className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#1a4d2e] px-4 text-sm font-bold text-white transition-colors hover:bg-[#123620]"
                       >
                         <Eye size={16} />
-                        ดูตัวอย่างภาพ
+                        ดูเอกสาร
                       </button>
                     </div>
                   </div>
@@ -311,13 +311,13 @@ export default function DocumentDetailModal({ document, onClose, onAcknowledge, 
               </div>
               <div className="flex items-center gap-2">
                 <a
-                  href={attachmentPreview.src}
-                  download={`${getDocTypeName(document.docType)}_${getCleanLicensePlate(document.licensePlate) || document.chassis}.jpg`}
-                  onClick={() => toast.success(`ดาวน์โหลดรูปภาพ ${getDocTypeName(document.docType)} ของ ${getCleanLicensePlate(document.licensePlate) || document.chassis} เรียบร้อยแล้ว`)}
+                  href={`/api/download?url=${encodeURIComponent(attachmentPreview.src)}&filename=${encodeURIComponent(`${getDocTypeName(document.docType)}_${getCleanLicensePlate(document.licensePlate) || document.chassis}.pdf`)}`}
+                  download={`${getDocTypeName(document.docType)}_${getCleanLicensePlate(document.licensePlate) || document.chassis}.pdf`}
+                  onClick={() => toast.success(`ดาวน์โหลดเอกสาร ${getDocTypeName(document.docType)} ของ ${getCleanLicensePlate(document.licensePlate) || document.chassis} เรียบร้อยแล้ว`)}
                   className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#1a4d2e] px-3 text-xs font-bold text-white transition-colors hover:bg-[#123620]"
                 >
                   <Download size={14} />
-                  ดาวน์โหลดรูปภาพ
+                  ดาวน์โหลดเอกสาร
                 </a>
                 <button
                   type="button"

@@ -702,11 +702,11 @@ export default function PolicyTable({
                     <td className="px-2 py-3 text-center">
                       {attachmentPreview ? (
                         <a
-                          href={attachmentPreview.src}
-                          download={`${getDocTypeName(doc.docType)}_${getCleanLicensePlate(doc.licensePlate) || doc.chassis}.jpg`}
+                          href={`/api/download?url=${encodeURIComponent(attachmentPreview.src)}&filename=${encodeURIComponent(`${getDocTypeName(doc.docType)}_${getCleanLicensePlate(doc.licensePlate) || doc.chassis}.pdf`)}`}
+                          download={`${getDocTypeName(doc.docType)}_${getCleanLicensePlate(doc.licensePlate) || doc.chassis}.pdf`}
                           onClick={(e) => {
                             e.stopPropagation();
-                            toast.success(`ดาวน์โหลดรูปภาพ ${getDocTypeName(doc.docType)} ของ ${getCleanLicensePlate(doc.licensePlate) || doc.chassis} เรียบร้อยแล้ว`);
+                            toast.success(`ดาวน์โหลดเอกสาร ${getDocTypeName(doc.docType)} ของ ${getCleanLicensePlate(doc.licensePlate) || doc.chassis} เรียบร้อยแล้ว`);
                           }}
                           className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-lg transition-colors inline-flex"
                           title={`ดาวน์โหลด ${attachmentPreview.title}`}
