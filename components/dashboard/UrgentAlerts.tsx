@@ -13,7 +13,7 @@ interface UrgentAlertsProps {
 export default function UrgentAlerts({ alerts, onOpenAll, onSelectDocument }: UrgentAlertsProps) {
   // แสดงเฉพาะรายการด่วนบนหน้าแรก และให้แต่ละรายการเปิด detail modal จาก document ต้นทาง
   return (
-    <div className="bg-white p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col">
+    <div className="bg-white p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm flex h-full min-h-[420px] flex-col">
       <div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-100">
         <div className="bg-red-100 p-2 rounded-full">
           <BellRing size={18} className="text-red-600 animate-pulse" />
@@ -21,7 +21,7 @@ export default function UrgentAlerts({ alerts, onOpenAll, onSelectDocument }: Ur
         <h3 className="text-lg font-bold text-gray-800">แจ้งเตือน(ด่วน)</h3>
       </div>
 
-      <div className="flex-1 overflow-y-auto pr-2 space-y-3 max-h-[250px] custom-scrollbar">
+      <div className="min-h-0 flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
         {alerts.length > 0 ? (
           alerts.map((alert) => {
             const isExpired = alert.type === 'error';
@@ -35,7 +35,7 @@ export default function UrgentAlerts({ alerts, onOpenAll, onSelectDocument }: Ur
                 <div className="flex justify-between items-start mb-1">
                   <span className="font-bold text-gray-800 line-clamp-1 flex-1 pr-2">{alert.text.split(' - ')[0]}</span>
                   <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold shrink-0 ${isExpired ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>
-                    {isExpired ? 'หมดอายุแล้ว' : 'ใกล้หมด'}
+                    {isExpired ? 'ยังไม่ต่อ' : 'ใกล้ถึงรอบต่อ'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-gray-500 text-xs mt-2 font-medium">

@@ -1,4 +1,4 @@
-import type { VehicleDocument } from '@/types';
+import type { VehicleDocument, VehicleDocumentHistoryEvent, VehicleDocumentHistoryRecord } from '@/types';
 
 type VehicleDocumentUpdatePayload = {
   issuedDate?: string | null;
@@ -6,6 +6,7 @@ type VehicleDocumentUpdatePayload = {
   isAcknowledged?: boolean;
   acknowledgedAt?: string | null;
   acknowledgedBy?: string | null;
+  actor?: string;
 };
 
 export const updateVehicleDocumentRecord = async (id: string, updates: VehicleDocumentUpdatePayload) => {
@@ -32,7 +33,7 @@ export const createVehicleDocumentRecords = async (documents: VehicleDocument[])
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ documents }),
+    body: JSON.stringify({ documents, actor: 'testuser' }),
   });
 
   const data = await response.json() as { documents?: VehicleDocument[]; error?: string };
@@ -45,7 +46,7 @@ export const createVehicleDocumentRecords = async (documents: VehicleDocument[])
 };
 
 export const deleteVehicleDocumentRecord = async (id: string) => {
-  const response = await fetch(`/api/vehicle-documents/${encodeURIComponent(id)}`, {
+  const response = await fetch(`/api/vehicle-documents/${encodeURIComponent(id)}?actor=testuser`, {
     method: 'DELETE',
   });
 
@@ -56,4 +57,41 @@ export const deleteVehicleDocumentRecord = async (id: string) => {
   }
 
   return data.document;
+};
+
+export const recordVehicleDocumentHistoryEvent = async (
+  id: string,
+  eventType: VehicleDocumentHistoryEvent,
+  details?: Record<string, unknown>,
+) => {
+  const response = await fetch(`/api/vehicle-documents/${encodeURIComponent(id)}/history`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      eventType,
+      actor: 'testuser',
+      details,
+    }),
+  });
+
+  const data = await response.json() as { logged?: boolean; error?: string };
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Unable to record vehicle document history.');
+  }
+
+  return Boolean(data.logged);
+};
+
+export const listVehicleDocumentHistoryRecords = async (id: string) => {
+  const response = await fetch(`/api/vehicle-documents/${encodeURIComponent(id)}/history`);
+  const data = await response.json() as { history?: VehicleDocumentHistoryRecord[]; error?: string };
+
+  if (!response.ok || !data.history) {
+    throw new Error(data.error || 'Unable to load vehicle document history.');
+  }
+
+  return data.history;
 };

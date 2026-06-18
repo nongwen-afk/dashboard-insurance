@@ -11,7 +11,7 @@ import DocumentDetailModal from '@/components/DocumentDetailModal';
 import type { DocStatus, FilterStatus, SortOption, VehicleDocument } from '@/types';
 import { formatThaiDate, getDocTypeName, getDocumentRecordKey, getDocumentStatus, getRenewedDocumentDates, isSameDocumentRecord, parseDocumentDate } from '@/utils/documentUtils';
 import { parseVehicleDocumentsFromFile } from '@/utils/importVehicleDocuments';
-import { createVehicleDocumentRecords, updateVehicleDocumentRecord } from '@/utils/vehicleDocumentApi';
+import { createVehicleDocumentRecords, recordVehicleDocumentHistoryEvent, updateVehicleDocumentRecord } from '@/utils/vehicleDocumentApi';
 
 interface PolicyTableProps {
   documents: VehicleDocument[];
@@ -27,8 +27,8 @@ interface PolicyTableProps {
 const getStatusBadge = (status: DocStatus, days: number, isAcknowledged?: boolean) => {
   if (isAcknowledged) {
     return {
-      label: 'กำลังดำเนินการ',
-      detail: 'รับทราบเรื่องแล้ว',
+      label: 'ยังไม่ต่อ',
+      detail: 'ต้องต่ออายุ',
       className: 'bg-blue-50 text-blue-700 border-blue-100',
       detailClassName: 'text-blue-600',
     };
@@ -36,7 +36,7 @@ const getStatusBadge = (status: DocStatus, days: number, isAcknowledged?: boolea
 
   if (status === 'EXPIRED') {
     return {
-      label: 'หมดอายุแล้ว',
+      label: 'ยังไม่ต่อ',
       detail: `เลยกำหนดมาแล้ว ${Math.abs(days)} วัน`,
       className: 'bg-red-50 text-red-700 border-red-100',
       detailClassName: 'text-red-600',
@@ -45,7 +45,7 @@ const getStatusBadge = (status: DocStatus, days: number, isAcknowledged?: boolea
 
   if (status === 'WARNING') {
     return {
-      label: 'ใกล้หมดอายุ',
+      label: 'ใกล้ถึงรอบต่อ',
       detail: `เหลืออีก ${days} วัน`,
       className: 'bg-orange-50 text-orange-700 border-orange-100',
       detailClassName: 'text-orange-600',
@@ -54,7 +54,7 @@ const getStatusBadge = (status: DocStatus, days: number, isAcknowledged?: boolea
 
   if (status === 'NO_EXPIRY') {
     return {
-      label: 'ไม่มีวันหมดอายุ',
+      label: 'ไม่ต้องต่อ',
       detail: 'ตรวจสอบตามรอบเอกสาร',
       className: 'bg-slate-50 text-slate-600 border-slate-200',
       detailClassName: 'text-slate-500',
@@ -62,8 +62,8 @@ const getStatusBadge = (status: DocStatus, days: number, isAcknowledged?: boolea
   }
 
   return {
-    label: 'ใช้งานได้',
-    detail: 'ยังไม่ถึงกำหนด',
+    label: 'ต่อแล้ว',
+    detail: 'ยังไม่ต้องต่อ',
     className: 'bg-green-50 text-green-700 border-green-100',
     detailClassName: 'text-green-600',
   };
@@ -72,10 +72,9 @@ const getStatusBadge = (status: DocStatus, days: number, isAcknowledged?: boolea
 const getStatusFilterLabel = (status: FilterStatus) => {
   const labels: Record<FilterStatus, string> = {
     ALL: 'ทั้งหมด',
-    ACTIVE: 'ใช้งานได้',
-    WARNING: 'ใกล้หมดอายุ',
-    EXPIRED: 'หมดอายุแล้ว',
-    PROCESSING: 'กำลังดำเนินการ',
+    ACTIVE: 'ต่อแล้ว / ไม่ต้องต่อ',
+    WARNING: 'ใกล้ถึงรอบต่อ',
+    EXPIRED: 'ยังไม่ต่อ',
   };
 
   return labels[status];
@@ -99,8 +98,8 @@ const matchesDocumentFilters = (
   let matchStatus = true;
 
   if (statusFilter !== 'ALL') {
-    if (statusFilter === 'PROCESSING') {
-      matchStatus = !!doc.isAcknowledged;
+    if (statusFilter === 'EXPIRED') {
+      matchStatus = !!doc.isAcknowledged || status === 'EXPIRED';
     } else if (doc.isAcknowledged) {
       matchStatus = false;
     } else if (statusFilter === 'ACTIVE') {
@@ -184,7 +183,7 @@ export default function PolicyTable({
           });
 
           setDocuments(prev => prev.map(d => isSameDocumentRecord(d, optimisticDocument) ? savedDocument : d));
-          toast.success(`ซิงค์สำเร็จ! พบการต่ออายุใหม่ของรถ ${doc.licensePlate || doc.chassis || 'ไม่ระบุ'} เรียบร้อย`, {
+          toast.success(`ต่อแล้ว: อัปเดตวันต่ออายุของรถ ${doc.licensePlate || doc.chassis || 'ไม่ระบุ'} เรียบร้อย`, {
             id: syncToastId,
             icon: '✅',
             duration: 4000
@@ -198,7 +197,16 @@ export default function PolicyTable({
           });
         }
       } else {
-        toast.error(`ซิงค์สำเร็จ: ยังไม่พบการชำระเงิน/ต่ออายุใหม่ในระบบของหน่วยงานภายนอก`, {
+        if (doc.id) {
+          void recordVehicleDocumentHistoryEvent(doc.id, 'sync_no_update', {
+            source: 'external_sync',
+            scope: 'table_row',
+          }).catch((error) => {
+            console.error('Unable to record sync history.', error);
+          });
+        }
+
+        toast.error(`ยังไม่ต่อ: ยังไม่พบการชำระเงิน/ต่ออายุใหม่ในระบบของหน่วยงานภายนอก`, {
           id: syncToastId,
           icon: 'ℹ️',
           duration: 4000
@@ -246,11 +254,23 @@ export default function PolicyTable({
       });
 
       const renewedResults = syncResults.filter((result): result is { doc: VehicleDocument; renewedDocument: VehicleDocument } => result.renewedDocument !== null);
+      const pendingResults = syncResults.filter((result) => result.renewedDocument === null);
       const pendingCount = syncResults.length - renewedResults.length;
+
+      if (pendingResults.length > 0) {
+        void Promise.allSettled(pendingResults.map(({ doc }) => {
+          if (!doc.id) return Promise.resolve(false);
+
+          return recordVehicleDocumentHistoryEvent(doc.id, 'sync_no_update', {
+            source: 'external_sync',
+            scope: 'global_sync',
+          });
+        }));
+      }
 
       if (renewedResults.length === 0) {
         toast.error(
-          `ซิงค์เรียบร้อย: เอกสารทั้ง ${pendingCount} รายการที่กำลังดำเนินการ ยังไม่พบการชำระเงินเข้ามาในระบบ`,
+          `ยังไม่ต่อ: เอกสารทั้ง ${pendingCount} รายการยังไม่พบการชำระเงิน/ต่ออายุใหม่ในระบบ`,
           {
             id: syncToastId,
             icon: 'ℹ️',
@@ -294,7 +314,7 @@ export default function PolicyTable({
 
       if (savedDocuments.length > 0) {
         toast.success(
-          `ซิงค์เรียบร้อย! อัปเดตข้อมูลต่ออายุสำเร็จ ${savedDocuments.length} รายการ, รอการชำระเงินอีก ${pendingCount} รายการ`,
+          `ต่อแล้ว ${savedDocuments.length} รายการ, ยังไม่ต่ออีก ${pendingCount} รายการ`,
           {
             id: syncToastId,
             icon: '✅',
@@ -443,7 +463,7 @@ export default function PolicyTable({
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input
               type="text"
-              placeholder="ค้นหาทะเบียน, ประเภทเอกสาร..."
+              placeholder="ค้นหาทะเบียน, โครงการ, ประเภทเอกสาร..."
               className="h-11 w-full pl-11 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1a4d2e] transition-all"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
@@ -588,22 +608,24 @@ export default function PolicyTable({
       </div>
 
       <div className="overflow-x-auto overflow-y-hidden min-h-[465px]">
-        <table className="w-full min-w-[1000px] table-fixed text-left border-collapse">
+        <table className="w-full min-w-[1120px] table-fixed text-left border-collapse">
           <colgroup>
+            <col className="w-[9%]" />
+            <col className="w-[13%]" />
             <col className="w-[10%]" />
             <col className="w-[14%]" />
             <col className="w-[12%]" />
-            <col className="w-[14%]" />
-            <col className="w-[14%]" />
-            <col className="w-[24%]" />
-            <col className="w-[7%]" />
+            <col className="w-[12%]" />
+            <col className="w-[21%]" />
             <col className="w-[5%]" />
+            <col className="w-[4%]" />
           </colgroup>
           <thead className="bg-gray-50/50 border-y border-gray-100">
             <tr className="text-gray-500 text-xs uppercase tracking-wider">
               <th className="px-4 py-3 font-semibold">ประเภทเอกสาร</th>
               <th className="px-4 py-3 font-semibold">เลขตัวถัง</th>
               <th className="px-4 py-3 font-semibold">ทะเบียนรถ</th>
+              <th className="px-4 py-3 font-semibold">โครงการ</th>
               <th className="px-4 py-3 font-semibold">วันที่มีผล</th>
               <th className="px-4 py-3 font-semibold">วันหมดอายุ</th>
               <th className="px-4 py-3 font-semibold">สถานะ</th>
@@ -614,7 +636,7 @@ export default function PolicyTable({
           <tbody className="divide-y divide-gray-100 text-sm">
             {isLoading ? (
               <tr>
-                <td colSpan={8} className="px-6 py-12 text-center text-gray-400">
+                <td colSpan={9} className="px-6 py-12 text-center text-gray-400">
                   <p className="font-medium text-gray-500">กำลังโหลดข้อมูลจาก Neon...</p>
                 </td>
               </tr>
@@ -639,6 +661,12 @@ export default function PolicyTable({
                     </td>
 
                     <td className="px-4 py-3">
+                      <span className="block truncate font-medium text-gray-700" title={doc.project || 'ไม่ระบุโครงการ'}>
+                        {doc.project || 'ไม่ระบุโครงการ'}
+                      </span>
+                    </td>
+
+                    <td className="px-4 py-3">
                       <span className="text-gray-600">{formatThaiDate(doc.issuedDate)}</span>
                     </td>
 
@@ -651,17 +679,17 @@ export default function PolicyTable({
                         onClick={(e) => {
                           e.stopPropagation();
                           if (doc.isAcknowledged) {
-                            setStatusFilter('PROCESSING');
-                            toast.success('กรองเฉพาะเอกสารที่กำลังดำเนินการ', { id: 'status-filter-toast' });
+                            setStatusFilter('EXPIRED');
+                            toast.success('กรองเฉพาะเอกสารที่ยังไม่ต่อ', { id: 'status-filter-toast' });
                           } else if (status === 'EXPIRED') {
                             setStatusFilter('EXPIRED');
-                            toast.success('กรองเฉพาะเอกสารที่หมดอายุแล้ว', { id: 'status-filter-toast' });
+                            toast.success('กรองเฉพาะเอกสารที่ยังไม่ต่อ', { id: 'status-filter-toast' });
                           } else if (status === 'WARNING') {
                             setStatusFilter('WARNING');
-                            toast.success('กรองเฉพาะเอกสารที่ใกล้หมดอายุ', { id: 'status-filter-toast' });
+                            toast.success('กรองเฉพาะเอกสารที่ใกล้ถึงรอบต่อ', { id: 'status-filter-toast' });
                           } else if (status === 'ACTIVE' || status === 'NO_EXPIRY') {
                             setStatusFilter('ACTIVE');
-                            toast.success('กรองเฉพาะเอกสารที่ใช้งานได้', { id: 'status-filter-toast' });
+                            toast.success('กรองเฉพาะเอกสารที่ต่อแล้วหรือไม่ต้องต่อ', { id: 'status-filter-toast' });
                           }
                         }}
                         className="inline-flex flex-col items-start gap-1 cursor-pointer hover:scale-105 transition-all duration-200"
@@ -767,7 +795,7 @@ export default function PolicyTable({
               })
             ) : (
               <tr>
-                <td colSpan={8} className="px-6 py-12 text-center text-gray-400 flex-col items-center justify-center">
+                <td colSpan={9} className="px-6 py-12 text-center text-gray-400 flex-col items-center justify-center">
                   <p className="font-medium text-gray-500">ไม่พบข้อมูลที่คุณค้นหา หรือ ไม่ตรงกับตัวกรอง</p>
                 </td>
               </tr>

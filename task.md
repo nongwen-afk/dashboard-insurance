@@ -21,6 +21,7 @@
   - `[x]` Add filtering logic to the table search query based on document expiration status (Active/No Expiry, Warning, Expired).
   - `[x]` Render a clear filter badge next to sorting/filtering buttons in `PolicyTable.tsx` showing the active status filter and allowing the user to reset it.
 - `[x]` Fix hardcoded "รถทะเบียน" labels to show "เลขตัวถัง" if license plate is missing in notifications and modal.
+- `[x]` Expand urgent dashboard alerts to show more items in the taller alert card.
 - `[x]` Generate mock data as a CSV file with realistic Thai license plates and project/contract names.
 - `[x]` Clean up package managers and stick to `pnpm` by deleting `package-lock.json` and updating lockfile.
 - `[x]` Integrate Vercel Speed Insights and Analytics packages.
@@ -46,6 +47,7 @@
   - `[x]` Upgrade ExpiryChart.tsx with smooth round-corner bars and bright emerald-to-forest-green gradients
 - `[x]` Improve search functionality in PolicyTable.tsx
   - `[x]` Enable search query matching on Project names (allows users to search vehicles by project/contract name)
+  - `[x]` Add a visible Project column to the document table so operators can compare vehicles by project/contract without opening row details.
 - `[x]` Fix review findings for date handling and stable document identity
   - `[x]` Parse ISO date-only values as local document dates so expiry status does not shift from timezone conversion.
   - `[x]` Validate imported Excel dates and keep invalid raw values instead of letting JavaScript roll them into another month/year.
@@ -60,6 +62,27 @@
   - `[x]` Rotate the exposed Neon/Vercel integration secrets and pull the updated `.env.local`.
   - `[x]` Confirm Neon schema and seed data are usable with 37 seeded `vehicle_documents` rows.
   - `[x]` Verify `/api/db/health` returns `ok: true` after secret rotation.
+- `[x]` Separate dev and production Neon database usage
+  - `[x]` Create a long-lived Neon `dev` branch from the existing `main` branch.
+  - `[x]` Keep Neon `main` as the production database branch.
+  - `[x]` Update Vercel `DATABASE_URL` and `POSTGRES_URL` so Production uses the Neon `main` branch.
+  - `[x]` Update Vercel `DATABASE_URL` and `POSTGRES_URL` so Development and Preview deployments from Git branch `dev` use the Neon `dev` branch.
+  - `[x]` Pull the updated Development env back into `.env.local` so local work uses the dev database branch.
+  - `[x]` Redeploy the latest Preview deployment so the new dev database env takes effect.
+  - `[x]` Verify Production and Development connection metadata point to different Neon branch/endpoint IDs.
+  - `[x]` Verify the redeployed Preview `/api/db/health` endpoint returns `ok: true`.
+- `[x]` Clarify renewal status wording for V1
+  - `[x]` Replace ambiguous user-facing "กำลังดำเนินการ" labels with V1 workflow language: "ต่อแล้ว", "ยังไม่ต่อ", and "ไม่ต้องต่อ".
+  - `[x]` Remove the separate acknowledged card/filter and count acknowledged-but-not-renewed documents under "ยังไม่ต่อ".
+  - `[x]` Update dashboard stat-card titles, table badges, active filter chips, and status-filter toast copy to use the same workflow wording.
+  - `[x]` Update document detail modal banner copy so acknowledged documents are not implied to be completed.
+- `[x]` Replace the expiry bar chart with a renewal calendar and daily agenda
+  - `[x]` Rework `ExpiryChart.tsx` into a month calendar that marks each day with the number of expiring documents.
+  - `[x]` Add a daily agenda panel showing vehicle, document type, project, expiry date, and days remaining/overdue.
+  - `[x]` Keep calendar list item clicks opening the existing document detail modal.
+  - `[x]` Add month-level quick counts for "ต้องต่อแล้ว" and "ใกล้ถึงรอบต่อ" only.
+  - `[x]` Keep document-count badges limited to days inside the visible month so adjacent-month dates stay contextual only.
+  - `[x]` Hide already-renewed and non-urgent documents from the renewal calendar so it only shows actionable renewal work.
 - `[ ]` Support custom document additions (Add Document Form)
 - `[ ]` Implement real backend API / localstorage integration for persistence
   - `[x]` Add Neon-backed `GET /api/vehicle-documents` endpoint for reading `vehicle_documents`.
@@ -69,6 +92,10 @@
   - `[x]` Persist document deletion back to Neon with optimistic UI rollback.
   - `[x]` Persist Excel import records back to Neon before adding them to the dashboard state.
   - `[x]` Persist successful renewal sync actions back to Neon with rollback on save failure.
+  - `[x]` Add a Neon-backed vehicle document history event log for import, acknowledge, renewal, sync-miss, delete, and update events.
+  - `[x]` Generate the Drizzle migration for the `vehicle_document_history` audit table.
+  - `[x]` Apply the history migration to the active Neon dev branch and verify new events are recorded.
+  - `[x]` Add a document detail "ประวัติ" button that opens a timeline from the Neon history log.
 - `[ ]` Add more chart visualizations (e.g. status breakdown pie chart)
 - `[ ]` **Git & Documentation Rules (กฎระเบียบการพัฒนา)**
   - `[ ]` Check out and work exclusively in the `dev` branch first (never commit to `main` directly).

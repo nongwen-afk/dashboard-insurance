@@ -1,25 +1,23 @@
 "use client";
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { Files, CheckCircle2, AlertCircle, XCircle, Clock } from 'lucide-react';
+import { Files, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import DocumentDetailModal from '@/components/DocumentDetailModal';
 import AlertsModal from '@/components/dashboard/AlertsModal';
 import ExpiryChart from '@/components/dashboard/ExpiryChart';
-import ExpiryMonthModal from '@/components/dashboard/ExpiryMonthModal';
 import StatCard from '@/components/dashboard/StatCard';
 import UrgentAlerts from '@/components/dashboard/UrgentAlerts';
 import PolicyTable from '../components/PolicyTable';
-import type { DocumentAlert, ExpiryMonthGroup, FilterStatus, VehicleDocument } from '@/types';
+import type { DocumentAlert, FilterStatus, VehicleDocument } from '@/types';
 import { formatThaiDate, getDaysUntilExpiry, getDocTypeName, getRenewedDocumentDates, getSixMonthExpiryKey, isSameDocumentRecord, parseDocumentDate } from '@/utils/documentUtils';
-import { deleteVehicleDocumentRecord, updateVehicleDocumentRecord } from '@/utils/vehicleDocumentApi';
+import { deleteVehicleDocumentRecord, recordVehicleDocumentHistoryEvent, updateVehicleDocumentRecord } from '@/utils/vehicleDocumentApi';
 
 export default function DashboardPage() {
   // documents เป็น state หลักของทั้งหน้า: card, chart, alert และ table อ่านจากชุดเดียวกัน
   const [documents, setDocuments] = useState<VehicleDocument[]>([]);
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(true);
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
-  const [selectedExpiryMonth, setSelectedExpiryMonth] = useState<ExpiryMonthGroup | null>(null);
   const [selectedDocForDetail, setSelectedDocForDetail] = useState<VehicleDocument | null>(null);
 
   // สถานะตัวกรองจาก stat card ที่ส่งไปควบคุม PolicyTable
@@ -134,25 +132,25 @@ export default function DashboardPage() {
     }
   };
 
-  // สรุปจำนวนเอกสารตามสถานะ เพื่อให้ 5 cards ด้านบนสะท้อนข้อมูลหลัง import Excel ทันที
+  // สรุปจำนวนเอกสารตาม workflow หลัก เพื่อให้ cards ด้านบนสะท้อนข้อมูลหลัง import Excel ทันที
   const stats = useMemo(() => {
-    let active = 0, warning = 0, expired = 0, processing = 0;
+    let active = 0, warning = 0, notRenewed = 0;
 
     documents.forEach(doc => {
       if (doc.isAcknowledged) {
-        processing++;
+        notRenewed++;
         return;
       }
       if (!doc.expiryDate) { active++; return; }
       const diffDays = getDaysUntilExpiry(doc.expiryDate);
-      if (diffDays < 0) expired++;
+      if (diffDays < 0) notRenewed++;
       else if (diffDays <= 30) warning++;
       else active++;
     });
-    return { total: documents.length, active, warning, expired, processing };
+    return { total: documents.length, active, warning, notRenewed };
   }, [documents]);
 
-  // จัดกลุ่มเอกสารที่จะหมดอายุใน 6 เดือนข้างหน้า เพื่อแสดงบนกราฟและใช้เปิด modal รายเดือน
+  // จัดกลุ่มเอกสารที่จะถึงรอบต่ออายุใน 6 เดือนข้างหน้า เพื่อป้อนปฏิทินต่ออายุ
   const chartData = useMemo(() => {
     const dataMap: Record<string, VehicleDocument[]> = {};
 
@@ -179,7 +177,7 @@ export default function DashboardPage() {
     }));
   }, [documents]);
 
-  // สร้างรายการแจ้งเตือนจากเอกสารที่หมดอายุแล้วหรือใกล้หมดอายุใน 30 วัน
+  // สร้างรายการแจ้งเตือนจากเอกสารที่ยังไม่ต่อหรือใกล้ถึงรอบต่อใน 30 วัน
   const alertsList = useMemo<DocumentAlert[]>(() => {
     return documents
       .filter(doc => {
@@ -205,7 +203,7 @@ export default function DashboardPage() {
 
         return {
           id: `alert-${index}`,
-          text: `${doc.licensePlate ? 'รถทะเบียน' : 'เลขตัวถัง'} ${doc.licensePlate || doc.chassis} - ${docName} ${isExpired ? 'หมดอายุ' : 'ใกล้หมดอายุ'}`,
+          text: `${doc.licensePlate ? 'รถทะเบียน' : 'เลขตัวถัง'} ${doc.licensePlate || doc.chassis} - ${docName} ${isExpired ? 'ยังไม่ต่อ' : 'ใกล้ถึงรอบต่อ'}`,
           type: isExpired ? 'error' as const : 'warning' as const,
           date: formatThaiDate(doc.expiryDate),
           daysText: daysText,
@@ -216,8 +214,8 @@ export default function DashboardPage() {
       .sort((a, b) => a.diffDays - b.diffDays);
   }, [documents]);
 
-  // หน้า dashboard แสดงเฉพาะ 4 รายการที่ด่วนที่สุด ส่วนรายการเต็มเปิดใน AlertsModal
-  const topUrgentDocs = alertsList.slice(0, 4);
+  // หน้า dashboard แสดงรายการด่วนให้เต็มพื้นที่การ์ด ส่วนรายการเต็มเปิดใน AlertsModal
+  const topUrgentDocs = alertsList.slice(0, 6);
 
   const handleSingleSync = (doc: VehicleDocument) => {
     const syncToastId = `sync-doc-${doc.id || doc.chassis}-${doc.docType}`;
@@ -272,6 +270,15 @@ export default function DashboardPage() {
           });
         }
       } else {
+        if (doc.id) {
+          void recordVehicleDocumentHistoryEvent(doc.id, 'sync_no_update', {
+            source: 'external_sync',
+            scope: 'detail_modal',
+          }).catch((error) => {
+            console.error('Unable to record sync history.', error);
+          });
+        }
+
         toast.error(`ซิงค์สำเร็จ: ยังไม่พบการชำระเงิน/ต่ออายุใหม่ในระบบของหน่วยงานภายนอก`, {
           id: syncToastId,
           icon: 'ℹ️',
@@ -294,7 +301,7 @@ export default function DashboardPage() {
         </h1>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="เอกสารทั้งหมด"
           value={stats.total}
@@ -306,9 +313,9 @@ export default function DashboardPage() {
           activeType="ALL"
         />
         <StatCard
-          title="ใช้งานได้"
+          title="ต่อแล้ว"
           value={stats.active}
-          caption="ยังไม่ถึงกำหนด"
+          caption="ยังไม่ต้องต่อ"
           icon={<CheckCircle2 size={28} />}
           iconClassName="bg-green-50 text-green-500"
           onClick={() => handleStatCardClick('ACTIVE')}
@@ -316,7 +323,7 @@ export default function DashboardPage() {
           activeType="ACTIVE"
         />
         <StatCard
-          title="ใกล้หมดอายุ"
+          title="ใกล้ถึงรอบต่อ"
           value={stats.warning}
           caption="ภายใน 30 วัน"
           icon={<AlertCircle size={28} />}
@@ -326,31 +333,21 @@ export default function DashboardPage() {
           activeType="WARNING"
         />
         <StatCard
-          title="หมดอายุแล้ว"
-          value={stats.expired}
-          caption="ต้องดำเนินการ"
+          title="ยังไม่ต่อ"
+          value={stats.notRenewed}
+          caption="ต้องต่ออายุ"
           icon={<XCircle size={28} />}
           iconClassName="bg-red-50 text-red-500"
           onClick={() => handleStatCardClick('EXPIRED')}
           isActive={statusFilter === 'EXPIRED'}
           activeType="EXPIRED"
         />
-        <StatCard
-          title="กำลังดำเนินการ"
-          value={stats.processing}
-          caption="รับทราบเรื่องแล้ว"
-          icon={<Clock size={28} />}
-          iconClassName="bg-blue-50 text-blue-600"
-          onClick={() => handleStatCardClick('PROCESSING')}
-          isActive={statusFilter === 'PROCESSING'}
-          activeType="PROCESSING"
-        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <ExpiryChart
           chartData={chartData}
-          onSelectMonth={setSelectedExpiryMonth}
+          onSelectDocument={setSelectedDocForDetail}
         />
         <UrgentAlerts
           alerts={topUrgentDocs}
@@ -375,14 +372,6 @@ export default function DashboardPage() {
         <AlertsModal
           alerts={alertsList}
           onClose={() => setIsAlertModalOpen(false)}
-          onSelectDocument={setSelectedDocForDetail}
-        />
-      )}
-
-      {selectedExpiryMonth && (
-        <ExpiryMonthModal
-          month={selectedExpiryMonth}
-          onClose={() => setSelectedExpiryMonth(null)}
           onSelectDocument={setSelectedDocForDetail}
         />
       )}
