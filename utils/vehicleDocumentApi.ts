@@ -95,3 +95,14 @@ export const listVehicleDocumentHistoryRecords = async (id: string) => {
 
   return data.history;
 };
+
+export const listVehicleDocumentRenewalHistoryRecords = async (signal?: AbortSignal) => {
+  const response = await fetch('/api/vehicle-document-renewals', { signal });
+  const data = await response.json() as { renewals?: VehicleDocumentHistoryRecord[]; error?: string };
+
+  if (!response.ok || !data.renewals) {
+    throw new Error(data.error || 'Unable to load vehicle document renewal history.');
+  }
+
+  return data.renewals;
+};

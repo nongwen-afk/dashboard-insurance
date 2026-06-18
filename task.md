@@ -95,7 +95,10 @@
   - `[x]` Add a Neon-backed vehicle document history event log for import, acknowledge, renewal, sync-miss, delete, and update events.
   - `[x]` Generate the Drizzle migration for the `vehicle_document_history` audit table.
   - `[x]` Apply the history migration to the active Neon dev branch and verify new events are recorded.
-  - `[x]` Add a document detail "ประวัติ" button that opens a timeline from the Neon history log.
+  - `[x]` Add a dashboard-level "ประวัติการต่ออายุ" view that shows completed renewals from the Neon history log.
+  - `[x]` Compare the previous expiry date, renewal timestamp, and new expiry date to identify on-time and late renewals.
+  - `[x]` Keep the full audit log in Neon while removing lower-value operational events from the V1 history UI.
+  - `[x]` Remove the per-document history button so V1 has one clear renewal-history surface.
 - `[ ]` Add more chart visualizations (e.g. status breakdown pie chart)
 - `[ ]` **Git & Documentation Rules (กฎระเบียบการพัฒนา)**
   - `[ ]` Check out and work exclusively in the `dev` branch first (never commit to `main` directly).

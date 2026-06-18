@@ -301,10 +301,7 @@ We reviewed and fixed the issues found after the Antigravity update.
   - Added a lightweight history endpoint for event-only records, starting with `sync_no_update` when an external renewal/payment check returns no new renewal.
   - Added `GET /api/vehicle-documents/[id]/history` so the UI can read the timeline for one document.
   - Wired row-level, modal-level, and global sync miss paths to record the event through [utils/vehicleDocumentApi.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/vehicleDocumentApi.ts).
-- **History Button ([components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
-  - Added a `ประวัติ` button in the document detail modal footer.
-  - The button loads and toggles a timeline panel showing event type, actor, timestamp, and expiry-date changes for the selected document.
-  - Empty and error states are shown inside the same panel so users understand whether the document has no history yet or the Neon history load failed.
+- **History Access**: The initial per-document history button was replaced by the renewal history view described below so V1 has one clear place to review completed renewals.
 - **Analysis Value**:
   - Can later group events by month, project, document type, actor, and event type.
   - Can compare `previous_expiry_date` and `next_expiry_date` for renewal cycle analysis.
@@ -313,3 +310,25 @@ We reviewed and fixed the issues found after the Antigravity update.
   - Applied the migration to the active Neon `dev` branch with `pnpm db:push`.
   - Verified history writes by creating a temporary `sync_no_update` event with actor `codex-verify`, confirming the history count increased from `0` to `1`, then deleting the verification row so the count returned to `0`.
   - Apply the same migration to Neon `main` only when promoting the release to Production.
+
+### 21. Document Renewal History View
+- **Goal**: Show which documents were renewed, whether each renewal happened before or after the previous expiry date, and the new coverage end date. General operational events remain stored for audit and future analysis but do not clutter the V1 screen.
+- **Renewal History API ([app/api/vehicle-document-renewals/route.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/api/vehicle-document-renewals/route.ts))**:
+  - Added `GET /api/vehicle-document-renewals` to return only `renewed` events from Neon, newest first.
+  - Added a focused Drizzle query in [db/vehicleDocuments.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/db/vehicleDocuments.ts) and a client fetch helper in [utils/vehicleDocumentApi.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/vehicleDocumentApi.ts).
+  - The existing audit table still stores imports, acknowledgements, sync misses, edits, and deletions for future reporting.
+- **Dashboard Entry Point ([app/page.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/page.tsx))**:
+  - Added a visible `ประวัติการต่ออายุ` button beside the page title.
+  - Removed the history button and timeline from each document detail modal to avoid duplicate V1 workflows.
+- **Renewal Table ([components/RenewalHistoryModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/RenewalHistoryModal.tsx))**:
+  - Shows renewal time, vehicle/document, project, previous expiry date, new expiry date, timing result, and actor.
+  - Calculates whether a renewal was completed before expiry, on the expiry date, or after expiry and displays the day difference.
+  - Provides totals for all completed renewals, on-time renewals, and late renewals.
+  - Supports search by license plate, chassis, project, actor, or document type and filters by on-time/late status.
+  - Shows clear loading, empty, filtered-empty, and Neon error states and explains that history starts accumulating after the audit feature is enabled.
+  - Can be closed with the close icon, the Escape key, or a click outside the dialog.
+- **Verification**:
+  - `git diff --check` passes.
+  - `pnpm run lint` passes.
+  - `pnpm exec tsc --noEmit` passes.
+  - `pnpm run build` passes and includes the dynamic `/api/vehicle-document-renewals` route.
