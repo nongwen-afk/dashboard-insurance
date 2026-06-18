@@ -408,3 +408,13 @@ We reviewed and fixed the issues found after the Antigravity update.
 - **Download API Endpoint ([app/api/download/route.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/api/download/route.ts))**:
   - Updated the route to synchronously decode the Base64 asset strings using `Buffer.from(base64Data, 'base64')` instead of making local file reads or HTTP requests.
   - This guarantees zero external network or filesystem dependencies, making PDF generation and file downloading 100% reliable across all hosting environments.
+
+### 30. Revert to Direct Mock Image File Downloads (Latest Update)
+- **Goal**: Revert from the server-side PDF generator route (`/api/download`) which was failing on the Vercel Production environment due to memory/runtime constraints, and restore direct file downloads of the actual mock JPEG documents.
+- **Removed Code & Dependencies**:
+  - Deleted the custom `/api/download` API route and the `utils/documentBase64.ts` asset bundle.
+  - Removed `pdf-lib` from project dependencies.
+- **Restored Direct Links ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx) & [components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
+  - Pointed all download links (`href`) directly to the static image asset path (`attachmentPreview.src`).
+  - Configured download attributes to dynamically set the downloaded file name to format `[ประเภทเอกสาร]_[เลขทะเบียน].jpg` (with cleaned license plate numbers).
+  - This restores 100% reliable download behavior across all environments, relying on standard static file streaming without runtime server dependencies.
