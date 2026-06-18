@@ -418,3 +418,13 @@ We reviewed and fixed the issues found after the Antigravity update.
   - Pointed all download links (`href`) directly to the static image asset path (`attachmentPreview.src`).
   - Configured download attributes to dynamically set the downloaded file name to format `[ประเภทเอกสาร]_[เลขทะเบียน].jpg` (with cleaned license plate numbers).
   - This restores 100% reliable download behavior across all environments, relying on standard static file streaming without runtime server dependencies.
+
+### 31. Re-Enable PDF Download and Rename Buttons to Document-Based Terminology (Latest Update)
+- **Goal**: Re-enable PDF format downloading using the server-side Base64-backed API route `/api/download` (resolved the Vercel Production deployment pathing issue), and rename button labels to use "Document" terminology.
+- **Download API Re-Integration ([app/api/download/route.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/api/download/route.ts) & [utils/documentBase64.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/documentBase64.ts))**:
+  - Re-added `pdf-lib` as a dependency and re-scaffolded the Base64 in-memory asset bundle for zero-dependency image-to-PDF conversion.
+  - Rerouted all download actions to the API route to serve dynamic PDFs.
+- **Button Label Renaming ([components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
+  - Renamed the main action button in the attachment container from **ดูตัวอย่างภาพ** (View Image Preview) to **ดูเอกสาร** (View Document).
+  - Renamed the download button inside the preview header overlay from **ดาวน์โหลดรูปภาพ** (Download Image) to **ดาวน์โหลดเอกสาร** (Download Document).
+  - Updated the downloaded filename extension and toast notification references to `.pdf` format.
