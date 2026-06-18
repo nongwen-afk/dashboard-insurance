@@ -373,3 +373,10 @@ We reviewed and fixed the issues found after the Antigravity update.
 - **Download Real Mock Image Files ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx) & [components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
   - Switched the download target from the generic `document_placeholder.pdf` to the actual mock image path (`attachmentPreview.src`).
   - The downloaded file is named as `[ประเภทเอกสาร]_[เลขทะเบียนหรือเลขตัวถัง].jpg` (e.g. `ภาษี_1นบ 4827.jpg`) containing the actual document layout shown in the preview.
+
+### 26. Clean License Plate Numbers in Download Filenames (Latest Update)
+- **Goal**: Exclude province names (e.g. `นครปฐม`, `กรุงเทพมหานคร`) from the license plate string in downloaded file names to match the user's preferred format: `[ประเภทเอกสาร]_[เลขทะเบียน].jpg` (e.g. `ภาษี_72-4581.jpg`).
+- **Clean License Plate Helper ([utils/documentUtils.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/documentUtils.ts))**:
+  - Added `getCleanLicensePlate` to strip the province name dynamically by splitting the string by whitespace and keeping the first parts.
+- **Wiring ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx) & [components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
+  - Integrated the helper into the `download` attributes and toast messages in both the table download link and the detail preview overlay download link. Now `'72-4581 นครปฐม'` is cleanly mapped to `'72-4581'`.

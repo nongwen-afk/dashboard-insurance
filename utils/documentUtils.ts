@@ -127,3 +127,14 @@ export const getDocumentRecordKey = (document: VehicleDocument) => document.id |
 ].join('|');
 
 export const isSameDocumentRecord = (a: VehicleDocument, b: VehicleDocument) => getDocumentRecordKey(a) === getDocumentRecordKey(b);
+
+// แยกป้ายทะเบียนรถเฉพาะตัวเลข/ตัวอักษรหลัก (ตัดจังหวัดออก)
+export const getCleanLicensePlate = (plate?: string) => {
+  if (!plate) return '';
+  const parts = plate.trim().split(/\s+/);
+  if (parts.length > 1) {
+    // ถ้ามีจังหวัดอยู่ด้านหลัง (คั่นด้วยช่องว่าง) ให้ดึงเฉพาะส่วนแรกๆ
+    return parts.slice(0, parts.length - 1).join(' ');
+  }
+  return plate;
+};

@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { Building2, CalendarDays, Car, FileText, User, X, AlertTriangle, Clock, CheckCircle2, Info, RefreshCw, Eye, FileX, Download } from 'lucide-react';
 import type { VehicleDocument } from '@/types';
 import { getDocumentAttachmentPreview } from '@/utils/documentAttachment';
-import { formatThaiDate, formatThaiDateTime, getDocTypeName, getDocumentStatus } from '@/utils/documentUtils';
+import { formatThaiDate, formatThaiDateTime, getCleanLicensePlate, getDocTypeName, getDocumentStatus } from '@/utils/documentUtils';
 
 interface DocumentDetailModalProps {
   document: VehicleDocument | null;
@@ -304,8 +304,8 @@ export default function DocumentDetailModal({ document, onClose, onAcknowledge, 
               <div className="flex items-center gap-2">
                 <a
                   href={attachmentPreview.src}
-                  download={`${getDocTypeName(document.docType)}_${document.licensePlate || document.chassis}.jpg`}
-                  onClick={() => toast.success(`ดาวน์โหลดรูปภาพ ${getDocTypeName(document.docType)} ของ ${document.licensePlate || document.chassis} เรียบร้อยแล้ว`)}
+                  download={`${getDocTypeName(document.docType)}_${getCleanLicensePlate(document.licensePlate) || document.chassis}.jpg`}
+                  onClick={() => toast.success(`ดาวน์โหลดรูปภาพ ${getDocTypeName(document.docType)} ของ ${getCleanLicensePlate(document.licensePlate) || document.chassis} เรียบร้อยแล้ว`)}
                   className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#1a4d2e] px-3 text-xs font-bold text-white transition-colors hover:bg-[#123620]"
                 >
                   <Download size={14} />

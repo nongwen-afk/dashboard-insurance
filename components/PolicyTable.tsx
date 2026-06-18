@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 import DocumentDetailModal from '@/components/DocumentDetailModal';
 import type { DocStatus, FilterStatus, SortOption, VehicleDocument } from '@/types';
 import { getDocumentAttachmentPreview } from '@/utils/documentAttachment';
-import { formatThaiDate, getDocTypeName, getDocumentRecordKey, getDocumentStatus, getRenewedDocumentDates, isSameDocumentRecord, parseDocumentDate } from '@/utils/documentUtils';
+import { formatThaiDate, getCleanLicensePlate, getDocTypeName, getDocumentRecordKey, getDocumentStatus, getRenewedDocumentDates, isSameDocumentRecord, parseDocumentDate } from '@/utils/documentUtils';
 import { parseVehicleDocumentsFromFile } from '@/utils/importVehicleDocuments';
 import { createVehicleDocumentRecords, recordVehicleDocumentHistoryEvent, updateVehicleDocumentRecord } from '@/utils/vehicleDocumentApi';
 
@@ -704,10 +704,10 @@ export default function PolicyTable({
                       {attachmentPreview ? (
                         <a
                           href={attachmentPreview.src}
-                          download={`${getDocTypeName(doc.docType)}_${doc.licensePlate || doc.chassis}.jpg`}
+                          download={`${getDocTypeName(doc.docType)}_${getCleanLicensePlate(doc.licensePlate) || doc.chassis}.jpg`}
                           onClick={(e) => {
                             e.stopPropagation();
-                            toast.success(`ดาวน์โหลดรูปภาพ ${getDocTypeName(doc.docType)} ของ ${doc.licensePlate || doc.chassis} เรียบร้อยแล้ว`);
+                            toast.success(`ดาวน์โหลดรูปภาพ ${getDocTypeName(doc.docType)} ของ ${getCleanLicensePlate(doc.licensePlate) || doc.chassis} เรียบร้อยแล้ว`);
                           }}
                           className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-lg transition-colors inline-flex"
                           title={`ดาวน์โหลด ${attachmentPreview.title}`}
