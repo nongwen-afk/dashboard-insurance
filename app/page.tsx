@@ -152,32 +152,6 @@ export default function DashboardPage() {
     return { total: documents.length, active, warning, notRenewed };
   }, [documents]);
 
-  // จัดกลุ่มเอกสารที่จะถึงรอบต่ออายุใน 6 เดือนข้างหน้า เพื่อป้อนปฏิทินต่ออายุ
-  const chartData = useMemo(() => {
-    const dataMap: Record<string, VehicleDocument[]> = {};
-
-    const today = new Date();
-    for (let i = 0; i < 6; i++) {
-      const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
-      dataMap[getSixMonthExpiryKey(d)] = [];
-    }
-
-    documents.forEach(doc => {
-      if (!doc.expiryDate) return;
-      const expDate = parseDocumentDate(doc.expiryDate);
-      if (!expDate) return;
-      const key = getSixMonthExpiryKey(expDate);
-      if (dataMap[key] !== undefined) {
-        dataMap[key].push(doc);
-      }
-    });
-
-    return Object.keys(dataMap).map(key => ({
-      name: key,
-      value: dataMap[key].length,
-      docs: dataMap[key].sort((a, b) => (parseDocumentDate(a.expiryDate)?.getTime() || 0) - (parseDocumentDate(b.expiryDate)?.getTime() || 0))
-    }));
-  }, [documents]);
 
   // สร้างรายการแจ้งเตือนจากเอกสารที่ยังไม่ต่อหรือใกล้ถึงรอบต่อใน 30 วัน
   const alertsList = useMemo<DocumentAlert[]>(() => {
@@ -358,7 +332,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <ExpiryChart
-          chartData={chartData}
+          documents={documents}
           onSelectDocument={setSelectedDocForDetail}
         />
         <UrgentAlerts

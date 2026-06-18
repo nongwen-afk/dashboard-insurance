@@ -433,3 +433,25 @@ We reviewed and fixed the issues found after the Antigravity update.
   - Converted the WebP image to a true JPEG using macOS `sips` utility and updated the base64 bundle accordingly.
   - Created a verification script and confirmed successful on-the-fly PDF generation and downloads.
 
+### 32. Wrap Database Writes in SQL Transactions (Latest Update)
+- **Goal**: Protect database integrity and guarantee that document modifications (insert, update, delete) and their corresponding history logs are atomically committed together.
+- **Transaction Implementation ([db/vehicleDocuments.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/db/vehicleDocuments.ts))**:
+  - Refactored `createVehicleDocuments`, `updateVehicleDocument`, and `deleteVehicleDocument` to use `getDb().transaction()`.
+  - Nested the primary row modification and the secondary history event insert inside the transaction block, using the transaction instance `tx` for all operations.
+  - Ensures that if any query fails, the database automatically rolls back all changes, preventing dangling document states or unlogged database modifications.
+
+### 33. Google Calendar-Style Multi-View Calendar (Latest Update)
+- **Goal**: Rework the renewal calendar into an interactive calendar similar to Google Calendar, allowing Month, Week, Day, and Agenda views with infinite navigation.
+- **Rerouted Dashboard Data ([app/page.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/page.tsx))**:
+  - Removed the pre-filtered 6-month `chartData` memo array.
+  - Passed the entire raw `documents` list to the calendar component, letting the calendar perform infinite calculations dynamically for any visible date range.
+- **Calendar Enhancements ([components/dashboard/ExpiryChart.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/dashboard/ExpiryChart.tsx))**:
+  - Created segment control buttons to toggle view modes (`month` | `week` | `day` | `agenda`).
+  - Added toolbar navigation: Today, Previous (backwards), and Next (forwards) buttons that adjust the focused date context.
+  - **Month View**: Shows 42-day cells. Under each day's number, renders up to 2 clickable colored document tags (e.g. `พ.ร.บ. 72-4581`). If more than 2, displays `+X รายการ` which switches the calendar to Day View on click. Displays chosen day details in the right agenda side-panel.
+  - **Week View**: Shows 7 vertical weekday columns. Each day lists detailed expiry cards for that day.
+  - **Day View**: Shows a detailed daily timeline for the selected date.
+  - **Agenda View**: Chronologically lists all upcoming or overdue active expirations in a single scrollable panel.
+
+
+

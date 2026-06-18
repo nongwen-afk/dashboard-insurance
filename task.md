@@ -84,6 +84,12 @@
   - `[x]` Add month-level quick counts for "ต้องต่อแล้ว" and "ใกล้ถึงรอบต่อ" only.
   - `[x]` Keep document-count badges limited to days inside the visible month so adjacent-month dates stay contextual only.
   - `[x]` Hide already-renewed and non-urgent documents from the renewal calendar so it only shows actionable renewal work.
+  - `[x]` Upgrade the renewal calendar to support Month, Week, Day, and Agenda views (Google Calendar-style UI).
+    - `[x]` Add navigation toolbar (Today, Prev, Next controls) with infinite month/week/day scrolling.
+    - `[x]` Display document event tags directly in Month View calendar cells.
+    - `[x]` Add Week View with 7 columns showing detailed daily expiry lists.
+    - `[x]` Add Day View for focused date details.
+    - `[x]` Add Agenda View for chronological upcoming expiry listings.
 - `[x]` Reset development data with realistic fleet documents and attachment previews
   - `[x]` Replace the old one-document-per-vehicle mock set with 24 documents across 8 realistic fleet vehicles and projects.
   - `[x]` Make the database reset script clear old document/history rows before seeding the new mock set on Neon `dev`.
@@ -107,6 +113,7 @@
   - `[x]` Compare the previous expiry date, renewal timestamp, and new expiry date to identify on-time and late renewals.
   - `[x]` Keep the full audit log in Neon while removing lower-value operational events from the V1 history UI.
   - `[x]` Remove the per-document history button so V1 has one clear renewal-history surface.
+  - `[x]` Wrap database writes in SQL transactions to ensure consistency between document state and history audit logs.
 - `[ ]` Add more chart visualizations (e.g. status breakdown pie chart)
 - `[ ]` **Git & Documentation Rules (กฎระเบียบการพัฒนา)**
   - `[ ]` Check out and work exclusively in the `dev` branch first (never commit to `main` directly).
