@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PDFDocument } from 'pdf-lib';
+import { compulsoryInsuranceBase64, taxReceiptBase64 } from '@/utils/documentBase64';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -10,72 +11,52 @@ export async function GET(request: NextRequest) {
     return new NextResponse('Missing parameters', { status: 400 });
   }
 
-  // ทำความสะอาดเส้นทางไฟล์เพื่อความปลอดภัย
+  // ทำความสะอาดเส้นทางไฟล์
   const cleanUrl = '/' + fileUrl.replace(/^\/+/, '').split('?')[0];
-  
-  // ป้องกันการดาวน์โหลดไฟล์นอกเหนือจากรูปภาพเอกสารหลักเพื่อความปลอดภัย
-  const isAllowedAsset = cleanUrl === '/compulsory_insurance.jpg' || cleanUrl === '/tax_receipt.jpg';
-  if (!isAllowedAsset) {
-    return new NextResponse('Forbidden asset', { status: 403 });
+
+  // จับคู่ไฟล์หลักและโหลดข้อมูลจาก Base64 ที่คอมไพล์รวมไว้ในโค้ด
+  let base64Data = '';
+  if (cleanUrl === '/compulsory_insurance.jpg') {
+    base64Data = compulsoryInsuranceBase64;
+  } else if (cleanUrl === '/tax_receipt.jpg') {
+    base64Data = taxReceiptBase64;
+  }
+
+  if (!base64Data) {
+    return new NextResponse('Forbidden or not found asset', { status: 403 });
   }
 
   try {
-    // ดึงไฟล์ผ่าน HTTP โดยใช้ origin ของ request เพื่อให้ใช้ได้ทั้ง localhost และ Vercel Serverless
-    const assetUrl = new URL(cleanUrl, request.url).toString();
-    const res = await fetch(assetUrl);
-    
-    if (!res.ok) {
-      console.error(`Failed to fetch asset: ${assetUrl}, status: ${res.status}`);
-      return new NextResponse('File not found', { status: 404 });
-    }
-
-    const fileBuffer = await res.arrayBuffer();
-    const isImage = cleanUrl.endsWith('.jpg') || cleanUrl.endsWith('.jpeg') || cleanUrl.endsWith('.png');
-
-    let responseBuffer: ArrayBuffer | Uint8Array = fileBuffer;
-    let contentType = 'application/pdf';
+    // แปลงข้อมูล Base64 เป็น ArrayBuffer/Buffer
+    const fileBuffer = Buffer.from(base64Data, 'base64');
     let outputFilename = filename;
 
-    // ถ้าเป็นรูปภาพ ให้แปลงเป็นไฟล์ PDF
-    if (isImage) {
-      if (!outputFilename.toLowerCase().endsWith('.pdf')) {
-        const lastDotIndex = outputFilename.lastIndexOf('.');
-        const baseName = lastDotIndex !== -1 ? outputFilename.substring(0, lastDotIndex) : outputFilename;
-        outputFilename = `${baseName}.pdf`;
-      }
-
-      // สร้าง PDFDocument ใหม่
-      const pdfDoc = await PDFDocument.create();
-      
-      let embeddedImage;
-      if (cleanUrl.endsWith('.png')) {
-        embeddedImage = await pdfDoc.embedPng(fileBuffer);
-      } else {
-        // สำหรับ .jpg หรือ .jpeg
-        embeddedImage = await pdfDoc.embedJpg(fileBuffer);
-      }
-
-      // ดึงขนาดดั้งเดิมของรูปภาพ เพื่อให้ขนาดหน้า PDF เท่ารูปดั้งเดิม (ไม่เสียรายละเอียด)
-      const { width, height } = embeddedImage;
-      const page = pdfDoc.addPage([width, height]);
-
-      // วาดรูปภาพลงในหน้า PDF
-      page.drawImage(embeddedImage, {
-        x: 0,
-        y: 0,
-        width,
-        height,
-      });
-
-      responseBuffer = await pdfDoc.save();
+    // บังคับให้ชื่อไฟล์ลงท้ายด้วย .pdf
+    if (!outputFilename.toLowerCase().endsWith('.pdf')) {
+      const lastDotIndex = outputFilename.lastIndexOf('.');
+      const baseName = lastDotIndex !== -1 ? outputFilename.substring(0, lastDotIndex) : outputFilename;
+      outputFilename = `${baseName}.pdf`;
     }
 
-    // เข้ารหัสชื่อไฟล์เพื่อรองรับอักษรภาษาไทยใน Header Content-Disposition
+    // สร้างไฟล์ PDF โดยใช้ pdf-lib วาดรูปภาพลงในหน้าใหม่แบบ 1:1
+    const pdfDoc = await PDFDocument.create();
+    const embeddedImage = await pdfDoc.embedJpg(fileBuffer);
+    const { width, height } = embeddedImage;
+    
+    const page = pdfDoc.addPage([width, height]);
+    page.drawImage(embeddedImage, {
+      x: 0,
+      y: 0,
+      width,
+      height,
+    });
+
+    const pdfBytes = await pdfDoc.save();
     const encodedFilename = encodeURIComponent(outputFilename);
 
-    return new NextResponse(new Blob([new Uint8Array(responseBuffer)]), {
+    return new NextResponse(new Blob([new Uint8Array(pdfBytes)]), {
       headers: {
-        'Content-Type': contentType,
+        'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename*=UTF-8''${encodedFilename}`,
       },
     });
