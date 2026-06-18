@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { Files, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
+import { Files, CheckCircle2, AlertCircle, XCircle, CalendarCheck2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import DocumentDetailModal from '@/components/DocumentDetailModal';
+import RenewalHistoryModal from '@/components/RenewalHistoryModal';
 import AlertsModal from '@/components/dashboard/AlertsModal';
 import ExpiryChart from '@/components/dashboard/ExpiryChart';
 import StatCard from '@/components/dashboard/StatCard';
@@ -18,6 +19,7 @@ export default function DashboardPage() {
   const [documents, setDocuments] = useState<VehicleDocument[]>([]);
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(true);
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
+  const [isRenewalHistoryOpen, setIsRenewalHistoryOpen] = useState(false);
   const [selectedDocForDetail, setSelectedDocForDetail] = useState<VehicleDocument | null>(null);
 
   // สถานะตัวกรองจาก stat card ที่ส่งไปควบคุม PolicyTable
@@ -296,9 +298,19 @@ export default function DashboardPage() {
           <span className="text-gray-400">/</span>
           <span className="text-gray-700">เอกสารยานพาหนะ</span>
         </div>
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-[#006b2f]">
-          รายการเอกสารยานพาหนะ
-        </h1>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#006b2f]">
+            รายการเอกสารยานพาหนะ
+          </h1>
+          <button
+            type="button"
+            onClick={() => setIsRenewalHistoryOpen(true)}
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#1a4d2e]/20 bg-white px-4 text-sm font-bold text-[#1a4d2e] shadow-sm transition-colors hover:bg-[#f1f7f3] sm:w-auto"
+          >
+            <CalendarCheck2 size={17} />
+            ประวัติการต่ออายุ
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -374,6 +386,10 @@ export default function DashboardPage() {
           onClose={() => setIsAlertModalOpen(false)}
           onSelectDocument={setSelectedDocForDetail}
         />
+      )}
+
+      {isRenewalHistoryOpen && (
+        <RenewalHistoryModal onClose={() => setIsRenewalHistoryOpen(false)} />
       )}
 
       <DocumentDetailModal

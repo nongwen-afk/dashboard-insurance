@@ -14,6 +14,7 @@
   - `[x]` Reduced padding in table headers and body cells from `px-5 py-4` to `px-4 py-3` to make layout look clean and compact.
   - `[x]` Reduce table pagination page size from 10 rows to 6 rows.
   - `[x]` Set table container min-height to exactly `min-h-[465px]` to match the actual height of 6 table rows (including status badges), ensuring the container height remains constant and preventing scroll position jumping when switching between pages.
+  - `[x]` Remove the issued-date column from the main table and redistribute widths by content length so project and status fields have more room.
 - `[x]` Implement Interactive Stat Cards with scrolling & filtering
   - `[x]` Add `onClick` prop and pointer cursor/hover transitions to `StatCard` component.
   - `[x]` Set up `statusFilter` state in `app/page.tsx` and pass down to `PolicyTable` and click handlers.
@@ -83,6 +84,12 @@
   - `[x]` Add month-level quick counts for "ต้องต่อแล้ว" and "ใกล้ถึงรอบต่อ" only.
   - `[x]` Keep document-count badges limited to days inside the visible month so adjacent-month dates stay contextual only.
   - `[x]` Hide already-renewed and non-urgent documents from the renewal calendar so it only shows actionable renewal work.
+- `[x]` Reset development data with realistic fleet documents and attachment previews
+  - `[x]` Replace the old one-document-per-vehicle mock set with 24 documents across 8 realistic fleet vehicles and projects.
+  - `[x]` Make the database reset script clear old document/history rows before seeding the new mock set on Neon `dev`.
+  - `[x]` Use the provided compulsory-insurance and tax-label images for supported document attachments.
+  - `[x]` Add a document preview action inside the detail modal and a clear no-document state for rows without an attachment.
+  - `[x]` Implement direct PDF document download from table rows and detail view with dynamic filename mapping (e.g. `ภาษี_เลขทะเบียนรถ.pdf`).
 - `[ ]` Support custom document additions (Add Document Form)
 - `[ ]` Implement real backend API / localstorage integration for persistence
   - `[x]` Add Neon-backed `GET /api/vehicle-documents` endpoint for reading `vehicle_documents`.
@@ -95,7 +102,10 @@
   - `[x]` Add a Neon-backed vehicle document history event log for import, acknowledge, renewal, sync-miss, delete, and update events.
   - `[x]` Generate the Drizzle migration for the `vehicle_document_history` audit table.
   - `[x]` Apply the history migration to the active Neon dev branch and verify new events are recorded.
-  - `[x]` Add a document detail "ประวัติ" button that opens a timeline from the Neon history log.
+  - `[x]` Add a dashboard-level "ประวัติการต่ออายุ" view that shows completed renewals from the Neon history log.
+  - `[x]` Compare the previous expiry date, renewal timestamp, and new expiry date to identify on-time and late renewals.
+  - `[x]` Keep the full audit log in Neon while removing lower-value operational events from the V1 history UI.
+  - `[x]` Remove the per-document history button so V1 has one clear renewal-history surface.
 - `[ ]` Add more chart visualizations (e.g. status breakdown pie chart)
 - `[ ]` **Git & Documentation Rules (กฎระเบียบการพัฒนา)**
   - `[ ]` Check out and work exclusively in the `dev` branch first (never commit to `main` directly).

@@ -1,6 +1,6 @@
 import { config } from 'dotenv';
 import { getDb } from '../db';
-import { vehicleDocuments } from '../db/schema';
+import { vehicleDocumentHistory, vehicleDocuments } from '../db/schema';
 import { initialDocs } from '../utils/mockData';
 
 config({ path: '.env.local' });
@@ -25,9 +25,13 @@ const rows = initialDocs.map((document) => ({
 }));
 
 async function main() {
-  await getDb().insert(vehicleDocuments).values(rows).onConflictDoNothing();
+  const db = getDb();
 
-  console.log(`Seeded ${rows.length} vehicle document rows.`);
+  await db.delete(vehicleDocumentHistory);
+  await db.delete(vehicleDocuments);
+  await db.insert(vehicleDocuments).values(rows);
+
+  console.log(`Reset database and seeded ${rows.length} vehicle document rows.`);
 }
 
 main().catch((error) => {

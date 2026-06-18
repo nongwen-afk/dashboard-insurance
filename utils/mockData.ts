@@ -1,90 +1,142 @@
 import type { VehicleDocument, VehicleDocType } from '@/types';
 
-// พิกัดวันปัจจุบันจำลองอิงตามระบบ: 2026-06-05
-// ข้อมูลดิบตั้งต้นที่มีระดับความสมบูรณ์แตกต่างกัน เพื่อทดสอบความคงทนและหน้าตาของระบบ
-export const initialDocsSeed: VehicleDocument[] = [
-  // 1. กลุ่มหมดอายุแล้ว (Expired) - ไม่มีการตอบรับ
-  { chassis: 'CHAS-EXP-001', licensePlate: '1กข 1111', docType: 'act', issuedDate: '2025-05-01', expiryDate: '2026-05-01', driverName: 'สมชาย ใจดี', project: 'สายเดินรถภาคเหนือ' },
-  { chassis: 'CHAS-EXP-002', licensePlate: '2กค 2222', docType: 'tax', issuedDate: '2025-05-10', expiryDate: '2026-05-10', driverName: 'สมศรี รักงาน', project: 'รถเช่าผู้บริหาร' },
-  { chassis: 'CHAS-EXP-003', licensePlate: '', docType: 'insurance', issuedDate: '2025-05-15', expiryDate: '2026-05-15', driverName: 'วิชัย เก่งกล้า' }, // ไม่มีทะเบียน
-  { chassis: 'CHAS-EXP-004', licensePlate: '4กข 4444', docType: 'inspection', issuedDate: '2025-05-20', expiryDate: '2026-05-20', driverName: '' }, // ไม่มีคนขับ
+type MockDocument = Pick<
+  VehicleDocument,
+  | 'docType'
+  | 'issuer'
+  | 'docNumber'
+  | 'issuedDate'
+  | 'expiryDate'
+  | 'note'
+  | 'hasAttachment'
+  | 'isAcknowledged'
+  | 'acknowledgedAt'
+  | 'acknowledgedBy'
+>;
 
-  // 2. กลุ่มหมดอายุแล้วแต่ได้รับการกดยอมรับแล้ว (Expired but Acknowledged) -> จะถูกรวมใน workflow "ยังไม่ต่อ"
-  { chassis: 'CHAS-ACK-001', licensePlate: '9กง 9090', docType: 'act', issuedDate: '2025-05-10', expiryDate: '2026-05-10', driverName: 'สมเกียรติ ยอดเยี่ยม', isAcknowledged: true, acknowledgedAt: '2026-06-04T10:30:00Z', acknowledgedBy: 'testuser' },
-  { chassis: 'CHAS-ACK-002', licensePlate: '8กข 8080', docType: 'tax', issuedDate: '2025-05-05', expiryDate: '2026-05-05', driverName: '', isAcknowledged: true, acknowledgedAt: '2026-06-04T11:15:00Z', acknowledgedBy: 'testuser' }, // ไม่มีคนขับแต่อ่านรับทราบแล้ว
+type MockVehicle = Pick<
+  VehicleDocument,
+  'chassis' | 'licensePlate' | 'project' | 'driverName'
+> & {
+  id: string;
+  documents: MockDocument[];
+};
 
-  // 3. กลุ่มใกล้หมดอายุ (Warning) - มีระยะคงเหลือไม่เกิน 30 วัน (นับจาก 2026-06-05)
-  { chassis: 'CHAS-WAR-001', licensePlate: '2กค 2323', docType: 'insurance', issuedDate: '2025-06-05', expiryDate: '2026-06-06', driverName: 'ธนากร นำทาง' }, // เหลือ 1 วัน
-  { chassis: 'CHAS-WAR-002', licensePlate: '3กง 3333', docType: 'act', issuedDate: '2025-06-10', expiryDate: '2026-06-15', driverName: 'วีรยุทธ สุจริต' }, // เหลือ 10 วัน
-  { chassis: 'CHAS-WAR-003', licensePlate: '', docType: 'tax', issuedDate: '2025-06-15', expiryDate: '2026-06-20', driverName: 'รุ่งโรจน์ สว่าง' }, // เหลือ 15 วัน, ไม่มีทะเบียน
-  { chassis: 'CHAS-WAR-004', licensePlate: '5กค 5050', docType: 'inspection', issuedDate: '2025-06-20', expiryDate: '2026-06-25', driverName: '' }, // เหลือ 20 วัน, ไม่มีคนขับ
-  { chassis: 'CHAS-WAR-005', licensePlate: '6กง 6060', docType: 'insurance', issuedDate: '2025-06-25', expiryDate: '2026-07-02', driverName: 'นพพล เรืองดี' }, // เหลือ 27 วัน
-
-  // 4. กลุ่มใกล้หมดอายุแต่ยอมรับแล้ว (Warning Acknowledged)
-  { chassis: 'CHAS-ACK-003', licensePlate: '1กข 1212', docType: 'tax', issuedDate: '2025-05-20', expiryDate: '2026-06-10', driverName: 'วรรณา สุขใจ', isAcknowledged: true, acknowledgedAt: '2026-06-05T08:00:00Z', acknowledgedBy: 'testuser' }, // เหลือ 5 วัน แต่ยอมรับแล้ว
-
-  // 5. กลุ่มปกติ (Active) - เหลืออายุมากกว่า 30 วัน
-  // กรกฎาคม (July 2026): 4 รายการ (รวม CHAS-WAR-005 ที่หมดอายุ 2 ก.ค. เป็น 4 รายการ)
-  { chassis: 'CHAS-ACT-001', licensePlate: '7กข 7777', docType: 'act', issuedDate: '2025-07-10', expiryDate: '2026-07-10', driverName: 'นิภา รักสิทธิ์', project: 'สายเดินรถภาคใต้' },
-  { chassis: 'CHAS-ACT-002', licensePlate: '8กค 8888', docType: 'tax', issuedDate: '2025-07-25', expiryDate: '2026-07-25', driverName: 'สมปอง คำดี', project: 'รถสวัสดิการ โรงงาน A' },
-  { chassis: 'CHAS-ACT-003', licensePlate: '9กง 9999', docType: 'insurance', issuedDate: '2025-07-28', expiryDate: '2026-07-28', driverName: '', project: 'รถรับส่งพนักงาน MEA' },
-
-  // สิงหาคม (August 2026): 3 รายการ
-  { chassis: 'CHAS-ACT-004', licensePlate: '', docType: 'act', issuedDate: '2025-08-05', expiryDate: '2026-08-05', driverName: 'มนัส ปัญญา' },
-  { chassis: 'CHAS-ACT-005', licensePlate: '1กข 2020', docType: 'inspection', issuedDate: '2025-08-15', expiryDate: '2026-08-15', driverName: 'ชัชชาติ แข็งแกร่ง' },
-  { chassis: 'CHAS-ACT-006', licensePlate: '2กค 3030', docType: 'insurance', issuedDate: '2025-08-22', expiryDate: '2026-08-22', driverName: 'ธวัชชัย รวดเร็ว' },
-
-  // กันยายน (September 2026): 1 รายการ
-  { chassis: 'CHAS-ACT-007', licensePlate: '3กง 4040', docType: 'insurance', issuedDate: '2025-09-12', expiryDate: '2026-09-12', driverName: 'วิภา สุภาพ', project: 'รถเวียน จุฬาฯ' },
-
-  // ตุลาคม (October 2026): 7 รายการ
-  { chassis: 'CHAS-ACT-008', licensePlate: '4กข 5050', docType: 'tax', issuedDate: '2025-10-02', expiryDate: '2026-10-02', driverName: 'ณรงค์ รักสงบ', project: 'รถเช่า AOT' },
-  { chassis: 'CHAS-ACT-009', licensePlate: '5กค 6060', docType: 'act', issuedDate: '2025-10-05', expiryDate: '2026-10-05', driverName: 'สุดา แสนดี', project: 'Shuttle Bus ไอคอนสยาม' },
-  { chassis: 'CHAS-ACT-010', licensePlate: '', docType: 'inspection', issuedDate: '2025-10-10', expiryDate: '2026-10-10', driverName: 'เกษม สุขใจ' },
-  { chassis: 'CHAS-ACT-011', licensePlate: '6กง 7070', docType: 'insurance', issuedDate: '2025-10-15', expiryDate: '2026-10-15', driverName: 'มานะ ขยันยิ่ง' },
-  { chassis: 'CHAS-ACT-012', licensePlate: '7กข 8080', docType: 'tax', issuedDate: '2025-10-20', expiryDate: '2026-10-20', driverName: 'สมศรี มีทรัพย์' },
-  { chassis: 'CHAS-ACT-013', licensePlate: '8กค 9090', docType: 'act', issuedDate: '2025-10-22', expiryDate: '2026-10-22', driverName: 'เจริญ ดีเลิศ', project: 'รถเวียน ม.เกษตร' },
-  { chassis: 'CHAS-ACT-014', licensePlate: '9กง 1010', docType: 'insurance', issuedDate: '2025-10-25', expiryDate: '2026-10-25', driverName: 'พงษ์ศักดิ์ ชูใจ', project: 'รถร่วมบริการด่วน (BRT)' },
-
-  // พฤศจิกายน (November 2026): 2 รายการ
-  { chassis: 'CHAS-ACT-015', licensePlate: '2กค 4040', docType: 'inspection', issuedDate: '2025-11-05', expiryDate: '2026-11-05', driverName: 'ประเสริฐ ดีใจ' },
-  { chassis: 'CHAS-ACT-016', licensePlate: '3กง 5050', docType: 'insurance', issuedDate: '2025-11-18', expiryDate: '2026-11-18', driverName: 'อารีย์ พึ่งตน' },
-
-  // นอกช่วง 6 เดือน (December 2026 / January 2027)
-  { chassis: 'CHAS-ACT-017', licensePlate: '1กข 3030', docType: 'tax', issuedDate: '2025-12-29', expiryDate: '2026-12-29', driverName: 'จรรยา งามตา' },
-  { chassis: 'CHAS-ACT-018', licensePlate: '4กข 6060', docType: 'act', issuedDate: '2025-12-10', expiryDate: '2026-12-10', driverName: 'อำนาจ มั่นคง' },
-  { chassis: 'CHAS-ACT-019', licensePlate: '5กค 7070', docType: 'tax', issuedDate: '2026-01-05', expiryDate: '2027-01-05', driverName: 'ขวัญชัย ศรีสุข' },
-  { chassis: 'CHAS-ACT-020', licensePlate: '', docType: 'insurance', issuedDate: '2026-01-20', expiryDate: '2027-01-20', driverName: 'สุรพล ทองดี' },
-
-  // 6. กลุ่มไม่มีวันหมดอายุ (No Expiry) - เช่น เล่มทะเบียน (registration_book)
-  { chassis: 'CHAS-NOEXP-001', licensePlate: '7กข 7070', docType: 'registration_book', issuedDate: '2019-01-10', driverName: 'กิตติศักดิ์' },
-  { chassis: 'CHAS-NOEXP-002', licensePlate: '8กค 8080', docType: 'registration_book', issuedDate: '2020-03-15', driverName: '' }, // ไม่มีคนขับ
-  { chassis: 'CHAS-NOEXP-003', licensePlate: '', docType: 'registration_book', issuedDate: '2021-05-20', driverName: 'วิทยา ใจสว่าง' }, // ไม่มีทะเบียน
-  { chassis: 'CHAS-NOEXP-004', licensePlate: '9กง 9091', docType: 'registration_book', issuedDate: '2022-07-25', driverName: 'อนันต์ สุขเกษม', project: '' }, // ไม่มีระบุโครงการ
-  { chassis: 'CHAS-NOEXP-005', licensePlate: '3กง 3030', docType: 'registration_book', issuedDate: '2023-09-30', driverName: 'ชลิตา จิระ' }
-];
-
-// default issuer ตามแต่ละประเภท
 const issuersByType: Record<VehicleDocType, string> = {
-  act: 'กรมการขนส่งทางบก',
+  act: 'บริษัท กรุงเทพประกันภัย จำกัด (มหาชน)',
   tax: 'กรมการขนส่งทางบก',
-  insurance: 'EVT Insurance Broker',
-  inspection: 'ศูนย์ตรวจสภาพรถเอกชน (ตรอ.)',
+  insurance: 'บริษัท วิริยะประกันภัย จำกัด (มหาชน)',
+  inspection: 'สถานตรวจสภาพรถเอกชน (ตรอ.)',
   registration_book: 'สำนักงานขนส่งกรุงเทพมหานคร',
 };
 
-// เติมฟิลด์ประกอบ เพื่อความสมบูรณ์และสมจริงในการนำไปแสดงผล
-export const initialDocs: VehicleDocument[] = initialDocsSeed.map((doc, index) => {
-  const isIndexEven = index % 2 === 0;
-  return {
-    id: `mock-${String(index + 1).padStart(3, '0')}`,
-    issuer: isIndexEven ? issuersByType[doc.docType] : undefined, // บางเอกสารไม่มีระบุผู้ออกเพื่อทดสอบข้อมูลไม่ครบ
-    docNumber: isIndexEven ? `${doc.docType.toUpperCase()}-${String(index + 1).padStart(5, '0')}` : undefined, // บางเอกสารไม่มีหมายเลข
-    note: doc.expiryDate
-      ? `เอกสารนี้จำเป็นต้องดำเนินการตรวจสอบตามที่กฎหมายกำหนดก่อนวันสิ้นอายุ`
-      : undefined, // บางเอกสารไม่มีโน้ตแจ้งเตือน
-    hasAttachment: index % 3 !== 1, // สลับให้บางเอกสารไม่มีปุ่มดาวน์โหลด/ดูไฟล์แนบ
-    project: doc.project || (index % 3 === 0 ? 'รถร่วมบริการด่วน (BRT)' : 'รถเช่าส่วนกลาง'),
-    ...doc,
-  };
-});
+const mockVehicles: MockVehicle[] = [
+  {
+    id: 'evt-001',
+    chassis: 'JTFSX23P606123401',
+    licensePlate: '1นข 4827 กรุงเทพมหานคร',
+    project: 'รถรับส่งพนักงาน MEA',
+    driverName: 'สมชาย วัฒนกิจ',
+    documents: [
+      { docType: 'act', docNumber: 'พ.ร.บ. 2568/004827', issuedDate: '2025-06-10', expiryDate: '2026-06-10', hasAttachment: true, note: 'รอตรวจสอบหลักฐานการต่ออายุรอบใหม่' },
+      { docType: 'tax', docNumber: 'DLT-TAX-4827-69', issuedDate: '2025-06-25', expiryDate: '2026-06-25', hasAttachment: true, note: 'เตรียมชำระภาษีประจำปีภายในเดือนมิถุนายน' },
+      { docType: 'insurance', docNumber: 'VIB-MEA-260014', issuedDate: '2026-01-01', expiryDate: '2026-12-31', hasAttachment: false },
+    ],
+  },
+  {
+    id: 'evt-002',
+    chassis: 'MMKST7HK0NH019274',
+    licensePlate: 'ฮธ 9174 กรุงเทพมหานคร',
+    project: 'รถเช่า AOT สนามบินสุวรรณภูมิ',
+    driverName: 'ธนกฤต พูนทรัพย์',
+    documents: [
+      { docType: 'act', docNumber: 'พ.ร.บ. 2569/009174', issuedDate: '2025-07-05', expiryDate: '2026-07-05', hasAttachment: true },
+      { docType: 'tax', docNumber: 'DLT-TAX-9174-70', issuedDate: '2026-01-15', expiryDate: '2027-01-15', hasAttachment: false },
+      { docType: 'inspection', docNumber: 'ตรอ.-AOT-019274', issuedDate: '2025-05-30', expiryDate: '2026-05-30', hasAttachment: false, note: 'ต้องนำรถเข้าตรวจสภาพก่อนดำเนินการต่อภาษี' },
+    ],
+  },
+  {
+    id: 'evt-003',
+    chassis: 'MP1TFR86JNT005812',
+    licensePlate: '72-4581 นครปฐม',
+    project: 'ขนส่งอะไหล่ ศูนย์กระจายสินค้าบางบัวทอง',
+    driverName: 'วิชัย แสงทอง',
+    documents: [
+      { docType: 'tax', docNumber: 'DLT-TAX-4581-69', issuedDate: '2025-06-20', expiryDate: '2026-06-20', hasAttachment: true },
+      { docType: 'act', docNumber: 'พ.ร.บ. 2569/724581', issuedDate: '2025-09-20', expiryDate: '2026-09-20', hasAttachment: false },
+      { docType: 'registration_book', docNumber: 'REG-NPT-005812', issuedDate: '2019-03-12', hasAttachment: false, note: 'จัดเก็บเล่มจริงที่สำนักงานใหญ่' },
+    ],
+  },
+  {
+    id: 'evt-004',
+    chassis: 'MMAJJKL10MH028643',
+    licensePlate: '3ฒข 6412 กรุงเทพมหานคร',
+    project: 'รถเช่าผู้บริหาร สำนักงานใหญ่',
+    driverName: 'ปรีชา มั่นคง',
+    documents: [
+      { docType: 'act', docNumber: 'พ.ร.บ. 2568/036412', issuedDate: '2025-05-18', expiryDate: '2026-05-18', hasAttachment: true, isAcknowledged: true, acknowledgedAt: '2026-06-17T03:20:00.000Z', acknowledgedBy: 'testuser', note: 'ฝ่ายธุรการรับทราบและอยู่ระหว่างประสานบริษัทประกัน' },
+      { docType: 'tax', docNumber: 'DLT-TAX-6412-69', issuedDate: '2025-11-02', expiryDate: '2026-11-02', hasAttachment: true },
+      { docType: 'insurance', docNumber: 'VIB-EXEC-260041', issuedDate: '2026-02-01', expiryDate: '2027-01-31', hasAttachment: false },
+    ],
+  },
+  {
+    id: 'evt-005',
+    chassis: 'KMHWH81KBLU112905',
+    licensePlate: 'ฮย 3358 กรุงเทพมหานคร',
+    project: 'Shuttle Bus จุฬาลงกรณ์มหาวิทยาลัย',
+    driverName: 'นพดล สุขสวัสดิ์',
+    documents: [
+      { docType: 'act', docNumber: 'พ.ร.บ. 2569/003358', issuedDate: '2026-03-01', expiryDate: '2027-02-28', hasAttachment: true },
+      { docType: 'tax', docNumber: 'DLT-TAX-3358-68', issuedDate: '2025-06-02', expiryDate: '2026-06-02', hasAttachment: false, note: 'ยังไม่พบภาพป้ายภาษีรอบล่าสุดในระบบ' },
+      { docType: 'inspection', docNumber: 'ตรอ.-CU-112905', issuedDate: '2025-07-10', expiryDate: '2026-07-10', hasAttachment: false },
+    ],
+  },
+  {
+    id: 'evt-006',
+    chassis: 'LSJE24096NS086731',
+    licensePlate: '4ขย 8821 กรุงเทพมหานคร',
+    project: 'รถตรวจงานโครงการรถไฟฟ้าสายสีเหลือง',
+    driverName: 'กิตติพงษ์ ศรีเจริญ',
+    documents: [
+      { docType: 'tax', docNumber: 'DLT-TAX-8821-69', issuedDate: '2026-02-14', expiryDate: '2027-02-14', hasAttachment: true },
+      { docType: 'insurance', docNumber: 'VIB-YL-260078', issuedDate: '2025-07-01', expiryDate: '2026-07-01', hasAttachment: false },
+      { docType: 'registration_book', docNumber: 'REG-BKK-086731', issuedDate: '2022-02-10', hasAttachment: false, note: 'รถยนต์ไฟฟ้า จัดเก็บสำเนาเล่มทะเบียนที่ฝ่ายยานพาหนะ' },
+    ],
+  },
+  {
+    id: 'evt-007',
+    chassis: 'JTEGD21A720089451',
+    licensePlate: '9กฬ 2026 กรุงเทพมหานคร',
+    project: 'รถรับรองลูกค้า VIP',
+    driverName: 'สุเมธ ชัยวัฒน์',
+    documents: [
+      { docType: 'act', docNumber: 'พ.ร.บ. 2569/092026', issuedDate: '2026-04-12', expiryDate: '2027-04-12', hasAttachment: false },
+      { docType: 'tax', docNumber: 'DLT-TAX-2026-70', issuedDate: '2026-04-20', expiryDate: '2027-04-20', hasAttachment: true },
+      { docType: 'insurance', docNumber: 'VIB-VIP-260026', issuedDate: '2026-04-12', expiryDate: '2027-04-12', hasAttachment: false },
+    ],
+  },
+  {
+    id: 'evt-008',
+    chassis: 'JN1UBHW41Z0017362',
+    licensePlate: 'นข 7755 ชลบุรี',
+    project: 'รถรับส่งพนักงานนิคมอมตะซิตี้',
+    driverName: 'อำนาจ บุญช่วย',
+    documents: [
+      { docType: 'act', docNumber: 'พ.ร.บ. 2568/007755', issuedDate: '2025-05-25', expiryDate: '2026-05-25', hasAttachment: false, note: 'ยังไม่มีเอกสารฉบับใหม่จากผู้ประสานงานพื้นที่' },
+      { docType: 'tax', docNumber: 'DLT-TAX-7755-69', issuedDate: '2025-06-30', expiryDate: '2026-06-30', hasAttachment: true },
+      { docType: 'inspection', docNumber: 'ตรอ.-AMATA-017362', issuedDate: '2026-03-15', expiryDate: '2027-03-15', hasAttachment: false },
+    ],
+  },
+];
+
+export const initialDocs: VehicleDocument[] = mockVehicles.flatMap((vehicle) =>
+  vehicle.documents.map((document) => ({
+    id: `${vehicle.id}-${document.docType}`,
+    chassis: vehicle.chassis,
+    licensePlate: vehicle.licensePlate,
+    project: vehicle.project,
+    driverName: vehicle.driverName,
+    issuer: document.issuer || issuersByType[document.docType],
+    ...document,
+  })),
+);

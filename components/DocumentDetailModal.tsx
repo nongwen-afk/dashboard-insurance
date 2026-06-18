@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from 'react';
-import { Building2, CalendarDays, Car, FileText, User, X, AlertTriangle, Clock, CheckCircle2, Info, RefreshCw, History, Loader2 } from 'lucide-react';
-import type { VehicleDocument, VehicleDocumentHistoryEvent, VehicleDocumentHistoryRecord } from '@/types';
+import toast from 'react-hot-toast';
+import Image from 'next/image';
+import { Building2, CalendarDays, Car, FileText, User, X, AlertTriangle, Clock, CheckCircle2, Info, RefreshCw, Eye, FileX } from 'lucide-react';
+import type { VehicleDocument } from '@/types';
+import { getDocumentAttachmentPreview } from '@/utils/documentAttachment';
 import { formatThaiDate, formatThaiDateTime, getDocTypeName, getDocumentStatus } from '@/utils/documentUtils';
-import { listVehicleDocumentHistoryRecords } from '@/utils/vehicleDocumentApi';
 
 interface DocumentDetailModalProps {
   document: VehicleDocument | null;
@@ -14,61 +16,19 @@ interface DocumentDetailModalProps {
 }
 
 export default function DocumentDetailModal({ document, onClose, onAcknowledge, onSync }: DocumentDetailModalProps) {
-  const [historyDocumentId, setHistoryDocumentId] = useState<string | null>(null);
-  const [historyRecords, setHistoryRecords] = useState<VehicleDocumentHistoryRecord[]>([]);
-  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
-  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [previewDocumentKey, setPreviewDocumentKey] = useState<string | null>(null);
 
   // ใช้ document null เป็นสัญญาณปิด modal เพื่อให้ caller ไม่ต้องมี state boolean แยกอีกตัว
   if (!document) return null;
 
   const { status, days } = getDocumentStatus(document.expiryDate);
-  const currentHistoryKey = document.id || 'missing-id';
-  const isHistoryOpen = historyDocumentId === currentHistoryKey;
+  const documentKey = document.id || `${document.chassis}-${document.docType}`;
+  const attachmentPreview = getDocumentAttachmentPreview(document);
+  const isPreviewOpen = previewDocumentKey === documentKey;
 
-  const getHistoryEventDetails = (eventType: VehicleDocumentHistoryEvent) => {
-    switch (eventType) {
-      case 'created':
-        return { label: 'นำเข้าข้อมูล', dotClassName: 'bg-slate-500', textClassName: 'text-slate-700' };
-      case 'acknowledged':
-        return { label: 'รับทราบแล้ว', dotClassName: 'bg-blue-500', textClassName: 'text-blue-700' };
-      case 'renewed':
-        return { label: 'ต่อสำเร็จ', dotClassName: 'bg-emerald-500', textClassName: 'text-emerald-700' };
-      case 'sync_no_update':
-        return { label: 'ซิงค์แล้ว ยังไม่พบรายการต่อ', dotClassName: 'bg-orange-500', textClassName: 'text-orange-700' };
-      case 'deleted':
-        return { label: 'ลบเอกสาร', dotClassName: 'bg-red-500', textClassName: 'text-red-700' };
-      default:
-        return { label: 'อัปเดตข้อมูล', dotClassName: 'bg-gray-500', textClassName: 'text-gray-700' };
-    }
-  };
-
-  const handleToggleHistory = async () => {
-    if (!document.id) {
-      setHistoryDocumentId(currentHistoryKey);
-      setHistoryRecords([]);
-      setHistoryError('รายการนี้ยังไม่มีรหัสเอกสาร จึงยังดึงประวัติไม่ได้');
-      return;
-    }
-
-    if (isHistoryOpen) {
-      setHistoryDocumentId(null);
-      return;
-    }
-
-    setHistoryDocumentId(document.id);
-    setHistoryRecords([]);
-    setHistoryError(null);
-    setIsHistoryLoading(true);
-
-    try {
-      const records = await listVehicleDocumentHistoryRecords(document.id);
-      setHistoryRecords(records);
-    } catch {
-      setHistoryError('โหลดประวัติจาก Neon ไม่สำเร็จ');
-    } finally {
-      setIsHistoryLoading(false);
-    }
+  const handleClose = () => {
+    setPreviewDocumentKey(null);
+    onClose();
   };
 
   // กำหนดรูปแบบเนื้อหาแบนเนอร์และป้ายสถานะ
@@ -158,7 +118,8 @@ export default function DocumentDetailModal({ document, onClose, onAcknowledge, 
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
+            aria-label="ปิดรายละเอียดเอกสาร"
             className="text-gray-400 hover:text-gray-700 bg-white hover:bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center transition-colors border border-gray-200"
           >
             <X size={16} />
@@ -174,57 +135,6 @@ export default function DocumentDetailModal({ document, onClose, onAcknowledge, 
               <p className="text-xs opacity-90">{banner.description}</p>
             </div>
           </div>
-
-          {isHistoryOpen && (
-            <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div>
-                  <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                    <History size={16} /> สมุดบันทึกประวัติ
-                  </h4>
-                  <p className="text-xs text-slate-500 mt-1">เหตุการณ์ย้อนหลังของเอกสารใบนี้</p>
-                </div>
-                {isHistoryLoading && <Loader2 className="animate-spin text-slate-400" size={18} />}
-              </div>
-
-              {historyError ? (
-                <p className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
-                  {historyError}
-                </p>
-              ) : historyRecords.length === 0 && !isHistoryLoading ? (
-                <p className="rounded-lg border border-slate-200 bg-white px-3 py-3 text-sm font-medium text-slate-500">
-                  ยังไม่มีประวัติของเอกสารใบนี้
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {historyRecords.map((record) => {
-                    const event = getHistoryEventDetails(record.eventType);
-                    const hasExpiryChange = record.previousExpiryDate !== record.nextExpiryDate;
-
-                    return (
-                      <div key={record.id} className="relative rounded-xl border border-slate-100 bg-white p-3 shadow-sm">
-                        <div className="flex items-start gap-3">
-                          <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${event.dotClassName}`} />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <p className={`text-sm font-bold ${event.textClassName}`}>{event.label}</p>
-                              <p className="text-xs font-semibold text-slate-400">{formatThaiDateTime(record.eventAt)}</p>
-                            </div>
-                            <p className="mt-1 text-xs text-slate-500">โดย {record.actor || 'system'}</p>
-                            {hasExpiryChange && (
-                              <p className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
-                                วันหมดอายุ: {formatThaiDate(record.previousExpiryDate)} → {formatThaiDate(record.nextExpiryDate)}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
 
           <div>
             <h4 className="text-sm font-bold text-[#1a4d2e] mb-3 flex items-center gap-2">
@@ -299,9 +209,47 @@ export default function DocumentDetailModal({ document, onClose, onAcknowledge, 
                 <p className="text-xs text-gray-500 mb-1">หมายเลขเอกสาร/กรมธรรม์</p>
                 <p className="font-medium text-gray-800">{document.docNumber || 'ไม่มีข้อมูล'}</p>
               </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-1">ไฟล์แนบ</p>
-                <p className="font-medium text-gray-800">{document.hasAttachment ? 'มีไฟล์แนบในระบบ' : 'ไม่มีไฟล์แนบ'}</p>
+              <div className="sm:col-span-2">
+                <p className="text-xs text-gray-500 mb-2">เอกสารแนบ</p>
+                {attachmentPreview ? (
+                  <div className="flex flex-col gap-3 rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-lg bg-white p-2 text-[#1a4d2e] shadow-sm">
+                        <FileText size={18} />
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-800">{attachmentPreview.title}</p>
+                        <p className="text-xs text-gray-500">มีเอกสารในระบบ พร้อมเปิดดูภาพตัวอย่าง</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewDocumentKey(documentKey)}
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[#1a4d2e] bg-white px-4 text-sm font-bold text-[#1a4d2e] transition-colors hover:bg-emerald-50"
+                      >
+                        <Eye size={16} />
+                        ดูตัวอย่างภาพ
+                      </button>
+                      <a
+                        href="/document_placeholder.pdf"
+                        download={`${getDocTypeName(document.docType)}_${document.licensePlate || document.chassis}.pdf`}
+                        onClick={() => toast.success(`ดาวน์โหลด ${getDocTypeName(document.docType)} ของ ${document.licensePlate || document.chassis} เรียบร้อยแล้ว`)}
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#1a4d2e] px-4 text-sm font-bold text-white transition-colors hover:bg-[#123620]"
+                      >
+                        ดาวน์โหลด PDF
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 text-gray-500">
+                    <FileX size={18} className="shrink-0 text-gray-400" />
+                    <div>
+                      <p className="font-bold text-gray-600">ไม่มีเอกสาร</p>
+                      <p className="text-xs text-gray-400">ยังไม่มีรูปหรือไฟล์แนบสำหรับรายการนี้</p>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="sm:col-span-2">
                 <p className="text-xs text-gray-500 mb-1">หมายเหตุ</p>
@@ -311,20 +259,7 @@ export default function DocumentDetailModal({ document, onClose, onAcknowledge, 
           </div>
         </div>
 
-        <div className="px-6 pt-5 pb-8 border-t bg-gray-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
-          <button
-            type="button"
-            onClick={handleToggleHistory}
-            className={`h-11 px-5 rounded-xl font-bold transition-all shadow-sm flex items-center justify-center gap-2 shrink-0 border ${
-              isHistoryOpen
-                ? 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800'
-                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-            }`}
-          >
-            <History size={16} />
-            {isHistoryOpen ? 'ซ่อนประวัติ' : 'ประวัติ'}
-          </button>
-          <div className="flex flex-wrap items-center justify-end gap-3">
+        <div className="px-6 pt-5 pb-8 border-t bg-gray-50 flex flex-wrap items-center justify-end gap-3 shrink-0">
             {document.isAcknowledged ? (
               onSync && (
                 <button
@@ -349,14 +284,54 @@ export default function DocumentDetailModal({ document, onClose, onAcknowledge, 
               )
             )}
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="min-w-24 h-11 px-6 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:text-gray-900 font-bold transition-all shadow-sm shrink-0"
             >
               ปิด
             </button>
-          </div>
         </div>
       </div>
+
+      {attachmentPreview && isPreviewOpen && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label={attachmentPreview.title}
+          onClick={() => setPreviewDocumentKey(null)}
+        >
+          <div
+            className="flex max-h-[94vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b px-5 py-4">
+              <div>
+                <h4 className="font-bold text-gray-800">{attachmentPreview.title}</h4>
+                <p className="text-xs text-gray-500">{document.licensePlate || document.chassis}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewDocumentKey(null)}
+                aria-label="ปิดรูปเอกสาร"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex max-h-[80vh] items-start justify-center overflow-auto bg-slate-100 p-4 sm:p-6">
+              <Image
+                src={attachmentPreview.src}
+                alt={attachmentPreview.alt}
+                width={attachmentPreview.width}
+                height={attachmentPreview.height}
+                loading="eager"
+                sizes="(max-width: 768px) 92vw, 768px"
+                className="block h-auto max-h-[76vh] w-auto max-w-full rounded-lg object-contain shadow-lg"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

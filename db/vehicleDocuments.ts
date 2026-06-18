@@ -211,6 +211,16 @@ export const listVehicleDocumentHistory = async (documentId: string) => {
   return rows.map(toVehicleDocumentHistoryRecord);
 };
 
+export const listVehicleDocumentRenewalHistory = async () => {
+  const rows = await getDb()
+    .select()
+    .from(vehicleDocumentHistory)
+    .where(eq(vehicleDocumentHistory.eventType, 'renewed'))
+    .orderBy(desc(vehicleDocumentHistory.eventAt));
+
+  return rows.map(toVehicleDocumentHistoryRecord);
+};
+
 export const createVehicleDocuments = async (documents: VehicleDocument[], options: VehicleDocumentWriteOptions = {}) => {
   if (documents.length === 0) return [];
 

@@ -301,10 +301,7 @@ We reviewed and fixed the issues found after the Antigravity update.
   - Added a lightweight history endpoint for event-only records, starting with `sync_no_update` when an external renewal/payment check returns no new renewal.
   - Added `GET /api/vehicle-documents/[id]/history` so the UI can read the timeline for one document.
   - Wired row-level, modal-level, and global sync miss paths to record the event through [utils/vehicleDocumentApi.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/vehicleDocumentApi.ts).
-- **History Button ([components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
-  - Added a `ประวัติ` button in the document detail modal footer.
-  - The button loads and toggles a timeline panel showing event type, actor, timestamp, and expiry-date changes for the selected document.
-  - Empty and error states are shown inside the same panel so users understand whether the document has no history yet or the Neon history load failed.
+- **History Access**: The initial per-document history button was replaced by the renewal history view described below so V1 has one clear place to review completed renewals.
 - **Analysis Value**:
   - Can later group events by month, project, document type, actor, and event type.
   - Can compare `previous_expiry_date` and `next_expiry_date` for renewal cycle analysis.
@@ -313,3 +310,57 @@ We reviewed and fixed the issues found after the Antigravity update.
   - Applied the migration to the active Neon `dev` branch with `pnpm db:push`.
   - Verified history writes by creating a temporary `sync_no_update` event with actor `codex-verify`, confirming the history count increased from `0` to `1`, then deleting the verification row so the count returned to `0`.
   - Apply the same migration to Neon `main` only when promoting the release to Production.
+
+### 21. Document Renewal History View
+- **Goal**: Show which documents were renewed, whether each renewal happened before or after the previous expiry date, and the new coverage end date. General operational events remain stored for audit and future analysis but do not clutter the V1 screen.
+- **Renewal History API ([app/api/vehicle-document-renewals/route.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/api/vehicle-document-renewals/route.ts))**:
+  - Added `GET /api/vehicle-document-renewals` to return only `renewed` events from Neon, newest first.
+  - Added a focused Drizzle query in [db/vehicleDocuments.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/db/vehicleDocuments.ts) and a client fetch helper in [utils/vehicleDocumentApi.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/vehicleDocumentApi.ts).
+  - The existing audit table still stores imports, acknowledgements, sync misses, edits, and deletions for future reporting.
+- **Dashboard Entry Point ([app/page.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/page.tsx))**:
+  - Added a visible `ประวัติการต่ออายุ` button beside the page title.
+  - Removed the history button and timeline from each document detail modal to avoid duplicate V1 workflows.
+- **Renewal Table ([components/RenewalHistoryModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/RenewalHistoryModal.tsx))**:
+  - Shows renewal time, vehicle/document, project, previous expiry date, new expiry date, timing result, and actor.
+  - Calculates whether a renewal was completed before expiry, on the expiry date, or after expiry and displays the day difference.
+  - Provides totals for all completed renewals, on-time renewals, and late renewals.
+  - Supports search by license plate, chassis, project, actor, or document type and filters by on-time/late status.
+  - Shows clear loading, empty, filtered-empty, and Neon error states and explains that history starts accumulating after the audit feature is enabled.
+  - Can be closed with the close icon, the Escape key, or a click outside the dialog.
+- **Verification**:
+  - `git diff --check` passes.
+  - `pnpm run lint` passes.
+  - `pnpm exec tsc --noEmit` passes.
+  - `pnpm run build` passes and includes the dynamic `/api/vehicle-document-renewals` route.
+
+### 22. Document Table Column Rebalance
+- **Goal**: Make the main document table easier to scan by removing a lower-priority date and sizing each remaining column according to its typical content length.
+- **Table Layout ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx))**:
+  - Removed the `วันที่มีผล` column from the main table. The issued date remains available inside the document detail modal.
+  - Reduced the table minimum width from `1120px` to `1040px` after removing the column.
+  - Rebalanced the eight remaining columns: document type 9%, chassis 14%, license plate 11%, project 22%, expiry date 13%, status 20%, attachment 6%, and actions 5%.
+  - Kept chassis and expiry values on one line, widened project names, and tightened padding around icon-only attachment/action columns.
+  - Updated loading and empty-state column spans from 9 to 8 so table alignment remains valid.
+
+### 23. Realistic Development Data and Document Preview
+- **Development Data Reset**:
+  - Replaced the previous generic mock rows with 24 document records grouped across 8 realistic fleet vehicles.
+  - Vehicles now reuse the same chassis, registration, project, and driver across their related compulsory-insurance, tax, insurance, inspection, and registration-book records.
+  - Dates are distributed across expired, near-renewal, active, and no-expiry states based on June 2026 operations.
+  - Updated `pnpm db:reset` to clear `vehicle_document_history` and `vehicle_documents` before inserting the new mock set.
+  - Verified the active Neon development branch was reset from 135 rows to 24 rows without touching production.
+- **Document Attachments**:
+  - Added the supplied compulsory-insurance and tax-label images as static assets in `public`.
+  - Added a shared attachment resolver so only records marked with an available supported image show a paperclip action.
+  - The detail modal now shows a `ดูเอกสาร` button for available attachments and opens the image in a focused preview overlay.
+  - Records without a supported image show a clear `ไม่มีเอกสาร` empty state instead of a misleading attachment label.
+
+### 24. Direct PDF Document Download (Latest Update)
+- **Goal**: Allow users to download the actual document as a PDF file directly from the table or the detail view, dynamically naming the file by its document type and vehicle plate number/chassis.
+- **Minimal PDF Template**: Created a minimal valid PDF placeholder at [document_placeholder.pdf](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/public/document_placeholder.pdf) that is compliant with PDF standard formatting to prevent file corruption warnings.
+- **Table Document Attachment Action ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx))**:
+  - Replaced the paperclip icon's button behavior (which opened the detail modal) with a download link (`<a>` tag with `download` attribute).
+  - Dynamically names the downloaded file following the format `[ประเภทเอกสาร]_[เลขทะเบียนหรือเลขตัวถัง].pdf` (e.g., `ภาษี_1กข 1234.pdf` or `พ.ร.บ._CHAS-1234.pdf`).
+  - Added a success toast message when the download begins to confirm the action.
+- **Detail Modal Action ([components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
+  - Upgraded the attachment preview container in the detail view to support both **ดูตัวอย่างภาพ** (view image preview overlay) and **ดาวน์โหลด PDF** (direct PDF download) options.
