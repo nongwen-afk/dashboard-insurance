@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 import DocumentDetailModal from '@/components/DocumentDetailModal';
 import type { DocStatus, FilterStatus, SortOption, VehicleDocument } from '@/types';
 import { getDocumentAttachmentPreview } from '@/utils/documentAttachment';
-import { formatThaiDate, getDocTypeName, getDocumentRecordKey, getDocumentStatus, getRenewedDocumentDates, isSameDocumentRecord, parseDocumentDate } from '@/utils/documentUtils';
+import { formatThaiDate, getCleanLicensePlate, getDocTypeName, getDocumentRecordKey, getDocumentStatus, getRenewedDocumentDates, isSameDocumentRecord, parseDocumentDate } from '@/utils/documentUtils';
 import { parseVehicleDocumentsFromFile } from '@/utils/importVehicleDocuments';
 import { createVehicleDocumentRecords, recordVehicleDocumentHistoryEvent, updateVehicleDocumentRecord } from '@/utils/vehicleDocumentApi';
 
@@ -26,14 +26,6 @@ interface PolicyTableProps {
 
 // แปลงสถานะจาก helper ให้เป็นข้อความและสีสำหรับคอลัมน์สถานะในตาราง
 const getStatusBadge = (status: DocStatus, days: number, isAcknowledged?: boolean) => {
-  if (isAcknowledged) {
-    return {
-      label: 'ยังไม่ต่อ',
-      detail: 'ต้องต่ออายุ',
-      className: 'bg-blue-50 text-blue-700 border-blue-100',
-      detailClassName: 'text-blue-600',
-    };
-  }
 
   if (status === 'EXPIRED') {
     return {
@@ -691,9 +683,16 @@ export default function PolicyTable({
                         className="inline-flex flex-col items-start gap-1 cursor-pointer hover:scale-105 transition-all duration-200"
                         title="คลิกเพื่อกรองข้อมูลตามสถานะนี้"
                       >
-                        <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold ${statusBadge.className}`}>
-                          {statusBadge.label}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold ${statusBadge.className}`}>
+                            {statusBadge.label}
+                          </span>
+                          {doc.isAcknowledged && (
+                            <span className="inline-flex items-center rounded bg-slate-100 border border-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-600" title="รับทราบการแจ้งเตือนแล้ว">
+                              รับทราบแล้ว
+                            </span>
+                          )}
+                        </div>
                         <span className={`text-[11px] font-semibold ${statusBadge.detailClassName}`}>
                           {statusBadge.detail}
                         </span>
@@ -703,11 +702,11 @@ export default function PolicyTable({
                     <td className="px-2 py-3 text-center">
                       {attachmentPreview ? (
                         <a
-                          href="/document_placeholder.pdf"
-                          download={`${getDocTypeName(doc.docType)}_${doc.licensePlate || doc.chassis}.pdf`}
+                          href={`/api/download?url=${encodeURIComponent(attachmentPreview.src)}&filename=${encodeURIComponent(`${getDocTypeName(doc.docType)}_${getCleanLicensePlate(doc.licensePlate) || doc.chassis}.pdf`)}`}
+                          download={`${getDocTypeName(doc.docType)}_${getCleanLicensePlate(doc.licensePlate) || doc.chassis}.pdf`}
                           onClick={(e) => {
                             e.stopPropagation();
-                            toast.success(`ดาวน์โหลด ${getDocTypeName(doc.docType)} ของ ${doc.licensePlate || doc.chassis} เรียบร้อยแล้ว`);
+                            toast.success(`ดาวน์โหลดเอกสาร PDF ${getDocTypeName(doc.docType)} ของ ${getCleanLicensePlate(doc.licensePlate) || doc.chassis} เรียบร้อยแล้ว`);
                           }}
                           className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-lg transition-colors inline-flex"
                           title={`ดาวน์โหลด ${attachmentPreview.title}`}

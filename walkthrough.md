@@ -364,3 +364,39 @@ We reviewed and fixed the issues found after the Antigravity update.
   - Added a success toast message when the download begins to confirm the action.
 - **Detail Modal Action ([components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
   - Upgraded the attachment preview container in the detail view to support both **ดูตัวอย่างภาพ** (view image preview overlay) and **ดาวน์โหลด PDF** (direct PDF download) options.
+
+### 25. Move Download Button to Preview Page and Use Real Mock Images (Latest Update)
+- **Goal**: Relocate the download button to the document preview overlay (on the top right next to the close button) for a cleaner details page experience, and download the actual mock image document (`compulsory_insurance.jpg` / `tax_receipt.jpg`) instead of a generic PDF placeholder.
+- **Relocated Download Button ([components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
+  - Removed the standalone download button from the detail modal's attachment container, leaving the primary **ดูตัวอย่างภาพ** action button.
+  - Added a **ดาวน์โหลดรูปภาพ** download link inside the document image preview overlay header (on the top right, next to the `(X)` close button).
+- **Download Real Mock Image Files ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx) & [components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
+  - Switched the download target from the generic `document_placeholder.pdf` to the actual mock image path (`attachmentPreview.src`).
+  - The downloaded file is named as `[ประเภทเอกสาร]_[เลขทะเบียนหรือเลขตัวถัง].jpg` (e.g. `ภาษี_1นบ 4827.jpg`) containing the actual document layout shown in the preview.
+
+### 26. Clean License Plate Numbers in Download Filenames (Latest Update)
+- **Goal**: Exclude province names (e.g. `นครปฐม`, `กรุงเทพมหานคร`) from the license plate string in downloaded file names to match the user's preferred format: `[ประเภทเอกสาร]_[เลขทะเบียน].jpg` (e.g. `ภาษี_72-4581.jpg`).
+- **Clean License Plate Helper ([utils/documentUtils.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/documentUtils.ts))**:
+  - Added `getCleanLicensePlate` to strip the province name dynamically by splitting the string by whitespace and keeping the first parts.
+- **Wiring ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx) & [components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
+  - Integrated the helper into the `download` attributes and toast messages in both the table download link and the detail preview overlay download link. Now `'72-4581 นครปฐม'` is cleanly mapped to `'72-4581'`.
+
+### 27. Backend Download API for Browser Naming Enforcement (Latest Update)
+- **Goal**: Resolve browser-side behavior where web browsers (such as Arc, Chrome, and Safari) ignore the HTML5 `download` attribute for direct image file links and default to the original filename on the server (e.g. `compulsory_insurance.jpg`).
+- **Download API Endpoint ([app/api/download/route.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/api/download/route.ts))**:
+  - Added a backend `GET /api/download` endpoint that accepts `url` (file target) and `filename` parameters.
+  - Resolves and reads the local file securely from the `public` directory (with directory traversal checks).
+  - Integrated `pdf-lib` to dynamically embed the mock image file (`compulsory_insurance.jpg` / `tax_receipt.jpg`) into a newly generated 1:1 scale PDF page on the fly.
+  - Enforces downloads using the HTTP header: `Content-Disposition: attachment; filename*=UTF-8''[EncodedFilename]`. This guarantees the browser saves the file with the exact Thai name ending in `.pdf`, bypassing client-side caching/override heuristics.
+- **Client Integration ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx) & [components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
+  - Rerouted download triggers through the new API endpoint (e.g., `/api/download?url=...&filename=...`), requesting `.pdf` files.
+  - Modified UI toast and button labels to explicitly state **ดาวน์โหลด PDF**.
+
+### 28. Preserving Original Status Colors and Details for Acknowledged Documents (Latest Update)
+- **Goal**: Prevent acknowledged documents from turning into a uniform blue status badge, ensuring they retain their original red (expired) or orange (warning) status colors and show the correct days remaining/overdue details. Display a separate "รับทราบแล้ว" (Acknowledged) tag to indicate their review state.
+- **Table Status Badges ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx))**:
+  - Removed the overriding `isAcknowledged` check from `getStatusBadge` so acknowledged rows fall back to their correct expired/warning colors and details (e.g. `เลยกำหนดมาแล้ว X วัน`).
+  - Added a clean slate/gray badge `รับทราบแล้ว` next to the main status label in the table row when the document is in the acknowledged state.
+- **Detail Modal Header & Highlight ([components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
+  - Updated the detail modal header badge to use the actual status color (red/orange) and label (e.g., `ยังไม่ต่อ` / `ใกล้ถึงรอบต่อ`) instead of forcing it to blue.
+  - Updated the expiry date grid highlight box to keep its correct warning (orange) or expired (red) border and background, even when the document has been acknowledged. The blue banner remains visible to present the acknowledgement user and timestamp.
