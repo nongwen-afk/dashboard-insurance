@@ -608,17 +608,16 @@ export default function PolicyTable({
       </div>
 
       <div className="overflow-x-auto overflow-y-hidden min-h-[465px]">
-        <table className="w-full min-w-[1120px] table-fixed text-left border-collapse">
+        <table className="w-full min-w-[1040px] table-fixed text-left border-collapse">
           <colgroup>
             <col className="w-[9%]" />
-            <col className="w-[13%]" />
-            <col className="w-[10%]" />
             <col className="w-[14%]" />
-            <col className="w-[12%]" />
-            <col className="w-[12%]" />
-            <col className="w-[21%]" />
+            <col className="w-[11%]" />
+            <col className="w-[22%]" />
+            <col className="w-[13%]" />
+            <col className="w-[20%]" />
+            <col className="w-[6%]" />
             <col className="w-[5%]" />
-            <col className="w-[4%]" />
           </colgroup>
           <thead className="bg-gray-50/50 border-y border-gray-100">
             <tr className="text-gray-500 text-xs uppercase tracking-wider">
@@ -626,17 +625,16 @@ export default function PolicyTable({
               <th className="px-4 py-3 font-semibold">เลขตัวถัง</th>
               <th className="px-4 py-3 font-semibold">ทะเบียนรถ</th>
               <th className="px-4 py-3 font-semibold">โครงการ</th>
-              <th className="px-4 py-3 font-semibold">วันที่มีผล</th>
               <th className="px-4 py-3 font-semibold">วันหมดอายุ</th>
               <th className="px-4 py-3 font-semibold">สถานะ</th>
-              <th className="px-4 py-3 font-semibold text-center">ไฟล์แนบ</th>
-              <th className="px-4 py-3 font-semibold text-right"></th>
+              <th className="px-2 py-3 font-semibold text-center">ไฟล์แนบ</th>
+              <th className="px-2 py-3 font-semibold text-right"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 text-sm">
             {isLoading ? (
               <tr>
-                <td colSpan={9} className="px-6 py-12 text-center text-gray-400">
+                <td colSpan={8} className="px-6 py-12 text-center text-gray-400">
                   <p className="font-medium text-gray-500">กำลังโหลดข้อมูลจาก Neon...</p>
                 </td>
               </tr>
@@ -655,23 +653,19 @@ export default function PolicyTable({
                     className="hover:bg-gray-50/50 transition-colors group relative cursor-pointer"
                   >
                     <td className="px-4 py-3 font-medium text-gray-700">{getDocTypeName(doc.docType)}</td>
-                    <td className="px-4 py-3 text-gray-500 font-mono text-xs">{doc.chassis}</td>
+                    <td className="px-4 py-3 text-gray-500 font-mono text-xs whitespace-nowrap">{doc.chassis}</td>
                     <td className="px-4 py-3">
                       <span className="font-bold text-gray-800">{doc.licensePlate || '-'}</span>
                     </td>
 
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 min-w-0">
                       <span className="block truncate font-medium text-gray-700" title={doc.project || 'ไม่ระบุโครงการ'}>
                         {doc.project || 'ไม่ระบุโครงการ'}
                       </span>
                     </td>
 
                     <td className="px-4 py-3">
-                      <span className="text-gray-600">{formatThaiDate(doc.issuedDate)}</span>
-                    </td>
-
-                    <td className="px-4 py-3">
-                      <span className="text-gray-700 font-medium">{formatThaiDate(doc.expiryDate)}</span>
+                      <span className="text-gray-700 font-medium whitespace-nowrap">{formatThaiDate(doc.expiryDate)}</span>
                     </td>
 
                     <td className="px-4 py-3">
@@ -704,7 +698,7 @@ export default function PolicyTable({
                       </div>
                     </td>
 
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-2 py-3 text-center">
                       {doc.hasAttachment ? (
                         <button
                           onClick={(e) => {
@@ -721,7 +715,7 @@ export default function PolicyTable({
                       )}
                     </td>
 
-                    <td className="px-4 py-3 text-right relative">
+                    <td className="px-2 py-3 text-right relative">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -795,7 +789,7 @@ export default function PolicyTable({
               })
             ) : (
               <tr>
-                <td colSpan={9} className="px-6 py-12 text-center text-gray-400 flex-col items-center justify-center">
+                <td colSpan={8} className="px-6 py-12 text-center text-gray-400 flex-col items-center justify-center">
                   <p className="font-medium text-gray-500">ไม่พบข้อมูลที่คุณค้นหา หรือ ไม่ตรงกับตัวกรอง</p>
                 </td>
               </tr>

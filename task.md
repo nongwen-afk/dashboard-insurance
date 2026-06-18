@@ -14,6 +14,7 @@
   - `[x]` Reduced padding in table headers and body cells from `px-5 py-4` to `px-4 py-3` to make layout look clean and compact.
   - `[x]` Reduce table pagination page size from 10 rows to 6 rows.
   - `[x]` Set table container min-height to exactly `min-h-[465px]` to match the actual height of 6 table rows (including status badges), ensuring the container height remains constant and preventing scroll position jumping when switching between pages.
+  - `[x]` Remove the issued-date column from the main table and redistribute widths by content length so project and status fields have more room.
 - `[x]` Implement Interactive Stat Cards with scrolling & filtering
   - `[x]` Add `onClick` prop and pointer cursor/hover transitions to `StatCard` component.
   - `[x]` Set up `statusFilter` state in `app/page.tsx` and pass down to `PolicyTable` and click handlers.

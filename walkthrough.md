@@ -332,3 +332,12 @@ We reviewed and fixed the issues found after the Antigravity update.
   - `pnpm run lint` passes.
   - `pnpm exec tsc --noEmit` passes.
   - `pnpm run build` passes and includes the dynamic `/api/vehicle-document-renewals` route.
+
+### 22. Document Table Column Rebalance
+- **Goal**: Make the main document table easier to scan by removing a lower-priority date and sizing each remaining column according to its typical content length.
+- **Table Layout ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx))**:
+  - Removed the `วันที่มีผล` column from the main table. The issued date remains available inside the document detail modal.
+  - Reduced the table minimum width from `1120px` to `1040px` after removing the column.
+  - Rebalanced the eight remaining columns: document type 9%, chassis 14%, license plate 11%, project 22%, expiry date 13%, status 20%, attachment 6%, and actions 5%.
+  - Kept chassis and expiry values on one line, widened project names, and tightened padding around icon-only attachment/action columns.
+  - Updated loading and empty-state column spans from 9 to 8 so table alignment remains valid.
