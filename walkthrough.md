@@ -428,3 +428,8 @@ We reviewed and fixed the issues found after the Antigravity update.
   - Renamed the main action button in the attachment container from **ดูตัวอย่างภาพ** (View Image Preview) to **ดูเอกสาร** (View Document).
   - Renamed the download button inside the preview header overlay from **ดาวน์โหลดรูปภาพ** (Download Image) to **ดาวน์โหลดเอกสาร** (Download Document).
   - Updated the downloaded filename extension and toast notification references to `.pdf` format.
+- **JPEG Format Verification & Image Conversion**:
+  - Identified that `compulsory_insurance.jpg` in the `public` directory was WebP format despite its `.jpg` extension, causing `pdf-lib` to fail with a `SOI not found in JPEG` error.
+  - Converted the WebP image to a true JPEG using macOS `sips` utility and updated the base64 bundle accordingly.
+  - Created a verification script and confirmed successful on-the-fly PDF generation and downloads.
+
