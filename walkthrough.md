@@ -386,9 +386,11 @@ We reviewed and fixed the issues found after the Antigravity update.
 - **Download API Endpoint ([app/api/download/route.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/api/download/route.ts))**:
   - Added a backend `GET /api/download` endpoint that accepts `url` (file target) and `filename` parameters.
   - Resolves and reads the local file securely from the `public` directory (with directory traversal checks).
-  - Enforces downloads using the HTTP header: `Content-Disposition: attachment; filename*=UTF-8''[EncodedFilename]`. This guarantees the browser saves the file with the exact Thai name specified, bypassing client-side caching/override heuristics.
+  - Integrated `pdf-lib` to dynamically embed the mock image file (`compulsory_insurance.jpg` / `tax_receipt.jpg`) into a newly generated 1:1 scale PDF page on the fly.
+  - Enforces downloads using the HTTP header: `Content-Disposition: attachment; filename*=UTF-8''[EncodedFilename]`. This guarantees the browser saves the file with the exact Thai name ending in `.pdf`, bypassing client-side caching/override heuristics.
 - **Client Integration ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx) & [components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
-  - Rerouted download triggers through the new API endpoint (e.g., `/api/download?url=...&filename=...`), ensuring all downloads utilize the server-side naming enforcement.
+  - Rerouted download triggers through the new API endpoint (e.g., `/api/download?url=...&filename=...`), requesting `.pdf` files.
+  - Modified UI toast and button labels to explicitly state **ดาวน์โหลด PDF**.
 
 ### 28. Preserving Original Status Colors and Details for Acknowledged Documents (Latest Update)
 - **Goal**: Prevent acknowledged documents from turning into a uniform blue status badge, ensuring they retain their original red (expired) or orange (warning) status colors and show the correct days remaining/overdue details. Display a separate "รับทราบแล้ว" (Acknowledged) tag to indicate their review state.
