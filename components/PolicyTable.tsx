@@ -26,14 +26,6 @@ interface PolicyTableProps {
 
 // แปลงสถานะจาก helper ให้เป็นข้อความและสีสำหรับคอลัมน์สถานะในตาราง
 const getStatusBadge = (status: DocStatus, days: number, isAcknowledged?: boolean) => {
-  if (isAcknowledged) {
-    return {
-      label: 'ยังไม่ต่อ',
-      detail: 'ต้องต่ออายุ',
-      className: 'bg-blue-50 text-blue-700 border-blue-100',
-      detailClassName: 'text-blue-600',
-    };
-  }
 
   if (status === 'EXPIRED') {
     return {
@@ -691,9 +683,16 @@ export default function PolicyTable({
                         className="inline-flex flex-col items-start gap-1 cursor-pointer hover:scale-105 transition-all duration-200"
                         title="คลิกเพื่อกรองข้อมูลตามสถานะนี้"
                       >
-                        <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold ${statusBadge.className}`}>
-                          {statusBadge.label}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold ${statusBadge.className}`}>
+                            {statusBadge.label}
+                          </span>
+                          {doc.isAcknowledged && (
+                            <span className="inline-flex items-center rounded bg-slate-100 border border-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-600" title="รับทราบการแจ้งเตือนแล้ว">
+                              รับทราบแล้ว
+                            </span>
+                          )}
+                        </div>
                         <span className={`text-[11px] font-semibold ${statusBadge.detailClassName}`}>
                           {statusBadge.detail}
                         </span>

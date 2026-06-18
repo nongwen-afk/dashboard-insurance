@@ -36,12 +36,23 @@ export default function DocumentDetailModal({ document, onClose, onAcknowledge, 
     if (document.isAcknowledged) {
       const ackUserText = document.acknowledgedBy || 'ไม่ระบุ';
       const ackDateText = formatThaiDateTime(document.acknowledgedAt);
+      
+      let normalBadgeClass = 'bg-slate-50 text-slate-600 border-slate-200';
+      let titleText = 'ยังไม่ต่อ';
+      if (status === 'EXPIRED') {
+        normalBadgeClass = 'bg-red-50 text-red-700 border-red-100';
+        titleText = 'ยังไม่ต่อ';
+      } else if (status === 'WARNING') {
+        normalBadgeClass = 'bg-orange-50 text-orange-700 border-orange-100';
+        titleText = 'ใกล้ถึงรอบต่อ';
+      }
+
       return {
         bg: 'bg-blue-50 border-blue-200 text-blue-800',
         icon: <Info className="text-blue-500 shrink-0" size={20} />,
-        title: 'ยังไม่ต่อ',
+        title: titleText,
         description: `บันทึกการตรวจสอบโดย ${ackUserText} เมื่อวันที่ ${ackDateText} แต่ยังไม่พบข้อมูลต่ออายุสำเร็จ`,
-        badgeClassName: 'bg-blue-50 text-blue-700 border-blue-100'
+        badgeClassName: normalBadgeClass
       };
     }
 
@@ -85,9 +96,6 @@ export default function DocumentDetailModal({ document, onClose, onAcknowledge, 
   const banner = getBannerDetails();
 
   const getExpiryHighlightClass = () => {
-    if (document.isAcknowledged) {
-      return 'p-3 rounded-xl border border-blue-100 bg-blue-50/40 transition-all';
-    }
     switch (status) {
       case 'EXPIRED':
         return 'p-3 rounded-xl border border-red-200 bg-red-50/40 transition-all';

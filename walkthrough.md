@@ -389,3 +389,12 @@ We reviewed and fixed the issues found after the Antigravity update.
   - Enforces downloads using the HTTP header: `Content-Disposition: attachment; filename*=UTF-8''[EncodedFilename]`. This guarantees the browser saves the file with the exact Thai name specified, bypassing client-side caching/override heuristics.
 - **Client Integration ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx) & [components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
   - Rerouted download triggers through the new API endpoint (e.g., `/api/download?url=...&filename=...`), ensuring all downloads utilize the server-side naming enforcement.
+
+### 28. Preserving Original Status Colors and Details for Acknowledged Documents (Latest Update)
+- **Goal**: Prevent acknowledged documents from turning into a uniform blue status badge, ensuring they retain their original red (expired) or orange (warning) status colors and show the correct days remaining/overdue details. Display a separate "รับทราบแล้ว" (Acknowledged) tag to indicate their review state.
+- **Table Status Badges ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx))**:
+  - Removed the overriding `isAcknowledged` check from `getStatusBadge` so acknowledged rows fall back to their correct expired/warning colors and details (e.g. `เลยกำหนดมาแล้ว X วัน`).
+  - Added a clean slate/gray badge `รับทราบแล้ว` next to the main status label in the table row when the document is in the acknowledged state.
+- **Detail Modal Header & Highlight ([components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
+  - Updated the detail modal header badge to use the actual status color (red/orange) and label (e.g., `ยังไม่ต่อ` / `ใกล้ถึงรอบต่อ`) instead of forcing it to blue.
+  - Updated the expiry date grid highlight box to keep its correct warning (orange) or expired (red) border and background, even when the document has been acknowledged. The blue banner remains visible to present the acknowledgement user and timestamp.
