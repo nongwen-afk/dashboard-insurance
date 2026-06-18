@@ -1,7 +1,11 @@
 "use client";
 
-import { Building2, CalendarDays, Car, FileText, User, X, AlertTriangle, Clock, CheckCircle2, Info, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
+import toast from 'react-hot-toast';
+import Image from 'next/image';
+import { Building2, CalendarDays, Car, FileText, User, X, AlertTriangle, Clock, CheckCircle2, Info, RefreshCw, Eye, FileX } from 'lucide-react';
 import type { VehicleDocument } from '@/types';
+import { getDocumentAttachmentPreview } from '@/utils/documentAttachment';
 import { formatThaiDate, formatThaiDateTime, getDocTypeName, getDocumentStatus } from '@/utils/documentUtils';
 
 interface DocumentDetailModalProps {
@@ -12,10 +16,20 @@ interface DocumentDetailModalProps {
 }
 
 export default function DocumentDetailModal({ document, onClose, onAcknowledge, onSync }: DocumentDetailModalProps) {
+  const [previewDocumentKey, setPreviewDocumentKey] = useState<string | null>(null);
+
   // ใช้ document null เป็นสัญญาณปิด modal เพื่อให้ caller ไม่ต้องมี state boolean แยกอีกตัว
   if (!document) return null;
 
   const { status, days } = getDocumentStatus(document.expiryDate);
+  const documentKey = document.id || `${document.chassis}-${document.docType}`;
+  const attachmentPreview = getDocumentAttachmentPreview(document);
+  const isPreviewOpen = previewDocumentKey === documentKey;
+
+  const handleClose = () => {
+    setPreviewDocumentKey(null);
+    onClose();
+  };
 
   // กำหนดรูปแบบเนื้อหาแบนเนอร์และป้ายสถานะ
   const getBannerDetails = () => {
@@ -104,7 +118,8 @@ export default function DocumentDetailModal({ document, onClose, onAcknowledge, 
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
+            aria-label="ปิดรายละเอียดเอกสาร"
             className="text-gray-400 hover:text-gray-700 bg-white hover:bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center transition-colors border border-gray-200"
           >
             <X size={16} />
@@ -194,9 +209,47 @@ export default function DocumentDetailModal({ document, onClose, onAcknowledge, 
                 <p className="text-xs text-gray-500 mb-1">หมายเลขเอกสาร/กรมธรรม์</p>
                 <p className="font-medium text-gray-800">{document.docNumber || 'ไม่มีข้อมูล'}</p>
               </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-1">ไฟล์แนบ</p>
-                <p className="font-medium text-gray-800">{document.hasAttachment ? 'มีไฟล์แนบในระบบ' : 'ไม่มีไฟล์แนบ'}</p>
+              <div className="sm:col-span-2">
+                <p className="text-xs text-gray-500 mb-2">เอกสารแนบ</p>
+                {attachmentPreview ? (
+                  <div className="flex flex-col gap-3 rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-lg bg-white p-2 text-[#1a4d2e] shadow-sm">
+                        <FileText size={18} />
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-800">{attachmentPreview.title}</p>
+                        <p className="text-xs text-gray-500">มีเอกสารในระบบ พร้อมเปิดดูภาพตัวอย่าง</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewDocumentKey(documentKey)}
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[#1a4d2e] bg-white px-4 text-sm font-bold text-[#1a4d2e] transition-colors hover:bg-emerald-50"
+                      >
+                        <Eye size={16} />
+                        ดูตัวอย่างภาพ
+                      </button>
+                      <a
+                        href="/document_placeholder.pdf"
+                        download={`${getDocTypeName(document.docType)}_${document.licensePlate || document.chassis}.pdf`}
+                        onClick={() => toast.success(`ดาวน์โหลด ${getDocTypeName(document.docType)} ของ ${document.licensePlate || document.chassis} เรียบร้อยแล้ว`)}
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#1a4d2e] px-4 text-sm font-bold text-white transition-colors hover:bg-[#123620]"
+                      >
+                        ดาวน์โหลด PDF
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 text-gray-500">
+                    <FileX size={18} className="shrink-0 text-gray-400" />
+                    <div>
+                      <p className="font-bold text-gray-600">ไม่มีเอกสาร</p>
+                      <p className="text-xs text-gray-400">ยังไม่มีรูปหรือไฟล์แนบสำหรับรายการนี้</p>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="sm:col-span-2">
                 <p className="text-xs text-gray-500 mb-1">หมายเหตุ</p>
@@ -231,13 +284,54 @@ export default function DocumentDetailModal({ document, onClose, onAcknowledge, 
               )
             )}
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="min-w-24 h-11 px-6 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:text-gray-900 font-bold transition-all shadow-sm shrink-0"
             >
               ปิด
             </button>
         </div>
       </div>
+
+      {attachmentPreview && isPreviewOpen && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label={attachmentPreview.title}
+          onClick={() => setPreviewDocumentKey(null)}
+        >
+          <div
+            className="flex max-h-[94vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b px-5 py-4">
+              <div>
+                <h4 className="font-bold text-gray-800">{attachmentPreview.title}</h4>
+                <p className="text-xs text-gray-500">{document.licensePlate || document.chassis}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewDocumentKey(null)}
+                aria-label="ปิดรูปเอกสาร"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex max-h-[80vh] items-start justify-center overflow-auto bg-slate-100 p-4 sm:p-6">
+              <Image
+                src={attachmentPreview.src}
+                alt={attachmentPreview.alt}
+                width={attachmentPreview.width}
+                height={attachmentPreview.height}
+                loading="eager"
+                sizes="(max-width: 768px) 92vw, 768px"
+                className="block h-auto max-h-[76vh] w-auto max-w-full rounded-lg object-contain shadow-lg"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

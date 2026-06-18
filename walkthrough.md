@@ -341,3 +341,26 @@ We reviewed and fixed the issues found after the Antigravity update.
   - Rebalanced the eight remaining columns: document type 9%, chassis 14%, license plate 11%, project 22%, expiry date 13%, status 20%, attachment 6%, and actions 5%.
   - Kept chassis and expiry values on one line, widened project names, and tightened padding around icon-only attachment/action columns.
   - Updated loading and empty-state column spans from 9 to 8 so table alignment remains valid.
+
+### 23. Realistic Development Data and Document Preview
+- **Development Data Reset**:
+  - Replaced the previous generic mock rows with 24 document records grouped across 8 realistic fleet vehicles.
+  - Vehicles now reuse the same chassis, registration, project, and driver across their related compulsory-insurance, tax, insurance, inspection, and registration-book records.
+  - Dates are distributed across expired, near-renewal, active, and no-expiry states based on June 2026 operations.
+  - Updated `pnpm db:reset` to clear `vehicle_document_history` and `vehicle_documents` before inserting the new mock set.
+  - Verified the active Neon development branch was reset from 135 rows to 24 rows without touching production.
+- **Document Attachments**:
+  - Added the supplied compulsory-insurance and tax-label images as static assets in `public`.
+  - Added a shared attachment resolver so only records marked with an available supported image show a paperclip action.
+  - The detail modal now shows a `ดูเอกสาร` button for available attachments and opens the image in a focused preview overlay.
+  - Records without a supported image show a clear `ไม่มีเอกสาร` empty state instead of a misleading attachment label.
+
+### 24. Direct PDF Document Download (Latest Update)
+- **Goal**: Allow users to download the actual document as a PDF file directly from the table or the detail view, dynamically naming the file by its document type and vehicle plate number/chassis.
+- **Minimal PDF Template**: Created a minimal valid PDF placeholder at [document_placeholder.pdf](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/public/document_placeholder.pdf) that is compliant with PDF standard formatting to prevent file corruption warnings.
+- **Table Document Attachment Action ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx))**:
+  - Replaced the paperclip icon's button behavior (which opened the detail modal) with a download link (`<a>` tag with `download` attribute).
+  - Dynamically names the downloaded file following the format `[ประเภทเอกสาร]_[เลขทะเบียนหรือเลขตัวถัง].pdf` (e.g., `ภาษี_1กข 1234.pdf` or `พ.ร.บ._CHAS-1234.pdf`).
+  - Added a success toast message when the download begins to confirm the action.
+- **Detail Modal Action ([components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
+  - Upgraded the attachment preview container in the detail view to support both **ดูตัวอย่างภาพ** (view image preview overlay) and **ดาวน์โหลด PDF** (direct PDF download) options.

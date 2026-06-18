@@ -9,6 +9,7 @@ import {
 import toast from 'react-hot-toast';
 import DocumentDetailModal from '@/components/DocumentDetailModal';
 import type { DocStatus, FilterStatus, SortOption, VehicleDocument } from '@/types';
+import { getDocumentAttachmentPreview } from '@/utils/documentAttachment';
 import { formatThaiDate, getDocTypeName, getDocumentRecordKey, getDocumentStatus, getRenewedDocumentDates, isSameDocumentRecord, parseDocumentDate } from '@/utils/documentUtils';
 import { parseVehicleDocumentsFromFile } from '@/utils/importVehicleDocuments';
 import { createVehicleDocumentRecords, recordVehicleDocumentHistoryEvent, updateVehicleDocumentRecord } from '@/utils/vehicleDocumentApi';
@@ -643,6 +644,7 @@ export default function PolicyTable({
                 const { status, days } = getDocumentStatus(doc.expiryDate);
                 const statusBadge = getStatusBadge(status, days, doc.isAcknowledged);
                 const documentKey = getDocumentRecordKey(doc);
+                const attachmentPreview = getDocumentAttachmentPreview(doc);
                 return (
                   <tr
                     key={documentKey}
@@ -699,17 +701,20 @@ export default function PolicyTable({
                     </td>
 
                     <td className="px-2 py-3 text-center">
-                      {doc.hasAttachment ? (
-                        <button
+                      {attachmentPreview ? (
+                        <a
+                          href="/document_placeholder.pdf"
+                          download={`${getDocTypeName(doc.docType)}_${doc.licensePlate || doc.chassis}.pdf`}
                           onClick={(e) => {
                             e.stopPropagation();
-                            toast.success(`เปิดไฟล์แนบของ ${doc.licensePlate || doc.chassis}`, { duration: 1800 });
+                            toast.success(`ดาวน์โหลด ${getDocTypeName(doc.docType)} ของ ${doc.licensePlate || doc.chassis} เรียบร้อยแล้ว`);
                           }}
                           className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-lg transition-colors inline-flex"
-                          title="ดูไฟล์แนบ"
+                          title={`ดาวน์โหลด ${attachmentPreview.title}`}
+                          aria-label={`ดาวน์โหลด ${attachmentPreview.title} ของ ${doc.licensePlate || doc.chassis}`}
                         >
                           <Paperclip size={18} />
-                        </button>
+                        </a>
                       ) : (
                         <span className="text-gray-300">-</span>
                       )}
