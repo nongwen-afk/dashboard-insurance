@@ -364,3 +364,12 @@ We reviewed and fixed the issues found after the Antigravity update.
   - Added a success toast message when the download begins to confirm the action.
 - **Detail Modal Action ([components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
   - Upgraded the attachment preview container in the detail view to support both **ดูตัวอย่างภาพ** (view image preview overlay) and **ดาวน์โหลด PDF** (direct PDF download) options.
+
+### 25. Move Download Button to Preview Page and Use Real Mock Images (Latest Update)
+- **Goal**: Relocate the download button to the document preview overlay (on the top right next to the close button) for a cleaner details page experience, and download the actual mock image document (`compulsory_insurance.jpg` / `tax_receipt.jpg`) instead of a generic PDF placeholder.
+- **Relocated Download Button ([components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
+  - Removed the standalone download button from the detail modal's attachment container, leaving the primary **ดูตัวอย่างภาพ** action button.
+  - Added a **ดาวน์โหลดรูปภาพ** download link inside the document image preview overlay header (on the top right, next to the `(X)` close button).
+- **Download Real Mock Image Files ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx) & [components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
+  - Switched the download target from the generic `document_placeholder.pdf` to the actual mock image path (`attachmentPreview.src`).
+  - The downloaded file is named as `[ประเภทเอกสาร]_[เลขทะเบียนหรือเลขตัวถัง].jpg` (e.g. `ภาษี_1นบ 4827.jpg`) containing the actual document layout shown in the preview.

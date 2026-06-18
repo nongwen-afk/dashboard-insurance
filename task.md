@@ -89,7 +89,7 @@
   - `[x]` Make the database reset script clear old document/history rows before seeding the new mock set on Neon `dev`.
   - `[x]` Use the provided compulsory-insurance and tax-label images for supported document attachments.
   - `[x]` Add a document preview action inside the detail modal and a clear no-document state for rows without an attachment.
-  - `[x]` Implement direct PDF document download from table rows and detail view with dynamic filename mapping (e.g. `ภาษี_เลขทะเบียนรถ.pdf`).
+  - `[x]` Implement direct document download from table rows and preview header, downloading the actual mock image document named dynamically (e.g. `ภาษี_เลขทะเบียนรถ.jpg`).
 - `[ ]` Support custom document additions (Add Document Form)
 - `[ ]` Implement real backend API / localstorage integration for persistence
   - `[x]` Add Neon-backed `GET /api/vehicle-documents` endpoint for reading `vehicle_documents`.

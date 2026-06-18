@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
-import { Building2, CalendarDays, Car, FileText, User, X, AlertTriangle, Clock, CheckCircle2, Info, RefreshCw, Eye, FileX } from 'lucide-react';
+import { Building2, CalendarDays, Car, FileText, User, X, AlertTriangle, Clock, CheckCircle2, Info, RefreshCw, Eye, FileX, Download } from 'lucide-react';
 import type { VehicleDocument } from '@/types';
 import { getDocumentAttachmentPreview } from '@/utils/documentAttachment';
 import { formatThaiDate, formatThaiDateTime, getDocTypeName, getDocumentStatus } from '@/utils/documentUtils';
@@ -226,19 +226,11 @@ export default function DocumentDetailModal({ document, onClose, onAcknowledge, 
                       <button
                         type="button"
                         onClick={() => setPreviewDocumentKey(documentKey)}
-                        className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[#1a4d2e] bg-white px-4 text-sm font-bold text-[#1a4d2e] transition-colors hover:bg-emerald-50"
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#1a4d2e] px-4 text-sm font-bold text-white transition-colors hover:bg-[#123620]"
                       >
                         <Eye size={16} />
                         ดูตัวอย่างภาพ
                       </button>
-                      <a
-                        href="/document_placeholder.pdf"
-                        download={`${getDocTypeName(document.docType)}_${document.licensePlate || document.chassis}.pdf`}
-                        onClick={() => toast.success(`ดาวน์โหลด ${getDocTypeName(document.docType)} ของ ${document.licensePlate || document.chassis} เรียบร้อยแล้ว`)}
-                        className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#1a4d2e] px-4 text-sm font-bold text-white transition-colors hover:bg-[#123620]"
-                      >
-                        ดาวน์โหลด PDF
-                      </a>
                     </div>
                   </div>
                 ) : (
@@ -309,14 +301,25 @@ export default function DocumentDetailModal({ document, onClose, onAcknowledge, 
                 <h4 className="font-bold text-gray-800">{attachmentPreview.title}</h4>
                 <p className="text-xs text-gray-500">{document.licensePlate || document.chassis}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => setPreviewDocumentKey(null)}
-                aria-label="ปิดรูปเอกสาร"
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800"
-              >
-                <X size={18} />
-              </button>
+              <div className="flex items-center gap-2">
+                <a
+                  href={attachmentPreview.src}
+                  download={`${getDocTypeName(document.docType)}_${document.licensePlate || document.chassis}.jpg`}
+                  onClick={() => toast.success(`ดาวน์โหลดรูปภาพ ${getDocTypeName(document.docType)} ของ ${document.licensePlate || document.chassis} เรียบร้อยแล้ว`)}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#1a4d2e] px-3 text-xs font-bold text-white transition-colors hover:bg-[#123620]"
+                >
+                  <Download size={14} />
+                  ดาวน์โหลดรูปภาพ
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewDocumentKey(null)}
+                  aria-label="ปิดรูปเอกสาร"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
             <div className="flex max-h-[80vh] items-start justify-center overflow-auto bg-slate-100 p-4 sm:p-6">
               <Image

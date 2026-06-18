@@ -703,11 +703,11 @@ export default function PolicyTable({
                     <td className="px-2 py-3 text-center">
                       {attachmentPreview ? (
                         <a
-                          href="/document_placeholder.pdf"
-                          download={`${getDocTypeName(doc.docType)}_${doc.licensePlate || doc.chassis}.pdf`}
+                          href={attachmentPreview.src}
+                          download={`${getDocTypeName(doc.docType)}_${doc.licensePlate || doc.chassis}.jpg`}
                           onClick={(e) => {
                             e.stopPropagation();
-                            toast.success(`ดาวน์โหลด ${getDocTypeName(doc.docType)} ของ ${doc.licensePlate || doc.chassis} เรียบร้อยแล้ว`);
+                            toast.success(`ดาวน์โหลดรูปภาพ ${getDocTypeName(doc.docType)} ของ ${doc.licensePlate || doc.chassis} เรียบร้อยแล้ว`);
                           }}
                           className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-lg transition-colors inline-flex"
                           title={`ดาวน์โหลด ${attachmentPreview.title}`}
