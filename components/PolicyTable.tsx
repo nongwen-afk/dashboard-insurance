@@ -703,7 +703,7 @@ export default function PolicyTable({
                     <td className="px-2 py-3 text-center">
                       {attachmentPreview ? (
                         <a
-                          href={attachmentPreview.src}
+                          href={`/api/download?url=${encodeURIComponent(attachmentPreview.src)}&filename=${encodeURIComponent(`${getDocTypeName(doc.docType)}_${getCleanLicensePlate(doc.licensePlate) || doc.chassis}.jpg`)}`}
                           download={`${getDocTypeName(doc.docType)}_${getCleanLicensePlate(doc.licensePlate) || doc.chassis}.jpg`}
                           onClick={(e) => {
                             e.stopPropagation();

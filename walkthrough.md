@@ -380,3 +380,12 @@ We reviewed and fixed the issues found after the Antigravity update.
   - Added `getCleanLicensePlate` to strip the province name dynamically by splitting the string by whitespace and keeping the first parts.
 - **Wiring ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx) & [components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
   - Integrated the helper into the `download` attributes and toast messages in both the table download link and the detail preview overlay download link. Now `'72-4581 นครปฐม'` is cleanly mapped to `'72-4581'`.
+
+### 27. Backend Download API for Browser Naming Enforcement (Latest Update)
+- **Goal**: Resolve browser-side behavior where web browsers (such as Arc, Chrome, and Safari) ignore the HTML5 `download` attribute for direct image file links and default to the original filename on the server (e.g. `compulsory_insurance.jpg`).
+- **Download API Endpoint ([app/api/download/route.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/api/download/route.ts))**:
+  - Added a backend `GET /api/download` endpoint that accepts `url` (file target) and `filename` parameters.
+  - Resolves and reads the local file securely from the `public` directory (with directory traversal checks).
+  - Enforces downloads using the HTTP header: `Content-Disposition: attachment; filename*=UTF-8''[EncodedFilename]`. This guarantees the browser saves the file with the exact Thai name specified, bypassing client-side caching/override heuristics.
+- **Client Integration ([components/PolicyTable.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/PolicyTable.tsx) & [components/DocumentDetailModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/DocumentDetailModal.tsx))**:
+  - Rerouted download triggers through the new API endpoint (e.g., `/api/download?url=...&filename=...`), ensuring all downloads utilize the server-side naming enforcement.
