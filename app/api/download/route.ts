@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
 import { PDFDocument } from 'pdf-lib';
 
 export async function GET(request: NextRequest) {
@@ -12,23 +10,29 @@ export async function GET(request: NextRequest) {
     return new NextResponse('Missing parameters', { status: 400 });
   }
 
-  // ทำความสะอาดเส้นทางไฟล์เพื่อความปลอดภัย ป้องกัน directory traversal
-  const cleanUrl = fileUrl.replace(/^\/+/, '').split('?')[0];
-  const filePath = path.join(process.cwd(), 'public', cleanUrl);
-
-  // ตรวจสอบว่ามีไฟล์อยู่จริงและอยู่ในโฟลเดอร์ public
-  const publicDir = path.join(process.cwd(), 'public');
-  if (!fs.existsSync(filePath) || !filePath.startsWith(publicDir)) {
-    return new NextResponse('File not found', { status: 404 });
+  // ทำความสะอาดเส้นทางไฟล์เพื่อความปลอดภัย
+  const cleanUrl = '/' + fileUrl.replace(/^\/+/, '').split('?')[0];
+  
+  // ป้องกันการดาวน์โหลดไฟล์นอกเหนือจากรูปภาพเอกสารหลักเพื่อความปลอดภัย
+  const isAllowedAsset = cleanUrl === '/compulsory_insurance.jpg' || cleanUrl === '/tax_receipt.jpg';
+  if (!isAllowedAsset) {
+    return new NextResponse('Forbidden asset', { status: 403 });
   }
 
   try {
-    const fileBuffer = fs.readFileSync(filePath);
+    // ดึงไฟล์ผ่าน HTTP โดยใช้ origin ของ request เพื่อให้ใช้ได้ทั้ง localhost และ Vercel Serverless
+    const assetUrl = new URL(cleanUrl, request.url).toString();
+    const res = await fetch(assetUrl);
     
-    // ตรวจสอบว่าเป็นไฟล์ภาพที่จะแปลงเป็น PDF หรือไม่
-    const isImage = filePath.endsWith('.jpg') || filePath.endsWith('.jpeg') || filePath.endsWith('.png');
+    if (!res.ok) {
+      console.error(`Failed to fetch asset: ${assetUrl}, status: ${res.status}`);
+      return new NextResponse('File not found', { status: 404 });
+    }
 
-    let responseBuffer: Buffer | Uint8Array = fileBuffer;
+    const fileBuffer = await res.arrayBuffer();
+    const isImage = cleanUrl.endsWith('.jpg') || cleanUrl.endsWith('.jpeg') || cleanUrl.endsWith('.png');
+
+    let responseBuffer: ArrayBuffer | Uint8Array = fileBuffer;
     let contentType = 'application/pdf';
     let outputFilename = filename;
 
@@ -44,7 +48,7 @@ export async function GET(request: NextRequest) {
       const pdfDoc = await PDFDocument.create();
       
       let embeddedImage;
-      if (filePath.endsWith('.png')) {
+      if (cleanUrl.endsWith('.png')) {
         embeddedImage = await pdfDoc.embedPng(fileBuffer);
       } else {
         // สำหรับ .jpg หรือ .jpeg
@@ -64,13 +68,6 @@ export async function GET(request: NextRequest) {
       });
 
       responseBuffer = await pdfDoc.save();
-    } else {
-      // หากไม่ใช่รูปภาพ ให้ส่งตาม Content-Type ดั้งเดิม
-      if (filePath.endsWith('.pdf')) {
-        contentType = 'application/pdf';
-      } else {
-        contentType = 'application/octet-stream';
-      }
     }
 
     // เข้ารหัสชื่อไฟล์เพื่อรองรับอักษรภาษาไทยใน Header Content-Disposition
