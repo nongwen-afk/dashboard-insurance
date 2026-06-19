@@ -22,6 +22,7 @@ export async function GET() {
 type VehicleDocumentsPostPayload = {
   documents?: unknown;
   actor?: unknown;
+  source?: unknown;
 };
 
 export async function POST(request: Request) {
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
     const documents = await createVehicleDocuments(payload.documents as VehicleDocument[], {
       actor: typeof payload.actor === 'string' ? payload.actor : 'testuser',
       historyDetails: {
+        source: typeof payload.source === 'string' ? payload.source : 'document_import',
         importedCount: payload.documents.length,
       },
     });

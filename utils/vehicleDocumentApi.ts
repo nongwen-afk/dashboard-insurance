@@ -27,13 +27,25 @@ export const updateVehicleDocumentRecord = async (id: string, updates: VehicleDo
   return data.document;
 };
 
-export const createVehicleDocumentRecords = async (documents: VehicleDocument[]) => {
+type CreateVehicleDocumentOptions = {
+  actor?: string;
+  source?: string;
+};
+
+export const createVehicleDocumentRecords = async (
+  documents: VehicleDocument[],
+  options?: CreateVehicleDocumentOptions,
+) => {
   const response = await fetch('/api/vehicle-documents', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ documents, actor: 'testuser' }),
+    body: JSON.stringify({
+      documents,
+      actor: options?.actor || 'testuser',
+      source: options?.source || 'document_import',
+    }),
   });
 
   const data = await response.json() as { documents?: VehicleDocument[]; error?: string };
