@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import {
   AlertTriangle,
   CalendarDays,
@@ -9,11 +9,11 @@ import {
   Clock,
   FileText,
   Calendar,
-  Layers,
-  ListTodo,
-  TrendingUp,
+  Plus,
+  Trash2,
+  StickyNote,
 } from 'lucide-react';
-import type { VehicleDocument } from '@/types';
+import type { VehicleDocument, CalendarNote } from '@/types';
 import {
   formatDateOnly,
   formatThaiDate,
@@ -26,10 +26,14 @@ import {
 
 interface ExpiryChartProps {
   documents: VehicleDocument[];
+  notes?: CalendarNote[];
   onSelectDocument: (document: VehicleDocument) => void;
+  onAddDocument?: (dateStr: string) => void;
+  onAddNote?: (dateStr: string) => void;
+  onDeleteNote?: (id: string) => void;
 }
 
-const THAI_MONTHS_FULL = [
+const THAI_MONTHS_FULL_CORRECT = [
   'มกราคม',
   'กุมภาพันธ์',
   'มีนาคม',
@@ -46,7 +50,7 @@ const THAI_MONTHS_FULL = [
 
 const WEEKDAY_LABELS = ['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'];
 
-const getMonthLabel = (date: Date) => `${THAI_MONTHS_FULL[date.getMonth()]} ${date.getFullYear() + 543}`;
+const getMonthLabel = (date: Date) => `${THAI_MONTHS_FULL_CORRECT[date.getMonth()]} ${date.getFullYear() + 543}`;
 
 const getStartOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1);
 
@@ -100,10 +104,32 @@ const getDaysLabel = (document: VehicleDocument) => {
   return `เหลืออีก ${days} วัน`;
 };
 
-export default function ExpiryChart({ documents, onSelectDocument }: ExpiryChartProps) {
+export default function ExpiryChart({
+  documents,
+  notes = [],
+  onSelectDocument,
+  onAddDocument,
+  onAddNote,
+  onDeleteNote,
+}: ExpiryChartProps) {
   const [activeDate, setActiveDate] = useState(() => new Date());
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'day' | 'agenda'>('month');
   const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // ปิดเมนู dropdown เมื่อคลิกภายนอก
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // กรองเฉพาะเอกสารที่ใกล้หมดอายุหรือเลยกำหนด (และยังไม่ต่อ)
   const actionableDocs = useMemo(() => {
@@ -131,6 +157,18 @@ export default function ExpiryChart({ documents, onSelectDocument }: ExpiryChart
     return map;
   }, [actionableDocs]);
 
+  // จัดกลุ่มโน้ตเตือนความจำตามวันที่
+  const notesByDayMap = useMemo(() => {
+    const map = new Map<string, CalendarNote[]>();
+    notes.forEach((note) => {
+      const key = note.noteDate;
+      const list = map.get(key) || [];
+      list.push(note);
+      map.set(key, list);
+    });
+    return map;
+  }, [notes]);
+
   // ปรับการคำนวณวันในปฏิทินแบบ 42 วัน
   const calendarDays = useMemo(() => {
     const start = getCalendarStart(activeDate);
@@ -143,14 +181,16 @@ export default function ExpiryChart({ documents, onSelectDocument }: ExpiryChart
         date,
         key,
         docs: isCurrentMonth ? docsByDayMap.get(key) || [] : [],
+        notes: isCurrentMonth ? notesByDayMap.get(key) || [] : [],
         isCurrentMonth,
       };
     });
-  }, [docsByDayMap, activeDate]);
+  }, [docsByDayMap, notesByDayMap, activeDate]);
 
   // ดึงวันที่มีการแจ้งเตือนงานวันแรก หรือ default เป็นวันแรกของเดือน
   const activeDayKey = selectedDayKey || formatDateOnly(activeDate);
   const activeDocs = docsByDayMap.get(activeDayKey) || [];
+  const activeNotes = notesByDayMap.get(activeDayKey) || [];
 
   // สรุปยอดนับรวมในเดือนนั้น ๆ
   const monthDocs = calendarDays.filter((day) => day.isCurrentMonth).flatMap((day) => day.docs);
@@ -172,6 +212,7 @@ export default function ExpiryChart({ documents, onSelectDocument }: ExpiryChart
       } else if (viewMode === 'day') {
         next.setDate(current.getDate() + direction);
       }
+      setSelectedDayKey(formatDateOnly(next));
       return next;
     });
   };
@@ -190,8 +231,8 @@ export default function ExpiryChart({ documents, onSelectDocument }: ExpiryChart
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + 6);
 
-    const startStr = `${startOfWeek.getDate()} ${THAI_MONTHS_FULL[startOfWeek.getMonth()].slice(0, 3)}.`;
-    const endStr = `${endOfWeek.getDate()} ${THAI_MONTHS_FULL[endOfWeek.getMonth()].slice(0, 3)}. ${endOfWeek.getFullYear() + 543}`;
+    const startStr = `${startOfWeek.getDate()} ${THAI_MONTHS_FULL_CORRECT[startOfWeek.getMonth()].slice(0, 3)}.`;
+    const endStr = `${endOfWeek.getDate()} ${THAI_MONTHS_FULL_CORRECT[endOfWeek.getMonth()].slice(0, 3)}. ${endOfWeek.getFullYear() + 543}`;
     return `${startStr} - ${endStr}`;
   }, [activeDate]);
 
@@ -208,14 +249,16 @@ export default function ExpiryChart({ documents, onSelectDocument }: ExpiryChart
         date,
         key,
         docs: docsByDayMap.get(key) || [],
+        notes: notesByDayMap.get(key) || [],
       };
     });
-  }, [docsByDayMap, activeDate]);
+  }, [docsByDayMap, notesByDayMap, activeDate]);
 
   return (
     <section className="lg:col-span-2 bg-white p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col w-full overflow-hidden">
       {/* 1. Header Toolbar */}
-      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 mb-5 pb-4 border-b border-slate-100">
+      <div className="flex flex-col gap-4 mb-6 pb-4 border-b border-slate-100">
+        {/* แถวที่ 1: ชื่อหัวข้อและรายละเอียด */}
         <div>
           <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
             <Calendar className="text-[#1a4d2e]" size={20} />
@@ -224,68 +267,117 @@ export default function ExpiryChart({ documents, onSelectDocument }: ExpiryChart
           <p className="text-sm text-gray-500">แสดงเฉพาะป้ายภาษีและ พ.ร.บ. ที่ต้องต่อ</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          {/* ปุ่มย้อนกลับ/ถัดไป/วันนี้ */}
-          <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-xl border border-slate-200/50">
-            <button
-              type="button"
-              onClick={handleToday}
-              className="h-8 px-3 rounded-lg text-xs font-extrabold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors shadow-xs"
-            >
-              วันนี้
-            </button>
-            <div className="w-[1px] h-4 bg-slate-300 mx-1" />
-            <button
-              type="button"
-              onClick={() => handleNavigate(-1)}
-              className="h-8 w-8 rounded-lg text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-700 transition-colors flex items-center justify-center shadow-xs"
-              aria-label="ย้อนกลับ"
-            >
-              <ChevronLeft size={15} />
-            </button>
-            <button
-              type="button"
-              onClick={() => handleNavigate(1)}
-              className="h-8 w-8 rounded-lg text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-700 transition-colors flex items-center justify-center shadow-xs"
-              aria-label="ถัดไป"
-            >
-              <ChevronRight size={15} />
-            </button>
+        {/* แถวที่ 2: ปุ่มควบคุมทั้งหมดและปุ่มบวกสร้างงานอยู่ระดับเดียวกัน */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          {/* ส่วนซ้าย: ปุ่มนำทาง และปุ่มสลับมุมมอง */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* ส่วนปุ่มนำทางและปุ่มเดือนรวมในกรอบครอบเดียวกัน */}
+            <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-200/50 shadow-xs shrink-0">
+              <button
+                type="button"
+                onClick={handleToday}
+                className="h-8 px-3 rounded-lg text-xs font-extrabold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors shadow-xs"
+              >
+                วันนี้
+              </button>
+              <div className="w-[1px] h-4 bg-slate-200 mx-1 shrink-0" />
+              <button
+                type="button"
+                onClick={() => handleNavigate(-1)}
+                className="h-8 w-8 rounded-lg text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-700 transition-colors flex items-center justify-center shrink-0"
+                aria-label="ย้อนกลับ"
+              >
+                <ChevronLeft size={15} />
+              </button>
+
+              {/* ช่วงวันที่แสดงตรงกลาง */}
+              <span className="text-xs font-extrabold text-slate-700 min-w-[150px] px-2 text-center shrink-0 select-none">
+                {viewMode === 'month' && getMonthLabel(activeDate)}
+                {viewMode === 'week' && weekRangeLabel}
+                {viewMode === 'day' && formatThaiDate(formatDateOnly(activeDate))}
+                {viewMode === 'agenda' && 'กำหนดการทั้งหมด'}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => handleNavigate(1)}
+                className="h-8 w-8 rounded-lg text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-700 transition-colors flex items-center justify-center shrink-0"
+                aria-label="ถัดไป"
+              >
+                <ChevronRight size={15} />
+              </button>
+            </div>
+
+            {/* ปุ่มสลับมุมมอง */}
+            <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200/50 shadow-xs shrink-0">
+              {(['month', 'week', 'day', 'agenda'] as const).map((mode) => {
+                const labelMap = { month: 'เดือน', week: 'สัปดาห์', day: 'วัน', agenda: 'วาระ' };
+                const isSelected = viewMode === mode;
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => {
+                      setViewMode(mode);
+                      if (mode === 'day') {
+                        setSelectedDayKey(formatDateOnly(activeDate));
+                      }
+                    }}
+                    className={`h-8 px-3 rounded-lg text-xs font-bold transition-all ${
+                      isSelected
+                        ? 'bg-white text-[#1a4d2e] shadow-xs font-extrabold border border-slate-200/20'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    {labelMap[mode]}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* ช่วงวันที่แสดง */}
-          <div className="text-sm font-extrabold text-slate-700 min-w-32 text-center">
-            {viewMode === 'month' && getMonthLabel(activeDate)}
-            {viewMode === 'week' && weekRangeLabel}
-            {viewMode === 'day' && formatThaiDate(formatDateOnly(activeDate))}
-            {viewMode === 'agenda' && 'กำหนดการทั้งหมด'}
-          </div>
+          {/* ส่วนขวา: ปุ่มสร้างหลัก (+ สร้าง) สไตล์ Google Calendar */}
+          <div className="relative shrink-0 self-start md:self-auto ml-auto md:ml-0" ref={dropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="inline-flex h-9 px-4 items-center gap-2 rounded-2xl bg-[#3c4043] hover:bg-[#4f5357] text-xs font-extrabold text-white shadow-md transition-all select-none cursor-pointer"
+            >
+              <Plus size={15} className="stroke-[3] text-white" />
+              <span>สร้าง</span>
+              <span className="ml-1 border-t-4 border-t-white border-x-4 border-x-transparent" />
+            </button>
 
-          {/* ปุ่มสลับมุมมอง */}
-          <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200/50">
-            {(['month', 'week', 'day', 'agenda'] as const).map((mode) => {
-              const labelMap = { month: 'เดือน', week: 'สัปดาห์', day: 'วัน', agenda: 'วาระ' };
-              const isSelected = viewMode === mode;
-              return (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => {
-                    setViewMode(mode);
-                    if (mode === 'day') {
-                      setSelectedDayKey(formatDateOnly(activeDate));
-                    }
-                  }}
-                  className={`h-8 px-3 rounded-lg text-xs font-bold transition-all ${
-                    isSelected
-                      ? 'bg-white text-[#1a4d2e] shadow-xs font-extrabold'
-                      : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  {labelMap[mode]}
-                </button>
-              );
-            })}
+            {isDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-48 rounded-xl bg-[#303134] border border-slate-700 shadow-xl z-30 overflow-hidden py-1">
+                {onAddDocument && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      onAddDocument(formatDateOnly(activeDate));
+                    }}
+                    className="w-full text-left px-4 py-2 text-xs font-extrabold text-slate-100 hover:bg-[#3c4043] transition-colors flex items-center gap-2 cursor-pointer"
+                  >
+                    <Plus size={13} className="text-slate-100" />
+                    เพิ่มเอกสารต่ออายุ
+                  </button>
+                )}
+                {onAddNote && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      onAddNote(formatDateOnly(activeDate));
+                    }}
+                    className="w-full text-left px-4 py-2 text-xs font-extrabold text-slate-100 hover:bg-[#3c4043] transition-colors flex items-center gap-2 border-t border-slate-700 cursor-pointer"
+                  >
+                    <Plus size={13} className="text-slate-100" />
+                    เพิ่มโน้ตเตือนความจำ
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -321,8 +413,14 @@ export default function ExpiryChart({ documents, onSelectDocument }: ExpiryChart
                 {calendarDays.map((day) => {
                   const isSelected = day.key === activeDayKey;
                   const hasOverdue = day.docs.some((d) => d.isAcknowledged || getDaysUntilExpiry(d.expiryDate) < 0);
-                  const displayDocs = day.docs.slice(0, 2);
-                  const extraCount = day.docs.length - displayDocs.length;
+                  
+                  // จัดรวมรายการเพื่อนำมาแสดงในช่องปฏิทิน (ไม่เกิน 2 รายการ)
+                  const cellItems: Array<{ type: 'doc'; data: VehicleDocument } | { type: 'note'; data: CalendarNote }> = [];
+                  day.docs.forEach((doc) => cellItems.push({ type: 'doc', data: doc }));
+                  day.notes.forEach((note) => cellItems.push({ type: 'note', data: note }));
+
+                  const displayItems = cellItems.slice(0, 2);
+                  const extraCount = cellItems.length - displayItems.length;
 
                   return (
                     <div
@@ -333,7 +431,7 @@ export default function ExpiryChart({ documents, onSelectDocument }: ExpiryChart
                           setActiveDate(day.date);
                         }
                       }}
-                      className={`min-h-16 rounded-xl border p-1 flex flex-col justify-between cursor-pointer transition-all ${
+                      className={`min-h-16 rounded-xl border p-1.5 flex flex-col justify-between cursor-pointer transition-all ${
                         isSelected
                           ? 'border-[#1a4d2e] bg-[#e8f0eb]/60 shadow-xs ring-1 ring-[#1a4d2e]/30'
                           : day.isCurrentMonth
@@ -345,28 +443,47 @@ export default function ExpiryChart({ documents, onSelectDocument }: ExpiryChart
                         <span className={`text-[10px] font-extrabold ${day.isCurrentMonth ? 'text-slate-700' : 'text-slate-300'}`}>
                           {day.date.getDate()}
                         </span>
-                        {day.docs.length > 0 && (
-                          <span className={`h-1.5 w-1.5 rounded-full ${hasOverdue ? 'bg-red-500' : 'bg-orange-500'}`} />
-                        )}
+                        <div className="flex gap-0.5">
+                          {day.docs.length > 0 && (
+                            <span className={`h-1.5 w-1.5 rounded-full ${hasOverdue ? 'bg-red-500' : 'bg-orange-500'}`} />
+                          )}
+                          {day.notes.length > 0 && (
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                          )}
+                        </div>
                       </div>
 
-                      {/* รายการป้ายการหมดอายุสั้น ๆ (Strips) */}
+                      {/* รายการป้ายการหมดอายุสั้น ๆ หรือ โน้ตย่อ (Strips) */}
                       <div className="mt-1 space-y-0.5 flex-1 flex flex-col justify-end">
-                        {day.isCurrentMonth && displayDocs.map((doc) => {
-                          const tone = getRenewalTone(doc);
-                          const plate = getCleanLicensePlate(doc.licensePlate) || doc.chassis.slice(-4);
-                          return (
-                            <button
-                              key={getDocumentRecordKey(doc)}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onSelectDocument(doc);
-                              }}
-                              className={`w-full block text-left px-1 py-0.5 rounded-sm border text-[8px] font-bold truncate leading-tight transition-all ${tone.tagClassName}`}
-                            >
-                              {getDocTypeName(doc.docType)} · {plate}
-                            </button>
-                          );
+                        {day.isCurrentMonth && displayItems.map((item) => {
+                          if (item.type === 'doc') {
+                            const doc = item.data;
+                            const tone = getRenewalTone(doc);
+                            const plate = getCleanLicensePlate(doc.licensePlate) || doc.chassis.slice(-4);
+                            return (
+                              <button
+                                key={getDocumentRecordKey(doc)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onSelectDocument(doc);
+                                }}
+                                className={`w-full block text-left px-1 py-0.5 rounded-sm border text-[8px] font-bold truncate leading-tight transition-all ${tone.tagClassName}`}
+                              >
+                                {getDocTypeName(doc.docType)} · {plate}
+                              </button>
+                            );
+                          } else {
+                            const note = item.data;
+                            return (
+                              <div
+                                key={note.id}
+                                className="w-full block text-left px-1 py-0.5 rounded-sm border border-amber-200 bg-amber-50 text-amber-800 text-[8px] font-bold truncate leading-tight select-none"
+                                title={note.content}
+                              >
+                                📝 {note.content}
+                              </div>
+                            );
+                          }
                         })}
                         {day.isCurrentMonth && extraCount > 0 && (
                           <div
@@ -402,40 +519,103 @@ export default function ExpiryChart({ documents, onSelectDocument }: ExpiryChart
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-                {activeDocs.length > 0 ? (
-                  activeDocs.map((doc) => {
-                    const tone = getRenewalTone(doc);
-                    return (
+              {/* ปุ่มบวกเพิ่มงาน & เพิ่มโน้ต ด้านข้าง */}
+              <div className="grid grid-cols-2 gap-2 mb-3 shrink-0">
+                {onAddDocument && (
+                  <button
+                    type="button"
+                    onClick={() => onAddDocument(activeDayKey)}
+                    className="inline-flex h-9 items-center justify-center gap-1 rounded-xl border border-dashed border-[#1a4d2e]/30 bg-[#e8f0eb]/30 hover:bg-[#e8f0eb]/60 text-[10px] font-extrabold text-[#1a4d2e] transition-all cursor-pointer"
+                  >
+                    <Plus size={12} className="stroke-[3]" />
+                    เพิ่มเอกสาร
+                  </button>
+                )}
+                {onAddNote && (
+                  <button
+                    type="button"
+                    onClick={() => onAddNote(activeDayKey)}
+                    className="inline-flex h-9 items-center justify-center gap-1 rounded-xl border border-dashed border-amber-500/30 bg-amber-50/30 hover:bg-amber-100/60 text-[10px] font-extrabold text-amber-800 transition-all cursor-pointer"
+                  >
+                    <Plus size={12} className="stroke-[3]" />
+                    เพิ่มโน้ต
+                  </button>
+                )}
+              </div>
+
+              <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
+                {/* ส่วนแสดงโน้ตเตือนความจำ */}
+                {activeNotes.length > 0 && (
+                  <div className="space-y-1.5 shrink-0">
+                    <p className="text-[10px] font-bold text-amber-600 flex items-center gap-1">
+                      <span>📝 โน้ตเตือนความจำ</span>
+                      <span className="h-1 w-1 rounded-full bg-amber-500" />
+                    </p>
+                    {activeNotes.map((note) => (
                       <div
-                        key={getDocumentRecordKey(doc)}
-                        onClick={() => onSelectDocument(doc)}
-                        className="bg-white rounded-xl border border-slate-200/50 p-3 shadow-xs hover:border-[#1a4d2e]/30 hover:bg-[#e8f0eb]/20 transition-all cursor-pointer"
+                        key={note.id}
+                        className="bg-amber-50/50 rounded-xl border border-amber-200/60 p-3 shadow-xs hover:bg-amber-50 transition-all flex items-start justify-between gap-3 group"
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="text-xs font-extrabold text-slate-800 truncate">
-                            {doc.licensePlate || doc.chassis}
-                          </p>
-                          <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[8px] font-extrabold ${tone.className}`}>
-                            {tone.label}
-                          </span>
-                        </div>
-                        <p className="text-[10px] font-semibold text-slate-500 mt-0.5">
-                          {getDocTypeName(doc.docType)} · {doc.project || 'ไม่ระบุโครงการ'}
+                        <p className="text-xs font-bold text-amber-900 whitespace-pre-wrap leading-relaxed flex-1">
+                          {note.content}
                         </p>
-                        <div className="mt-2 flex items-center justify-between text-[9px] font-bold text-slate-500">
-                          <span className="flex items-center gap-1"><Clock size={11} /> {getDaysLabel(doc)}</span>
-                          <span>{formatThaiDate(doc.expiryDate)}</span>
-                        </div>
+                        {onDeleteNote && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteNote(note.id);
+                            }}
+                            className="text-slate-400 hover:text-red-500 p-1 rounded-lg hover:bg-red-50 transition-colors shrink-0 md:opacity-0 group-hover:opacity-100"
+                            title="ลบโน้ต"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
                       </div>
-                    );
-                  })
-                ) : (
-                  <div className="h-full flex flex-col items-center justify-center p-6 text-slate-400 border border-dashed border-slate-200 rounded-xl bg-white/50">
-                    <FileText size={24} className="text-slate-300 mb-1" />
-                    <p className="text-xs font-bold">ไม่มีรายการในวันนี้</p>
+                    ))}
                   </div>
                 )}
+
+                {/* ส่วนแสดงเอกสารต่ออายุ */}
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold text-slate-400">📋 เอกสารต่ออายุ</p>
+                  {activeDocs.length > 0 ? (
+                    activeDocs.map((doc) => {
+                      const tone = getRenewalTone(doc);
+                      return (
+                        <div
+                          key={getDocumentRecordKey(doc)}
+                          onClick={() => onSelectDocument(doc)}
+                          className="bg-white rounded-xl border border-slate-200/50 p-3 shadow-xs hover:border-[#1a4d2e]/30 hover:bg-[#e8f0eb]/20 transition-all cursor-pointer"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-xs font-extrabold text-slate-800 truncate">
+                              {doc.licensePlate || doc.chassis}
+                            </p>
+                            <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[8px] font-extrabold ${tone.className}`}>
+                              {tone.label}
+                            </span>
+                          </div>
+                          <p className="text-[10px] font-semibold text-slate-500 mt-0.5">
+                            {getDocTypeName(doc.docType)} · {doc.project || 'ไม่ระบุโครงการ'}
+                          </p>
+                          <div className="mt-2 flex items-center justify-between text-[9px] font-bold text-slate-500">
+                            <span className="flex items-center gap-1"><Clock size={11} /> {getDaysLabel(doc)}</span>
+                            <span>{formatThaiDate(doc.expiryDate)}</span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : activeNotes.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center p-6 text-slate-400 border border-dashed border-slate-200 rounded-xl bg-white/50">
+                      <FileText size={24} className="text-slate-300 mb-1" />
+                      <p className="text-xs font-bold">ไม่มีรายการในวันนี้</p>
+                    </div>
+                  ) : (
+                    <p className="text-[10px] font-bold text-slate-400 text-center py-4">ไม่มีเอกสารต่ออายุในวันนี้</p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -446,7 +626,6 @@ export default function ExpiryChart({ documents, onSelectDocument }: ExpiryChart
           <div className="grid grid-cols-7 gap-2 h-full overflow-x-auto min-w-[700px] xl:min-w-0">
             {weekDays.map((day) => {
               const isToday = formatDateOnly(new Date()) === day.key;
-              const hasOverdue = day.docs.some((d) => d.isAcknowledged || getDaysUntilExpiry(d.expiryDate) < 0);
               return (
                 <div
                   key={day.key}
@@ -456,16 +635,57 @@ export default function ExpiryChart({ documents, onSelectDocument }: ExpiryChart
                       : 'border-slate-100 bg-slate-50/20'
                   }`}
                 >
-                  <div className="text-center pb-2 border-b border-slate-200/50 shrink-0">
+                  <div className="text-center pb-2 border-b border-slate-200/50 shrink-0 relative group flex flex-col items-center">
                     <p className={`text-[10px] font-bold ${isToday ? 'text-[#1a4d2e]' : 'text-slate-400'}`}>
                       {WEEKDAY_LABELS[(day.date.getDay() + 6) % 7]}
                     </p>
                     <p className={`text-base font-extrabold ${isToday ? 'text-[#1a4d2e]' : 'text-slate-700'}`}>
                       {day.date.getDate()}
                     </p>
+                    
+                    {/* ปุ่มบวกสำหรับ Week View แบบบล็อกประโปร่งใสเห็นชัดเจน */}
+                    {onAddDocument && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onAddDocument(day.key);
+                        }}
+                        className="mt-1 h-6 w-full rounded-md border border-dashed border-slate-200 hover:border-[#1a4d2e]/30 hover:bg-[#e8f0eb]/30 text-slate-500 hover:text-[#1a4d2e] flex items-center justify-center transition-all"
+                        title="เพิ่มงานในวันนี้"
+                      >
+                        <Plus size={11} className="stroke-[3]" />
+                      </button>
+                    )}
                   </div>
 
                   <div className="flex-1 overflow-y-auto space-y-1.5 max-h-[300px]">
+                    {/* แสดงโน้ตประจำวันในมุมมองสัปดาห์ */}
+                    {day.notes.map((note) => (
+                      <div
+                        key={note.id}
+                        className="bg-amber-50/60 p-2 rounded-xl border border-amber-200/50 shadow-xs hover:bg-amber-100/60 transition-all flex items-start justify-between gap-1 group"
+                      >
+                        <p className="text-[9px] font-bold text-amber-900 whitespace-pre-wrap leading-tight flex-1">
+                          📝 {note.content}
+                        </p>
+                        {onDeleteNote && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteNote(note.id);
+                            }}
+                            className="text-slate-400 hover:text-red-500 rounded transition-colors shrink-0 md:opacity-0 group-hover:opacity-100 cursor-pointer"
+                            title="ลบโน้ต"
+                          >
+                            <Trash2 size={10} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* แสดงเอกสารประจำวันในมุมมองสัปดาห์ */}
                     {day.docs.length > 0 ? (
                       day.docs.map((doc) => {
                         const tone = getRenewalTone(doc);
@@ -491,11 +711,11 @@ export default function ExpiryChart({ documents, onSelectDocument }: ExpiryChart
                           </div>
                         );
                       })
-                    ) : (
+                    ) : day.notes.length === 0 ? (
                       <div className="h-full flex items-center justify-center p-2 text-center text-[9px] font-bold text-slate-300">
                         ไม่มีงาน
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               );
@@ -506,57 +726,114 @@ export default function ExpiryChart({ documents, onSelectDocument }: ExpiryChart
         {/* DAY VIEW */}
         {viewMode === 'day' && (
           <div className="border border-slate-100 rounded-2xl p-5 bg-slate-50/20 max-w-2xl mx-auto h-full flex flex-col justify-between min-h-[350px]">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-3 mb-4 gap-3">
               <div>
                 <p className="text-[10px] font-bold text-slate-400">กำหนดงานรายวัน</p>
                 <h4 className="text-lg font-extrabold text-slate-800">{formatThaiDate(activeDayKey)}</h4>
               </div>
-              <span className="text-xs font-extrabold text-slate-500 bg-white border border-slate-200/60 px-3 py-1 rounded-lg">
-                พบทั้งหมด {activeDocs.length} รายการ
-              </span>
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                {onAddDocument && (
+                  <button
+                    type="button"
+                    onClick={() => onAddDocument(activeDayKey)}
+                    className="inline-flex h-8 px-2.5 items-center gap-1 rounded-lg border border-[#1a4d2e]/20 bg-white text-[11px] font-extrabold text-[#1a4d2e] shadow-xs hover:bg-[#e8f0eb]/30 transition-all cursor-pointer"
+                  >
+                    <Plus size={12} className="stroke-[3]" />
+                    เพิ่มเอกสาร
+                  </button>
+                )}
+                {onAddNote && (
+                  <button
+                    type="button"
+                    onClick={() => onAddNote(activeDayKey)}
+                    className="inline-flex h-8 px-2.5 items-center gap-1 rounded-lg border border-amber-500/20 bg-white text-[11px] font-extrabold text-amber-800 shadow-xs hover:bg-amber-50 transition-all cursor-pointer"
+                  >
+                    <Plus size={12} className="stroke-[3]" />
+                    เพิ่มโน้ต
+                  </button>
+                )}
+                <span className="text-[11px] font-extrabold text-slate-500 bg-white border border-slate-200/60 px-3 py-1.5 rounded-lg">
+                  พบทั้งหมด {activeDocs.length + activeNotes.length} รายการ
+                </span>
+              </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-2 max-h-[260px] pr-1 custom-scrollbar">
-              {activeDocs.length > 0 ? (
-                activeDocs.map((doc) => {
-                  const tone = getRenewalTone(doc);
-                  return (
-                    <div
-                      key={getDocumentRecordKey(doc)}
-                      onClick={() => onSelectDocument(doc)}
-                      className="bg-white rounded-xl border border-slate-200/60 p-4 shadow-xs hover:border-[#1a4d2e]/30 hover:bg-[#e8f0eb]/20 transition-all flex items-center justify-between gap-4 cursor-pointer"
-                    >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h5 className="font-extrabold text-sm text-slate-800">{doc.licensePlate || doc.chassis}</h5>
-                          <span className={`px-2 py-0.5 rounded-full border text-[9px] font-extrabold ${tone.className}`}>
-                            {tone.label}
-                          </span>
-                        </div>
-                        <p className="text-xs font-semibold text-slate-500 mt-1">
-                          {getDocTypeName(doc.docType)} · โครงการ: {doc.project || 'ไม่ระบุ'}
+            <div className="flex-1 overflow-y-auto space-y-3 max-h-[260px] pr-1 custom-scrollbar">
+              {/* ส่วนแสดงโน้ตเตือนความจำในมุมมองรายวัน */}
+              {activeNotes.length > 0 && (
+                <div className="space-y-2 bg-amber-50/30 border border-amber-200/45 p-3 rounded-xl shrink-0">
+                  <p className="text-[10px] font-bold text-amber-700 flex items-center gap-1">
+                    <span>📝 โน้ตเตือนความจำประจำวัน</span>
+                  </p>
+                  <div className="space-y-1.5">
+                    {activeNotes.map((note) => (
+                      <div
+                        key={note.id}
+                        className="bg-white rounded-xl border border-amber-200/50 p-3 shadow-xs flex items-center justify-between gap-4 group"
+                      >
+                        <p className="text-xs font-bold text-amber-900 whitespace-pre-wrap leading-relaxed flex-1">
+                          {note.content}
                         </p>
+                        {onDeleteNote && (
+                          <button
+                            type="button"
+                            onClick={() => onDeleteNote(note.id)}
+                            className="text-slate-400 hover:text-red-500 p-1 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                            title="ลบโน้ต"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
                       </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-xs font-extrabold text-[#1a4d2e]">{getDaysLabel(doc)}</p>
-                        <p className="text-[10px] text-slate-400 font-bold mt-1">หมดอายุ {formatThaiDate(doc.expiryDate)}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ส่วนแสดงเอกสารในมุมมองรายวัน */}
+              {activeDocs.length > 0 ? (
+                <div className="space-y-2">
+                  {activeNotes.length > 0 && <p className="text-[10px] font-bold text-slate-400">📋 เอกสารต่ออายุ</p>}
+                  {activeDocs.map((doc) => {
+                    const tone = getRenewalTone(doc);
+                    return (
+                      <div
+                        key={getDocumentRecordKey(doc)}
+                        onClick={() => onSelectDocument(doc)}
+                        className="bg-white rounded-xl border border-slate-200/60 p-4 shadow-xs hover:border-[#1a4d2e]/30 hover:bg-[#e8f0eb]/20 transition-all flex items-center justify-between gap-4 cursor-pointer"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h5 className="font-extrabold text-sm text-slate-800">{doc.licensePlate || doc.chassis}</h5>
+                            <span className={`px-2 py-0.5 rounded-full border text-[9px] font-extrabold ${tone.className}`}>
+                              {tone.label}
+                            </span>
+                          </div>
+                          <p className="text-xs font-semibold text-slate-500 mt-1">
+                            {getDocTypeName(doc.docType)} · โครงการ: {doc.project || 'ไม่ระบุ'}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-xs font-extrabold text-[#1a4d2e]">{getDaysLabel(doc)}</p>
+                          <p className="text-[10px] text-slate-400 font-bold mt-1">หมดอายุ {formatThaiDate(doc.expiryDate)}</p>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })
-              ) : (
+                    );
+                  })}
+                </div>
+              ) : activeNotes.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center p-8 text-center text-slate-400 bg-white border border-slate-200 border-dashed rounded-2xl">
                   <FileText size={32} className="text-slate-200 mb-2" />
                   <p className="text-sm font-bold">ไม่มีการแจ้งเตือนงานในวันนี้</p>
                   <button
                     type="button"
                     onClick={handleToday}
-                    className="mt-2 text-xs font-extrabold text-[#1a4d2e] hover:underline"
+                    className="mt-2 text-xs font-extrabold text-[#1a4d2e] hover:underline cursor-pointer"
                   >
                     กลับไปดูวันนี้
                   </button>
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
         )}

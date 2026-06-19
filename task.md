@@ -90,6 +90,8 @@
     - `[x]` Add Week View with 7 columns showing detailed daily expiry lists.
     - `[x]` Add Day View for focused date details.
     - `[x]` Add Agenda View for chronological upcoming expiry listings.
+    - `[x]` Redesign calendar toolbar and buttons: place title/description on Row 1, and align the navigation capsule, view switcher capsule, and primary Add button horizontally on the same level in Row 2.
+    - `[x]` Fix date navigation sync bug: update `selectedDayKey` to match `activeDate` when clicking Today and Prev/Next buttons, ensuring correct daily schedule data updates in Day view.
 - `[x]` Reset development data with realistic fleet documents and attachment previews
   - `[x]` Replace the old one-document-per-vehicle mock set with 24 documents across 8 realistic fleet vehicles and projects.
   - `[x]` Make the database reset script clear old document/history rows before seeding the new mock set on Neon `dev`.
@@ -97,7 +99,12 @@
   - `[x]` Add a document preview action inside the detail modal and a clear no-document state for rows without an attachment.
   - `[x]` Implement direct document download from table rows and preview header, downloading the actual mock image document named dynamically and stripping province names (e.g. `ภาษี_72-4581.jpg`).
   - `[x]` Keep original expired/warning status colors and day countdowns for acknowledged documents, displaying a separate gray `รับทราบแล้ว` tag instead of forcing a blue status.
-- `[ ]` Support custom document additions (Add Document Form)
+- `[x]` Support custom document additions (Add Document Form)
+  - `[x]` Add a manual creation modal (`AddDocumentModal.tsx`) with validation for required fields (chassis number and document type).
+  - `[x]` Integrate creation triggers inside calendar date cells (Google Calendar-style "+") and daily headers.
+  - `[x]` Pre-fill modal expiry dates automatically based on clicked calendar date cells.
+  - `[x]` Save manual documents back to Neon using a secure database transaction, recording history under `created` with `source: 'manual_creation'`.
+  - `[x]` Optimistically prepend new items onto the dashboard document state array so they display on the calendar immediately.
 - `[ ]` Implement real backend API / localstorage integration for persistence
   - `[x]` Add Neon-backed `GET /api/vehicle-documents` endpoint for reading `vehicle_documents`.
   - `[x]` Load dashboard document state from the Neon API instead of booting directly from mock data.
@@ -114,8 +121,15 @@
   - `[x]` Keep the full audit log in Neon while removing lower-value operational events from the V1 history UI.
   - `[x]` Remove the per-document history button so V1 has one clear renewal-history surface.
   - `[x]` Wrap database writes in SQL transactions to ensure consistency between document state and history audit logs.
+- `[x]` Google Calendar-style "+ สร้าง" dropdown and calendar notes taking features (อัปเดตปุ่มสร้างและบันทึกโน้ตเตือนความจำ)
+  - `[x]` Design custom dropdown button and popup matching Google Calendar dark style.
+  - `[x]` Integrate new database table `calendar_notes` in Drizzle ORM and Neon.
+  - `[x]` Build API routes `GET/POST /api/calendar-notes` and `DELETE /api/calendar-notes/[id]`.
+  - `[x]` Render note elements (yellow strip/📝 icon) in Month view, Week view, Day view, and sidebar.
+  - `[x]` Add AddNoteModal component and optimistic updates on notes state.
 - `[ ]` Add more chart visualizations (e.g. status breakdown pie chart)
 - `[ ]` **Git & Documentation Rules (กฎระเบียบการพัฒนา)**
   - `[ ]` Check out and work exclusively in the `dev` branch first (never commit to `main` directly).
   - `[ ]` Document completed tasks in both `task.md` and `walkthrough.md` after work is done.
   - `[ ]` Read both `task.md` and `walkthrough.md` before starting any new task.
+

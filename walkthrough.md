@@ -453,5 +453,58 @@ We reviewed and fixed the issues found after the Antigravity update.
   - **Day View**: Shows a detailed daily timeline for the selected date.
   - **Agenda View**: Chronologically lists all upcoming or overdue active expirations in a single scrollable panel.
 
+### 34. Calendar Task Creation Modal ("Add Task" Interaction) (Latest Update)
+- **Goal**: Implement a manual document creation modal integrated directly into the Google Calendar UI, pre-filling dates automatically on click.
+- **API Extension ([app/api/vehicle-documents/route.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/api/vehicle-documents/route.ts) & [utils/vehicleDocumentApi.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/vehicleDocumentApi.ts))**:
+  - Extended the document POST endpoint payload to accept and map a `source` parameter.
+  - Updated the API client helpers to forward custom options like `source` (set to `'manual_creation'`).
+- **Add Document Modal ([components/dashboard/AddDocumentModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/dashboard/AddDocumentModal.tsx))**:
+  - Created a form modal featuring input fields for chassis number (required), license plate, project, document type, dates (issued/expiry), note, driver, and a mock attachment checkbox.
+  - Implemented client-side validation and database save actions with loading states.
+- **Calendar Triggers ([components/dashboard/ExpiryChart.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/dashboard/ExpiryChart.tsx) & [app/page.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/page.tsx))**:
+  - Placed a small "+" icon button inside Month view day cells (visible on hover) and Week/Day header cells.
+  - Wired clicking the "+" button to trigger the manual creation flow, automatically pre-filling the selected date's calendar key.
+  - Mounted the modal on the main dashboard to optimistically append newly created items to the global state.
+
+### 35. Calendar Toolbar UI Redesign (Latest Update)
+- **Goal**: Clean up the calendar's toolbar buttons and layout. Align the controls on a single horizontal row below the title block on desktop screens, resolving layout wrapping and alignment bugs.
+- **Header Layout structure ([components/dashboard/ExpiryChart.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/dashboard/ExpiryChart.tsx))**:
+  - Organized the card header into a clean two-row structured layout:
+    - **Row 1 (Title Row)**: Shows only the Title block (Title and Subtitle), keeping the top-left area clean and minimal.
+    - **Row 2 (Controls Row)**: Places all action controls horizontally on the same level using a full-width justify-between flex row:
+      - **Left Side**: Groups the **Navigation Capsule** (`[ วันนี้ | < | มิถุนายน 2569 | > ]`) and the **View Switcher Capsule** (`[ เดือน | สัปดาห์ | วัน | วาระ ]`) side-by-side.
+      - **Right Side**: Aligns the primary **"+ เพิ่มงานต่ออายุ"** action button (green, right-aligned) exactly on the same level as the navigation and view switcher capsules.
+  - Implemented responsive wrappers (`flex flex-col md:flex-row md:items-center md:justify-between`) to ensure elegant stacking on smaller screens.
+- **Date Navigation Bugfix ([components/dashboard/ExpiryChart.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/dashboard/ExpiryChart.tsx))**:
+  - **Issue**: Navigating the calendar using Prev/Next buttons updated `activeDate` but failed to update `selectedDayKey`. This caused the Day view details section below to remain locked to the previously clicked day (e.g. showing December 17 while header navigated to December 20).
+  - **Solution**: Updated `handleNavigate` to call `setSelectedDayKey(formatDateOnly(next))` on each step, ensuring the selected date state and display timeline are fully synchronized.
+- **Cohesive Visual Aesthetics**:
+  - Structured both navigation and view controls within matching gray capsule containers (`bg-slate-50 border border-slate-200/50 p-1 rounded-xl shadow-xs`).
+  - Standardized the height of all internal buttons to `h-8` with rounded-lg edges (`rounded-lg`), creating a clean, consistent rhythm.
+  - Styled the active view mode option with a white background (`bg-white`), a subtle shadow, and brand text color (`text-[#1a4d2e]`), matching the styling of the Today button and the rest of the dashboard card elements.
+
+### 36. Google Calendar "+ สร้าง" Dropdown and Notes Feature (Latest Update)
+- **Goal**: Change the primary "+ เพิ่มงานต่ออายุ" button to a Google Calendar-style "+ สร้าง" (+ Create) dropdown button with two actions: "เพิ่มเอกสารต่ออายุ" (original document creation) and "เพิ่มโน้ตเตือนความจำ" (new text notes taking for selected date).
+- **Database Schema ([db/schema.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/db/schema.ts) & [db/calendarNotes.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/db/calendarNotes.ts))**:
+  - Integrated `calendar_notes` table containing `id`, `noteDate`, `content`, `createdAt`, `updatedAt`.
+  - Pushed the schema updates directly to the Neon PostgreSQL database.
+- **Client/Server API ([app/api/calendar-notes/route.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/api/calendar-notes/route.ts), [app/api/calendar-notes/[id]/route.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/api/calendar-notes/%5Bid%5D/route.ts) & [utils/calendarNotesApi.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/calendarNotesApi.ts))**:
+  - Created endpoints supporting note listing (`GET`), creation (`POST`), and deletion (`DELETE`).
+  - Standardized types (`CalendarNote`) and developed client-side API hooks.
+- **Dropdown & Note Modal ([components/dashboard/ExpiryChart.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/dashboard/ExpiryChart.tsx) & [components/dashboard/AddNoteModal.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/components/dashboard/AddNoteModal.tsx))**:
+  - Custom styled the "+ สร้าง" button with dark background, chevron dropdown indicator, and hover highlight states.
+  - Created a clean popup menu that closes when clicking outside.
+  - Built `AddNoteModal` to capture note details on custom dates.
+- **Notes Rendering inside Calendar**:
+  - Combined documents and notes into calendar date cell items.
+  - Styled note badges inside month cells using an elegant yellow/cream theme with a `📝` icon.
+  - Structured the calendar's sidebar list to display notes separately inside a dedicated highlighted box at the top, complete with word-wrapping and a trash icon `🗑️` to delete them on demand.
+  - Upgraded day/week controls to display side-by-side action buttons for quick additions.
+- **Main Dashboard integration ([app/page.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/page.tsx))**:
+  - Bound states and events to reload notes on mount and perform optimistic deletions.
+
+
+
+
 
 

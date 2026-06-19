@@ -60,3 +60,12 @@ export interface ExpiryMonthGroup {
   name: string;
   docs: VehicleDocument[];
 }
+
+export interface CalendarNote {
+  id: string;
+  noteDate: string; // YYYY-MM-DD
+  content: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+

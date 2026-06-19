@@ -54,7 +54,20 @@ export const vehicleDocumentHistory = pgTable('vehicle_document_history', {
   eventAt: timestamp('event_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+
 export type VehicleDocumentRow = typeof vehicleDocuments.$inferSelect;
 export type NewVehicleDocumentRow = typeof vehicleDocuments.$inferInsert;
 export type VehicleDocumentHistoryRow = typeof vehicleDocumentHistory.$inferSelect;
 export type NewVehicleDocumentHistoryRow = typeof vehicleDocumentHistory.$inferInsert;
+
+export const calendarNotes = pgTable('calendar_notes', {
+  id: varchar('id', { length: 128 }).primaryKey(),
+  noteDate: date('note_date').notNull(),
+  content: text('content').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type CalendarNoteRow = typeof calendarNotes.$inferSelect;
+export type NewCalendarNoteRow = typeof calendarNotes.$inferInsert;
+

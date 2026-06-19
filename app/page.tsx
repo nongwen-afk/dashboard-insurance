@@ -10,9 +10,12 @@ import ExpiryChart from '@/components/dashboard/ExpiryChart';
 import StatCard from '@/components/dashboard/StatCard';
 import UrgentAlerts from '@/components/dashboard/UrgentAlerts';
 import PolicyTable from '../components/PolicyTable';
-import type { DocumentAlert, FilterStatus, VehicleDocument } from '@/types';
+import AddDocumentModal from '@/components/dashboard/AddDocumentModal';
+import AddNoteModal from '@/components/dashboard/AddNoteModal';
+import type { DocumentAlert, FilterStatus, VehicleDocument, CalendarNote } from '@/types';
 import { formatThaiDate, getDaysUntilExpiry, getDocTypeName, getRenewedDocumentDates, getSixMonthExpiryKey, isSameDocumentRecord, parseDocumentDate } from '@/utils/documentUtils';
 import { deleteVehicleDocumentRecord, recordVehicleDocumentHistoryEvent, updateVehicleDocumentRecord } from '@/utils/vehicleDocumentApi';
+import { listCalendarNotesRecord, deleteCalendarNoteRecord } from '@/utils/calendarNotesApi';
 
 export default function DashboardPage() {
   // documents เป็น state หลักของทั้งหน้า: card, chart, alert และ table อ่านจากชุดเดียวกัน
@@ -21,10 +24,48 @@ export default function DashboardPage() {
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
   const [isRenewalHistoryOpen, setIsRenewalHistoryOpen] = useState(false);
   const [selectedDocForDetail, setSelectedDocForDetail] = useState<VehicleDocument | null>(null);
+  const [isAddDocumentOpen, setIsAddDocumentOpen] = useState(false);
+  const [selectedDateForAdd, setSelectedDateForAdd] = useState<string | undefined>(undefined);
+
+  // States สำหรับโน้ตปฏิทิน
+  const [notes, setNotes] = useState<CalendarNote[]>([]);
+  const [isAddNoteOpen, setIsAddNoteOpen] = useState(false);
+
+  const handleAddDocumentTrigger = (dateStr: string) => {
+    setSelectedDateForAdd(dateStr);
+    setIsAddDocumentOpen(true);
+  };
+
+  const handleAddDocumentSuccess = (newDoc: VehicleDocument) => {
+    setDocuments(prev => [newDoc, ...prev]);
+  };
+
+  const handleAddNoteTrigger = (dateStr: string) => {
+    setSelectedDateForAdd(dateStr);
+    setIsAddNoteOpen(true);
+  };
+
+  const handleAddNoteSuccess = (newNote: CalendarNote) => {
+    setNotes(prev => [newNote, ...prev]);
+  };
+
+  const handleDeleteNote = async (id: string) => {
+    const previousNotes = notes;
+    setNotes(prev => prev.filter(n => n.id !== id));
+
+    try {
+      await deleteCalendarNoteRecord(id);
+      toast.success('ลบโน้ตเตือนความจำสำเร็จ', { icon: '🗑️' });
+    } catch {
+      setNotes(previousNotes);
+      toast.error('ลบโน้ตเตือนความจำไม่สำเร็จ');
+    }
+  };
 
   // สถานะตัวกรองจาก stat card ที่ส่งไปควบคุม PolicyTable
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('ALL');
   const tableRef = useRef<HTMLDivElement>(null);
+
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -54,6 +95,26 @@ export default function DashboardPage() {
     }
 
     void loadDocuments();
+
+    return () => {
+      abortController.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    const abortController = new AbortController();
+
+    async function loadNotes() {
+      try {
+        const loadedNotes = await listCalendarNotesRecord(abortController.signal);
+        setNotes(loadedNotes);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        toast.error('โหลดข้อมูลโน้ตปฏิทินไม่สำเร็จ');
+      }
+    }
+
+    void loadNotes();
 
     return () => {
       abortController.abort();
@@ -333,7 +394,11 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <ExpiryChart
           documents={documents}
+          notes={notes}
           onSelectDocument={setSelectedDocForDetail}
+          onAddDocument={handleAddDocumentTrigger}
+          onAddNote={handleAddNoteTrigger}
+          onDeleteNote={handleDeleteNote}
         />
         <UrgentAlerts
           alerts={topUrgentDocs}
@@ -375,6 +440,20 @@ export default function DashboardPage() {
         onClose={() => setSelectedDocForDetail(null)}
         onAcknowledge={handleAcknowledgeDocument}
         onSync={handleSingleSync}
+      />
+
+      <AddDocumentModal
+        isOpen={isAddDocumentOpen}
+        onClose={() => setIsAddDocumentOpen(false)}
+        onSuccess={handleAddDocumentSuccess}
+        defaultExpiryDate={selectedDateForAdd}
+      />
+
+      <AddNoteModal
+        isOpen={isAddNoteOpen}
+        onClose={() => setIsAddNoteOpen(false)}
+        onSuccess={handleAddNoteSuccess}
+        defaultNoteDate={selectedDateForAdd}
       />
 
     </div>
