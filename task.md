@@ -127,9 +127,20 @@
   - `[x]` Build API routes `GET/POST /api/calendar-notes` and `DELETE /api/calendar-notes/[id]`.
   - `[x]` Render note elements (yellow strip/📝 icon) in Month view, Week view, Day view, and sidebar.
   - `[x]` Add AddNoteModal component and optimistic updates on notes state.
+- `[x]` CI/CD, migration, and environment safeguards
+  - `[x]` Generate and commit Drizzle migration `0002_blue_lilandra.sql` for the existing `calendar_notes` schema.
+  - `[x]` Baseline the Neon `dev` database migration history by creating `drizzle.__drizzle_migrations` and recording migrations `0000`, `0001`, and `0002`.
+  - `[x]` Verify `pnpm db:migrate` succeeds after baseline without trying to recreate existing tables.
+  - `[x]` Update `.env.example` and README with prod/non-prod database separation rules.
+  - `[x]` Document the migration workflow: edit `db/schema.ts`, run `pnpm db:generate`, review SQL, then run `pnpm db:migrate`.
+  - `[x]` Add Vitest with `pnpm test` and initial utility/import test coverage.
+  - `[x]` Fix lint blockers that would prevent CI from passing.
+  - `[x]` Add GitHub Actions workflow `.github/workflows/ci.yml` for migration drift check, lint, tests, and build.
+  - `[x]` Add `docs/deployment.md` describing branch/environment mapping, production migration checklist, and branch protection recommendations.
+  - `[x]` Push the CI/CD work to `origin/dev` and verify PR checks show `CI / Lint, Test, Build` passing.
+  - `[x]` Confirm Vercel preview deployment status passes on the PR.
 - `[ ]` Add more chart visualizations (e.g. status breakdown pie chart)
 - `[ ]` **Git & Documentation Rules (กฎระเบียบการพัฒนา)**
   - `[ ]` Check out and work exclusively in the `dev` branch first (never commit to `main` directly).
   - `[ ]` Document completed tasks in both `task.md` and `walkthrough.md` after work is done.
   - `[ ]` Read both `task.md` and `walkthrough.md` before starting any new task.
-

@@ -503,6 +503,37 @@ We reviewed and fixed the issues found after the Antigravity update.
 - **Main Dashboard integration ([app/page.tsx](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/page.tsx))**:
   - Bound states and events to reload notes on mount and perform optimistic deletions.
 
+### 37. CI/CD, Migration Baseline, and Environment Safety (Latest Update)
+- **Goal**: Turn the senior engineer's checklist (`Tests`, `CI/CD`, `env prod/non-prod`) into a documented and enforceable workflow before any production merge.
+- **Migration Baseline ([drizzle/0002_blue_lilandra.sql](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/drizzle/0002_blue_lilandra.sql) & [drizzle/meta/0002_snapshot.json](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/drizzle/meta/0002_snapshot.json))**:
+  - Generated a committed Drizzle migration for the existing `calendar_notes` table so the repo migration history matches `db/schema.ts`.
+  - Used `CREATE TABLE IF NOT EXISTS "calendar_notes"` because the Neon `dev` database already had the table from the previous `db:push` workflow.
+  - Created `drizzle.__drizzle_migrations` in the Neon `dev` database and inserted baseline records for migrations `0000`, `0001`, and `0002`.
+  - Verified `pnpm db:migrate` runs successfully after the baseline and no longer attempts to recreate existing tables.
+- **Environment Documentation ([.env.example](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/.env.example) & [README.md](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/README.md))**:
+  - Documented that local, preview, and staging environments must use a non-production Neon database or branch.
+  - Documented that production uses its own production-scoped `DATABASE_URL`.
+  - Added `NEXT_PUBLIC_APP_ENV` as a non-secret public label for `local`, `preview`, `staging`, or `production`.
+  - Replaced the old `db:push`-first README workflow with a migration-based workflow: edit `db/schema.ts`, run `pnpm db:generate`, review SQL, then run `pnpm db:migrate`.
+  - Explicitly documented that `pnpm db:push`, `pnpm db:seed`, and `pnpm db:reset` must not run against production.
+- **Tests ([vitest.config.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/vitest.config.ts), [utils/documentUtils.test.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/documentUtils.test.ts) & [utils/importVehicleDocuments.test.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/utils/importVehicleDocuments.test.ts))**:
+  - Added Vitest as the test runner with `pnpm test` and `pnpm test:watch`.
+  - Added utility coverage for date parsing/formatting, expiry status, renewal date calculation, stable document identity, and license plate cleanup.
+  - Added import coverage for Excel header detection, Thai document type normalization, Buddhist-year date normalization, fallback column order, and empty-row skipping.
+  - Cleaned up lint blockers in React components so CI can pass cleanly.
+- **GitHub Actions CI ([.github/workflows/ci.yml](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/.github/workflows/ci.yml))**:
+  - Added a `CI` workflow that runs on `push` and `pull_request` to `dev` and `main`, plus manual `workflow_dispatch`.
+  - CI installs dependencies with `pnpm install --frozen-lockfile`, runs `pnpm db:generate`, fails if `drizzle/` has uncommitted migration drift, then runs `pnpm run lint`, `pnpm test`, and `pnpm run build`.
+  - Added `packageManager: pnpm@11.5.2` in [package.json](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/package.json) so CI uses the expected package manager version.
+- **Deployment Policy ([docs/deployment.md](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/docs/deployment.md))**:
+  - Documented the branch/environment mapping: PR and `dev` use Preview/non-production database targets, while `main` maps to Production.
+  - Documented that production database migration is a controlled/manual step, not an automatic GitHub Actions job.
+  - Added a production migration checklist and branch protection recommendations.
+- **Verification and GitHub State**:
+  - Ran `pnpm run lint`, `pnpm test`, `pnpm run build`, and `git diff --check` successfully before pushing.
+  - Pushed the completed work to `origin/dev` in commits `ccb5547`, `47271c3`, `c9adec7`, `b317154`, and `89cd39b`.
+  - Opened PR `#66` (`dev` -> `main`) to verify the checks; GitHub showed `CI / Lint, Test, Build` passing for both push and pull request contexts, Vercel preview passing, and no conflicts with `main`.
+  - The PR may be closed without merging if the current goal is only to demonstrate GitHub Actions visibility and not to deploy to production.
 
 
 
