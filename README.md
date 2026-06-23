@@ -103,3 +103,5 @@ CI should add tests and migration checks before this project relies on automated
 Production deployments must use production-scoped Vercel environment variables. Preview deployments must not point at the production database.
 
 Database migrations for production should run only after CI passes and the migration SQL has been reviewed.
+
+See [Deployment Policy](docs/deployment.md) for the branch, environment, and migration release rules.
