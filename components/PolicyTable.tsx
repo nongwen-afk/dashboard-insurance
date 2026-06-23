@@ -25,7 +25,7 @@ interface PolicyTableProps {
 }
 
 // แปลงสถานะจาก helper ให้เป็นข้อความและสีสำหรับคอลัมน์สถานะในตาราง
-const getStatusBadge = (status: DocStatus, days: number, isAcknowledged?: boolean) => {
+const getStatusBadge = (status: DocStatus, days: number) => {
 
   if (status === 'EXPIRED') {
     return {
@@ -634,7 +634,7 @@ export default function PolicyTable({
             ) : currentDocs.length > 0 ? (
               currentDocs.map((doc, index) => {
                 const { status, days } = getDocumentStatus(doc.expiryDate);
-                const statusBadge = getStatusBadge(status, days, doc.isAcknowledged);
+                const statusBadge = getStatusBadge(status, days);
                 const documentKey = getDocumentRecordKey(doc);
                 const attachmentPreview = getDocumentAttachmentPreview(doc);
                 return (

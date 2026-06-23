@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X, Calendar, StickyNote } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { CalendarNote } from '@/types';
@@ -19,18 +19,32 @@ export default function AddNoteModal({
   onSuccess,
   defaultNoteDate,
 }: AddNoteModalProps) {
-  const [noteDate, setNoteDate] = useState('');
+  if (!isOpen) return null;
+
+  return (
+    <AddNoteForm
+      key={defaultNoteDate || 'today'}
+      onClose={onClose}
+      onSuccess={onSuccess}
+      defaultNoteDate={defaultNoteDate}
+    />
+  );
+}
+
+interface AddNoteFormProps {
+  onClose: () => void;
+  onSuccess: (newNote: CalendarNote) => void;
+  defaultNoteDate?: string;
+}
+
+function AddNoteForm({
+  onClose,
+  onSuccess,
+  defaultNoteDate,
+}: AddNoteFormProps) {
+  const [noteDate, setNoteDate] = useState(() => defaultNoteDate || new Date().toISOString().split('T')[0]);
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      setNoteDate(defaultNoteDate || new Date().toISOString().split('T')[0]);
-      setContent('');
-    }
-  }, [isOpen, defaultNoteDate]);
-
-  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,7 +76,6 @@ export default function AddNoteModal({
   };
 
   const handleClose = () => {
-    setContent('');
     onClose();
   };
 

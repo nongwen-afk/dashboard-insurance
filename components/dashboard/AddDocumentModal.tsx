@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { X, Calendar, FileText, Info } from 'lucide-react';
+import { X, Calendar, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { VehicleDocType, VehicleDocument } from '@/types';
 import { createVehicleDocumentRecords } from '@/utils/vehicleDocumentApi';
@@ -12,6 +12,8 @@ interface AddDocumentModalProps {
   onSuccess: (newDoc: VehicleDocument) => void;
   defaultExpiryDate?: string;
 }
+
+const createManualDocumentId = () => `manual-${Date.now()}`;
 
 export default function AddDocumentModal({
   isOpen,
@@ -51,7 +53,7 @@ export default function AddDocumentModal({
     const loadingToast = toast.loading('กำลังบันทึกข้อมูลเอกสาร...');
 
     const newDoc: VehicleDocument = {
-      id: `manual-${Date.now()}`,
+      id: createManualDocumentId(),
       chassis: chassis.trim().toUpperCase(),
       licensePlate: licensePlate.trim() || undefined,
       project: project.trim() || undefined,
