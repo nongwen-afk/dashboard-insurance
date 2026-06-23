@@ -1,24 +1,18 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+This is a Next.js fleet document dashboard using Neon Postgres and Drizzle ORM.
 
 ## Getting Started
 
-First, run the development server:
+Install dependencies and run the development server:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) with your browser.
 
-## Neon + Drizzle Quick Start
+## Environment Setup
 
-This project is scaffolded for Neon Postgres with Drizzle ORM.
+Environment variables are managed through Vercel and local `.env.local` files.
 
 1. Link the local project to Vercel if it is not linked yet:
 
@@ -26,28 +20,66 @@ This project is scaffolded for Neon Postgres with Drizzle ORM.
 vercel link
 ```
 
-2. Add Neon from Vercel Marketplace:
-
-```bash
-vercel integration add neon
-```
-
-3. Pull the generated environment variables locally:
+2. Pull the development or preview variables locally:
 
 ```bash
 vercel env pull .env.local --yes
 ```
 
-If you use an existing Neon project instead, copy `.env.example` to `.env.local` and set `DATABASE_URL`.
-
-4. Push the schema and seed mock documents:
+If you are not using Vercel envs locally, copy `.env.example` to `.env.local` and set the values manually:
 
 ```bash
-pnpm db:push
+cp .env.example .env.local
+```
+
+Required variables:
+
+| Variable | Scope | Notes |
+| --- | --- | --- |
+| `DATABASE_URL` | Server only | Neon/Postgres connection string. Local, preview, and staging must use non-production databases. |
+| `NEXT_PUBLIC_APP_ENV` | Browser visible | Non-secret label such as `local`, `preview`, `staging`, or `production`. |
+
+Do not commit real secrets. Keep local secrets in `.env.local`, and configure Vercel-scoped values for Development, Preview, and Production.
+
+## Database Environments
+
+Use separate Neon databases or branches for production and non-production work.
+
+| Environment | Database | Allowed database commands |
+| --- | --- | --- |
+| Local | Non-prod/local Neon branch | `pnpm db:generate`, `pnpm db:migrate`, `pnpm db:seed` |
+| Preview/Staging | Non-prod Neon branch | `pnpm db:migrate`; seed only when intentionally resetting test data |
+| Production | Production Neon database | `pnpm db:migrate` only after review/approval |
+
+Never run `pnpm db:push`, `pnpm db:seed`, or `pnpm db:reset` against production.
+
+## Schema And Migrations
+
+The Drizzle schema source is [`db/schema.ts`](db/schema.ts). SQL migrations live in [`drizzle/`](drizzle/).
+
+When a feature changes the database schema:
+
+```bash
+pnpm db:generate
+```
+
+Review the generated SQL in `drizzle/`, then apply it to the intended non-production database:
+
+```bash
+pnpm db:migrate
+```
+
+Use `pnpm db:push` only for local prototyping when you intentionally do not need a migration file. Committed schema changes should be migration-based.
+
+To seed mock documents in a non-production environment:
+
+```bash
 pnpm db:seed
 ```
 
-5. Start the app and test the database connection:
+## Health Check
+
+Start the app and test the database connection:
 
 ```bash
 pnpm dev
@@ -55,21 +87,19 @@ pnpm dev
 
 Open [http://localhost:3000/api/db/health](http://localhost:3000/api/db/health). A successful connection returns `{ "ok": true }`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Verification
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Before pushing changes that can trigger deployment, run:
 
-## Learn More
+```bash
+pnpm run lint
+pnpm run build
+```
 
-To learn more about Next.js, take a look at the following resources:
+CI should add tests and migration checks before this project relies on automated deploys.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deploy On Vercel
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Production deployments must use production-scoped Vercel environment variables. Preview deployments must not point at the production database.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Database migrations for production should run only after CI passes and the migration SQL has been reviewed.
