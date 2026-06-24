@@ -11,7 +11,6 @@ import {
   Calendar,
   Plus,
   Trash2,
-  StickyNote,
 } from 'lucide-react';
 import type { VehicleDocument, CalendarNote } from '@/types';
 import {

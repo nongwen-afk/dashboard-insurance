@@ -13,7 +13,7 @@ import PolicyTable from '../components/PolicyTable';
 import AddDocumentModal from '@/components/dashboard/AddDocumentModal';
 import AddNoteModal from '@/components/dashboard/AddNoteModal';
 import type { DocumentAlert, FilterStatus, VehicleDocument, CalendarNote } from '@/types';
-import { formatThaiDate, getDaysUntilExpiry, getDocTypeName, getRenewedDocumentDates, getSixMonthExpiryKey, isSameDocumentRecord, parseDocumentDate } from '@/utils/documentUtils';
+import { formatThaiDate, getDaysUntilExpiry, getDocTypeName, getRenewedDocumentDates, isSameDocumentRecord } from '@/utils/documentUtils';
 import { deleteVehicleDocumentRecord, recordVehicleDocumentHistoryEvent, updateVehicleDocumentRecord } from '@/utils/vehicleDocumentApi';
 import { listCalendarNotesRecord, deleteCalendarNoteRecord } from '@/utils/calendarNotesApi';
 
