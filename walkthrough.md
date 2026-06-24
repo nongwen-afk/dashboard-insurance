@@ -535,7 +535,37 @@ We reviewed and fixed the issues found after the Antigravity update.
   - Opened PR `#66` (`dev` -> `main`) to verify the checks; GitHub showed `CI / Lint, Test, Build` passing for both push and pull request contexts, Vercel preview passing, and no conflicts with `main`.
   - The PR may be closed without merging if the current goal is only to demonstrate GitHub Actions visibility and not to deploy to production.
 
-
+### 38. Three-Stage CI/CD Pipeline with Playwright
+- **Goal**: Match the requested three-stage GitHub Actions layout while
+  preserving the project's pnpm, migration-file, and production-safety rules.
+- **Code Quality**:
+  - Replaced the single CI workflow with `01-code-quality.yml`.
+  - Added migration drift detection, ESLint, `tsc --noEmit`, and Vitest
+    coverage.
+- **Test Database Migration**:
+  - Added `02-database-migration.yml`, chained after Code Quality.
+  - Added `scripts/verify-test-database.mjs` to compare the connected Neon
+    branch with `TEST_DATABASE_BRANCH_ID`.
+  - Kept migrations file-based with `pnpm db:migrate`; CI does not use
+    `drizzle-kit push`.
+- **Playwright E2E**:
+  - Added `03-e2e-tests.yml`, `playwright.config.ts`, and read-only dashboard
+    smoke tests.
+  - Runs Chromium, Firefox, and WebKit after building against the test
+    database.
+  - Uploads HTML reports and failure diagnostics for 30 days.
+- **Commit Integrity**:
+  - The database workflow checks out the SHA that passed Code Quality.
+  - It uploads that SHA as a short-lived artifact so the E2E workflow tests the
+    same commit rather than whichever commit happens to be on `main`.
+- **Verification**:
+  - `pnpm run lint`, `pnpm run typecheck`, `pnpm run test:coverage`, and
+    `pnpm run build` passed.
+  - Vitest passed 8 tests with 76.74% statement coverage and 81.15% line
+    coverage for the currently tested utility modules.
+  - The Neon branch guard accepted the Dev branch and rejected a configuration
+    where test and production branch IDs were equal.
+  - Playwright passed 9 tests across Chromium, Firefox, and WebKit.
 
 
 

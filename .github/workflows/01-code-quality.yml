@@ -1,11 +1,11 @@
-name: CI
+name: 1. Code Quality Checks
 
 on:
-  pull_request:
+  push:
     branches:
       - dev
       - main
-  push:
+  pull_request:
     branches:
       - dev
       - main
@@ -15,12 +15,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: code-quality-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  checks:
-    name: Lint, Test, Build
+  quality-checks:
+    name: Quality Pipeline
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -28,15 +28,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.2
+          run_install: false
+
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-
-      - name: Setup pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@11.5.2 --activate
+          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -54,8 +56,8 @@ jobs:
       - name: Lint
         run: pnpm run lint
 
-      - name: Test
-        run: pnpm test
+      - name: Type check
+        run: pnpm run typecheck
 
-      - name: Build
-        run: pnpm run build
+      - name: Unit tests with coverage
+        run: pnpm run test:coverage

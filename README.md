@@ -93,10 +93,23 @@ Before pushing changes that can trigger deployment, run:
 
 ```bash
 pnpm run lint
+pnpm run typecheck
+pnpm run test:coverage
 pnpm run build
 ```
 
-CI should add tests and migration checks before this project relies on automated deploys.
+To run the Playwright smoke tests locally:
+
+```bash
+pnpm exec playwright install
+pnpm run build
+pnpm run test:e2e
+```
+
+The three-stage GitHub Actions pipeline performs code quality checks, migrates
+the dedicated test database, and then runs Playwright E2E tests. See
+[Deployment Policy](docs/deployment.md) for required GitHub secrets and safety
+rules.
 
 ## Deploy On Vercel
 
