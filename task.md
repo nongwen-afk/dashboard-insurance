@@ -139,6 +139,16 @@
   - `[x]` Add `docs/deployment.md` describing branch/environment mapping, production migration checklist, and branch protection recommendations.
   - `[x]` Push the CI/CD work to `origin/dev` and verify PR checks show `CI / Lint, Test, Build` passing.
   - `[x]` Confirm Vercel preview deployment status passes on the PR.
+- `[x]` Expand CI/CD into a three-stage quality, migration, and E2E pipeline
+  - `[x]` Split GitHub Actions into numbered Code Quality, Database Migration, and E2E workflows.
+  - `[x]` Keep the pipeline on Node 22 and pnpm 11.5.2 with frozen lockfile installs.
+  - `[x]` Add strict TypeScript validation and Vitest coverage reporting.
+  - `[x]` Add a Neon branch guard before test database migration and E2E execution.
+  - `[x]` Use committed `pnpm db:migrate` migrations instead of schema push in CI.
+  - `[x]` Pass the exact tested commit through the chained workflows.
+  - `[x]` Add Playwright smoke coverage for health, read APIs, dashboard loading, and search.
+  - `[x]` Run Playwright across Chromium, Firefox, and WebKit and retain failure artifacts for 30 days.
+  - `[x]` Replace default-branch-only `workflow_run` chaining with a reusable workflow orchestrator so all stages run on `dev` and pull requests.
 - `[ ]` Add more chart visualizations (e.g. status breakdown pie chart)
 - `[ ]` **Git & Documentation Rules (กฎระเบียบการพัฒนา)**
   - `[ ]` Check out and work exclusively in the `dev` branch first (never commit to `main` directly).

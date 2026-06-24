@@ -15,18 +15,39 @@ Preview and development deployments must never point at the production database.
 
 ## Required CI Gates
 
-The GitHub Actions CI workflow must pass before merge or production deployment:
+The GitHub Actions pipeline uses one PR/push entrypoint,
+`CI/CD Pipeline`, which calls three reusable workflows sequentially:
 
-```text
-pnpm install --frozen-lockfile
-pnpm db:generate
-git status --porcelain drizzle
-pnpm run lint
-pnpm test
-pnpm run build
-```
+1. `1. Code Quality Checks`
+   - verifies committed migration files match `db/schema.ts`
+   - runs ESLint, TypeScript validation, and Vitest coverage
+2. `2. Database Migration`
+   - verifies `TEST_DATABASE_URL` points at the expected non-production Neon branch
+   - applies committed migrations with `pnpm db:migrate`
+3. `3. E2E Tests`
+   - builds the application against the test database
+   - runs Playwright in Chromium, Firefox, and WebKit
+   - uploads reports, screenshots, videos, and traces for 30 days
+
+The pipeline uses `needs` so each stage starts only after the preceding stage
+passes. Each reusable workflow checks out the same commit from the caller.
+Database migration and E2E jobs do not run for pull requests from forks because
+those jobs require repository secrets.
 
 The migration check fails when `db/schema.ts` can generate new files under `drizzle/` that were not committed. This protects the team from merging schema changes without migration files.
+
+## GitHub Actions Secrets
+
+Configure these repository secrets before enabling the migration and E2E
+workflows:
+
+| Secret | Required | Purpose |
+| --- | --- | --- |
+| `TEST_DATABASE_URL` | Yes | Connection string for the dedicated non-production Neon test branch. |
+| `TEST_DATABASE_BRANCH_ID` | Yes | Expected Neon branch ID for the test database. The pipeline refuses to continue when it does not match the connected database. |
+| `PRODUCTION_DATABASE_BRANCH_ID` | Recommended | Production Neon branch ID. The guard rejects a configuration where test and production IDs are equal. |
+
+Never put the production database URL in `TEST_DATABASE_URL`.
 
 ## Migration Release Rules
 
@@ -74,10 +95,11 @@ Recommended GitHub branch protection:
 
 | Branch | Required checks | Extra rule |
 | --- | --- | --- |
-| `dev` | CI | Require pull request before merge when possible. |
-| `main` | CI | Require pull request review and no direct pushes. |
+| `dev` | Code Quality, Database Migration, E2E Tests | Require pull request before merge when possible. |
+| `main` | Code Quality, Database Migration, E2E Tests | Require pull request review and no direct pushes. |
 
-The required check should be the `Lint, Test, Build` job from `.github/workflows/ci.yml`.
+The required checks should use the jobs from the three numbered workflow files
+under `.github/workflows/`.
 
 ## Vercel Environment Variables
 
