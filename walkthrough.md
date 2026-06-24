@@ -555,9 +555,12 @@ We reviewed and fixed the issues found after the Antigravity update.
     database.
   - Uploads HTML reports and failure diagnostics for 30 days.
 - **Commit Integrity**:
-  - The database workflow checks out the SHA that passed Code Quality.
-  - It uploads that SHA as a short-lived artifact so the E2E workflow tests the
-    same commit rather than whichever commit happens to be on `main`.
+  - Added `ci-cd-pipeline.yml` as the push/PR entrypoint.
+  - It calls the three numbered workflow files with `needs`, so every stage
+    runs against the caller's exact commit.
+  - This replaces `workflow_run`, which only discovers workflow definitions
+    from GitHub's default branch and could not bootstrap the new pipeline from
+    `dev`.
 - **Verification**:
   - `pnpm run lint`, `pnpm run typecheck`, `pnpm run test:coverage`, and
     `pnpm run build` passed.
@@ -566,6 +569,5 @@ We reviewed and fixed the issues found after the Antigravity update.
   - The Neon branch guard accepted the Dev branch and rejected a configuration
     where test and production branch IDs were equal.
   - Playwright passed 9 tests across Chromium, Firefox, and WebKit.
-
 
 

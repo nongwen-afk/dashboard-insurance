@@ -15,7 +15,8 @@ Preview and development deployments must never point at the production database.
 
 ## Required CI Gates
 
-The GitHub Actions pipeline is split into three sequential workflows:
+The GitHub Actions pipeline uses one PR/push entrypoint,
+`CI/CD Pipeline`, which calls three reusable workflows sequentially:
 
 1. `1. Code Quality Checks`
    - verifies committed migration files match `db/schema.ts`
@@ -28,7 +29,8 @@ The GitHub Actions pipeline is split into three sequential workflows:
    - runs Playwright in Chromium, Firefox, and WebKit
    - uploads reports, screenshots, videos, and traces for 30 days
 
-Each workflow checks out the exact commit that passed the preceding workflow.
+The pipeline uses `needs` so each stage starts only after the preceding stage
+passes. Each reusable workflow checks out the same commit from the caller.
 Database migration and E2E jobs do not run for pull requests from forks because
 those jobs require repository secrets.
 

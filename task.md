@@ -148,6 +148,7 @@
   - `[x]` Pass the exact tested commit through the chained workflows.
   - `[x]` Add Playwright smoke coverage for health, read APIs, dashboard loading, and search.
   - `[x]` Run Playwright across Chromium, Firefox, and WebKit and retain failure artifacts for 30 days.
+  - `[x]` Replace default-branch-only `workflow_run` chaining with a reusable workflow orchestrator so all stages run on `dev` and pull requests.
 - `[ ]` Add more chart visualizations (e.g. status breakdown pie chart)
 - `[ ]` **Git & Documentation Rules (กฎระเบียบการพัฒนา)**
   - `[ ]` Check out and work exclusively in the `dev` branch first (never commit to `main` directly).

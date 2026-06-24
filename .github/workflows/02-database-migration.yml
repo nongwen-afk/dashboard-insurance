@@ -1,33 +1,27 @@
 name: 2. Database Migration
 
 on:
-  workflow_run:
-    workflows:
-      - 1. Code Quality Checks
-    types:
-      - completed
+  workflow_call:
+    secrets:
+      TEST_DATABASE_URL:
+        required: true
+      TEST_DATABASE_BRANCH_ID:
+        required: true
+      PRODUCTION_DATABASE_BRANCH_ID:
+        required: false
 
 permissions:
   contents: read
 
-concurrency:
-  group: test-database-migration
-  cancel-in-progress: false
-
 jobs:
   db-migration:
     name: Database Migration
-    if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
       - name: Checkout tested commit
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -55,13 +49,3 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
         run: pnpm db:migrate
-
-      - name: Save pipeline commit
-        run: printf '%s' '${{ github.event.workflow_run.head_sha }}' > pipeline-sha.txt
-
-      - name: Upload pipeline context
-        uses: actions/upload-artifact@v4
-        with:
-          name: pipeline-context
-          path: pipeline-sha.txt
-          retention-days: 1

@@ -1,46 +1,27 @@
 name: 3. E2E Tests
 
 on:
-  workflow_run:
-    workflows:
-      - 2. Database Migration
-    types:
-      - completed
+  workflow_call:
+    secrets:
+      TEST_DATABASE_URL:
+        required: true
+      TEST_DATABASE_BRANCH_ID:
+        required: true
+      PRODUCTION_DATABASE_BRANCH_ID:
+        required: false
 
 permissions:
-  actions: read
   contents: read
-
-concurrency:
-  group: e2e-${{ github.event.workflow_run.head_sha }}
-  cancel-in-progress: true
 
 jobs:
   e2e-tests:
     name: Build and E2E Tests
-    if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
     steps:
-      - name: Download pipeline context
-        uses: actions/download-artifact@v4
-        with:
-          name: pipeline-context
-          path: pipeline-context
-          run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ github.token }}
-
-      - name: Resolve tested commit
-        id: pipeline
-        run: echo "sha=$(cat pipeline-context/pipeline-sha.txt)" >> "$GITHUB_OUTPUT"
-
       - name: Checkout migrated commit
         uses: actions/checkout@v4
-        with:
-          ref: ${{ steps.pipeline.outputs.sha }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -83,7 +64,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playwright-report-${{ steps.pipeline.outputs.sha }}
+          name: playwright-report-${{ github.sha }}
           path: |
             playwright-report/
             test-results/
