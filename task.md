@@ -105,7 +105,7 @@
   - `[x]` Pre-fill modal expiry dates automatically based on clicked calendar date cells.
   - `[x]` Save manual documents back to Neon using a secure database transaction, recording history under `created` with `source: 'manual_creation'`.
   - `[x]` Optimistically prepend new items onto the dashboard document state array so they display on the calendar immediately.
-- `[ ]` Implement real backend API / localstorage integration for persistence
+- `[x]` Implement real backend API / localstorage integration for persistence
   - `[x]` Add Neon-backed `GET /api/vehicle-documents` endpoint for reading `vehicle_documents`.
   - `[x]` Load dashboard document state from the Neon API instead of booting directly from mock data.
   - `[x]` Show a table loading state while the Neon data request is in flight.
@@ -156,7 +156,6 @@
   - `[x]` Add a global error boundary and capture handled API/client errors.
   - `[x]` Configure source map upload through protected Vercel build variables.
   - `[x]` Document Preview/Production environment separation and verification.
-- `[ ]` Add more chart visualizations (e.g. status breakdown pie chart)
 - `[ ]` **Git & Documentation Rules (กฎระเบียบการพัฒนา)**
   - `[ ]` Check out and work exclusively in the `dev` branch first (never commit to `main` directly).
   - `[ ]` Document completed tasks in both `task.md` and `walkthrough.md` after work is done.
