@@ -601,4 +601,10 @@ We reviewed and fixed the issues found after the Antigravity update.
   - Production should use its own Sentry project/environment.
   - A controlled Preview error must be verified for issue capture, readable
     source maps, and privacy masking before Production promotion.
+- **SDK Skill Alignment (Antigravity Update)**:
+  - Added `tunnelRoute: "/monitoring"` to [next.config.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/next.config.ts) to bypass client-side ad-blockers.
+  - Enabled `includeLocalVariables: true` in [sentry.server.config.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/sentry.server.config.ts) to capture server-side variable state.
+  - Enabled `enableLogs: true` in [instrumentation-client.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/instrumentation-client.ts), [sentry.server.config.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/sentry.server.config.ts), and [sentry.edge.config.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/sentry.edge.config.ts).
+  - Created a temporary verification endpoint at [app/api/sentry-test/route.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/api/sentry-test/route.ts) to trigger unhandled exceptions and verify source map mapping.
+
 
