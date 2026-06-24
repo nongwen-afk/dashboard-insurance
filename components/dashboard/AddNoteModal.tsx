@@ -5,6 +5,7 @@ import { X, Calendar, StickyNote } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { CalendarNote } from '@/types';
 import { createCalendarNoteRecord } from '@/utils/calendarNotesApi';
+import { captureHandledError } from '@/utils/sentry';
 
 interface AddNoteModalProps {
   isOpen: boolean;
@@ -68,7 +69,7 @@ function AddNoteForm({
       onSuccess(savedNote);
       handleClose();
     } catch (err) {
-      console.error(err);
+      captureHandledError(err, { operation: 'calendar-note.create' });
       toast.error('เกิดข้อผิดพลาดในการบันทึกโน้ตลงระบบ', { id: loadingToast });
     } finally {
       setIsSubmitting(false);

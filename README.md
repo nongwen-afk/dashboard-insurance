@@ -38,6 +38,10 @@ Required variables:
 | --- | --- | --- |
 | `DATABASE_URL` | Server only | Neon/Postgres connection string. Local, preview, and staging must use non-production databases. |
 | `NEXT_PUBLIC_APP_ENV` | Browser visible | Non-secret label such as `local`, `preview`, `staging`, or `production`. |
+| `NEXT_PUBLIC_SENTRY_DSN` | Browser visible | Sentry project DSN. Leave empty to disable monitoring locally. |
+| `SENTRY_ORG` | Build only | Sentry organization slug used for source map uploads. |
+| `SENTRY_PROJECT` | Build only | Sentry project slug used for source map uploads. |
+| `SENTRY_AUTH_TOKEN` | Build secret | Sentry token with release/source map permissions. |
 
 Do not commit real secrets. Keep local secrets in `.env.local`, and configure Vercel-scoped values for Development, Preview, and Production.
 
@@ -86,6 +90,24 @@ pnpm dev
 ```
 
 Open [http://localhost:3000/api/db/health](http://localhost:3000/api/db/health). A successful connection returns `{ "ok": true }`.
+
+## Sentry Monitoring
+
+The application uses `@sentry/nextjs` for:
+
+- browser, Node.js, and Edge error monitoring
+- App Router navigation and request tracing
+- privacy-first Session Replay with text, inputs, and media masked
+- readable production stack traces through source map upload
+
+Production tracing samples 10% of transactions and Session Replay samples 10%
+of normal sessions. Error replays are always retained. Non-production uses
+100% sampling to make verification easier. The database health endpoint is
+excluded from tracing noise.
+
+Sentry is disabled automatically when `NEXT_PUBLIC_SENTRY_DSN` is empty.
+Source maps upload only when `SENTRY_ORG`, `SENTRY_PROJECT`, and
+`SENTRY_AUTH_TOKEN` are available during the Vercel build.
 
 ## Verification
 

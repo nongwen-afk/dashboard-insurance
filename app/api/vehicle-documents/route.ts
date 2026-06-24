@@ -1,5 +1,6 @@
 import { createVehicleDocuments, listVehicleDocuments } from '@/db/vehicleDocuments';
 import type { VehicleDocument } from '@/types';
+import { captureHandledError } from '@/utils/sentry';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -10,6 +11,11 @@ export async function GET() {
 
     return Response.json({ documents });
   } catch (error) {
+    captureHandledError(error, {
+      operation: 'vehicle-documents.list',
+      route: '/api/vehicle-documents',
+    });
+
     return Response.json(
       {
         error: error instanceof Error ? error.message : 'Unknown database error',
@@ -43,6 +49,11 @@ export async function POST(request: Request) {
 
     return Response.json({ documents }, { status: 201 });
   } catch (error) {
+    captureHandledError(error, {
+      operation: 'vehicle-documents.create',
+      route: '/api/vehicle-documents',
+    });
+
     return Response.json(
       {
         error: error instanceof Error ? error.message : 'Unknown database error',

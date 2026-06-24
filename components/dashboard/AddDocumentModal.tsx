@@ -5,6 +5,7 @@ import { X, Calendar, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { VehicleDocType, VehicleDocument } from '@/types';
 import { createVehicleDocumentRecords } from '@/utils/vehicleDocumentApi';
+import { captureHandledError } from '@/utils/sentry';
 
 interface AddDocumentModalProps {
   isOpen: boolean;
@@ -82,7 +83,7 @@ export default function AddDocumentModal({
         throw new Error('No documents returned from API.');
       }
     } catch (err) {
-      console.error(err);
+      captureHandledError(err, { operation: 'vehicle-document.create-manual' });
       toast.error('เกิดข้อผิดพลาดในการบันทึกข้อมูลเอกสารลงระบบ', { id: loadingToast });
     } finally {
       setIsSubmitting(false);

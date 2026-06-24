@@ -49,6 +49,11 @@ workflows:
 
 Never put the production database URL in `TEST_DATABASE_URL`.
 
+Sentry build credentials do not need to be exposed to test jobs. Vercel should
+hold `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` so the deployment
+build can upload source maps. Add them to GitHub Actions only if source map
+upload is intentionally moved into CI.
+
 ## Migration Release Rules
 
 Use this workflow when a feature changes the database schema:
@@ -105,10 +110,23 @@ under `.github/workflows/`.
 
 Configure Vercel variables with environment scoping:
 
-| Vercel environment | `DATABASE_URL` | `NEXT_PUBLIC_APP_ENV` |
-| --- | --- | --- |
-| Development | Non-prod Neon database | `local` |
-| Preview | Non-prod Neon database | `preview` |
-| Production | Production Neon database | `production` |
+| Vercel environment | `DATABASE_URL` | `NEXT_PUBLIC_APP_ENV` | `NEXT_PUBLIC_SENTRY_DSN` |
+| --- | --- | --- | --- |
+| Development | Non-prod Neon database | `local` | Optional; omit to disable local monitoring |
+| Preview | Non-prod Neon database | `preview` | Preview/non-prod Sentry project DSN |
+| Production | Production Neon database | `production` | Production Sentry project DSN |
 
 `NEXT_PUBLIC_*` variables are visible in the browser. Never put secrets in public variables.
+
+Configure `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` as protected
+build variables for Preview and Production. Prefer separate Sentry projects
+for non-production and production so test errors and replays do not pollute the
+production issue stream.
+
+After deploying Sentry configuration:
+
+1. Trigger one controlled test error in Preview.
+2. Confirm the issue appears under the `preview` environment.
+3. Confirm the event has a readable, de-minified stack trace.
+4. Confirm a replay is attached and sensitive text/input/media is masked.
+5. Remove the temporary test-error path before promoting to Production.

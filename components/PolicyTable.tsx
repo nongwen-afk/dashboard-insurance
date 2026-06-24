@@ -13,6 +13,7 @@ import { getDocumentAttachmentPreview } from '@/utils/documentAttachment';
 import { formatThaiDate, getCleanLicensePlate, getDocTypeName, getDocumentRecordKey, getDocumentStatus, getRenewedDocumentDates, isSameDocumentRecord, parseDocumentDate } from '@/utils/documentUtils';
 import { parseVehicleDocumentsFromFile } from '@/utils/importVehicleDocuments';
 import { createVehicleDocumentRecords, recordVehicleDocumentHistoryEvent, updateVehicleDocumentRecord } from '@/utils/vehicleDocumentApi';
+import { captureHandledError } from '@/utils/sentry';
 
 interface PolicyTableProps {
   documents: VehicleDocument[];
@@ -181,7 +182,8 @@ export default function PolicyTable({
             icon: '✅',
             duration: 4000
           });
-        } catch {
+        } catch (error) {
+          captureHandledError(error, { operation: 'policy-table.vehicle-document.renew' });
           setDocuments(prev => prev.map(d => isSameDocumentRecord(d, optimisticDocument) ? doc : d));
           toast.error(`พบการต่ออายุ แต่บันทึกลง Neon ไม่สำเร็จ`, {
             id: syncToastId,
@@ -195,7 +197,7 @@ export default function PolicyTable({
             source: 'external_sync',
             scope: 'table_row',
           }).catch((error) => {
-            console.error('Unable to record sync history.', error);
+            captureHandledError(error, { operation: 'policy-table.vehicle-document.sync-history' });
           });
         }
 
@@ -374,7 +376,8 @@ export default function PolicyTable({
       } else {
         toast.error('ไม่พบข้อมูลในไฟล์ Excel', { id: loadingToast });
       }
-    } catch {
+    } catch (error) {
+      captureHandledError(error, { operation: 'policy-table.vehicle-documents.import' });
       toast.error('เกิดข้อผิดพลาดในการอ่านไฟล์', { id: loadingToast });
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';

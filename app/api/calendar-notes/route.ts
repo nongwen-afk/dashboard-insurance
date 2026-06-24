@@ -1,4 +1,5 @@
 import { createCalendarNote, listCalendarNotes } from '@/db/calendarNotes';
+import { captureHandledError } from '@/utils/sentry';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -9,6 +10,11 @@ export async function GET() {
 
     return Response.json({ notes });
   } catch (error) {
+    captureHandledError(error, {
+      operation: 'calendar-notes.list',
+      route: '/api/calendar-notes',
+    });
+
     return Response.json(
       {
         error: error instanceof Error ? error.message : 'Unknown database error',
@@ -39,6 +45,11 @@ export async function POST(request: Request) {
 
     return Response.json({ note }, { status: 201 });
   } catch (error) {
+    captureHandledError(error, {
+      operation: 'calendar-notes.create',
+      route: '/api/calendar-notes',
+    });
+
     return Response.json(
       {
         error: error instanceof Error ? error.message : 'Unknown database error',
