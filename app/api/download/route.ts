@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PDFDocument } from 'pdf-lib';
 import { compulsoryInsuranceBase64, taxReceiptBase64 } from '@/utils/documentBase64';
+import { captureHandledError } from '@/utils/sentry';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -61,7 +62,11 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Download error:', error);
+    captureHandledError(error, {
+      operation: 'document.download',
+      route: '/api/download',
+    });
+
     return new NextResponse('Internal Server Error', { status: 500 });
   }
 }

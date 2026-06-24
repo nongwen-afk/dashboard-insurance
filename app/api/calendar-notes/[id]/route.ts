@@ -1,4 +1,5 @@
 import { deleteCalendarNote } from '@/db/calendarNotes';
+import { captureHandledError } from '@/utils/sentry';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -18,6 +19,11 @@ export async function DELETE(request: Request, { params }: RouteContext) {
 
     return Response.json({ note });
   } catch (error) {
+    captureHandledError(error, {
+      operation: 'calendar-notes.delete',
+      route: '/api/calendar-notes/[id]',
+    });
+
     return Response.json(
       {
         error: error instanceof Error ? error.message : 'Unknown database error',

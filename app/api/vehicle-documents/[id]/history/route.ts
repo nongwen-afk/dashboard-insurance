@@ -1,5 +1,6 @@
 import { listVehicleDocumentHistory, recordVehicleDocumentHistoryForId } from '@/db/vehicleDocuments';
 import type { VehicleDocumentHistoryEvent } from '@/types';
+import { captureHandledError } from '@/utils/sentry';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -26,6 +27,11 @@ export async function GET(_request: Request, { params }: RouteContext) {
 
     return Response.json({ history });
   } catch (error) {
+    captureHandledError(error, {
+      operation: 'vehicle-document-history.list',
+      route: '/api/vehicle-documents/[id]/history',
+    });
+
     return Response.json(
       {
         error: error instanceof Error ? error.message : 'Unknown database error',
@@ -58,6 +64,11 @@ export async function POST(request: Request, { params }: RouteContext) {
       logged: result.isRecorded,
     });
   } catch (error) {
+    captureHandledError(error, {
+      operation: 'vehicle-document-history.create',
+      route: '/api/vehicle-documents/[id]/history',
+    });
+
     return Response.json(
       {
         error: error instanceof Error ? error.message : 'Unknown database error',

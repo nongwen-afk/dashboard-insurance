@@ -570,4 +570,41 @@ We reviewed and fixed the issues found after the Antigravity update.
     where test and production branch IDs were equal.
   - Playwright passed 9 tests across Chromium, Firefox, and WebKit.
 
+### 39. Sentry Error Monitoring, Tracing, and Session Replay
+- **Goal**: Add production observability without exposing secrets or mixing
+  Preview diagnostics with Production.
+- **Runtime Setup**:
+  - Added `instrumentation-client.ts`, `sentry.server.config.ts`, and
+    `sentry.edge.config.ts` so browser, Node.js, and Edge failures are covered.
+  - Added `instrumentation.ts` with `Sentry.captureRequestError` for nested
+    App Router and server request errors.
+  - Added `app/global-error.tsx` to report root rendering failures and provide
+    a Thai retry screen.
+- **Handled Errors**:
+  - Added a shared `captureHandledError` helper.
+  - API routes and important dashboard actions now report errors that are
+    caught and converted into JSON responses, rollback flows, or toast
+    messages.
+- **Tracing and Replay**:
+  - Production traces and normal Session Replays sample at 10%.
+  - Non-production samples at 100% for easier verification.
+  - Error replays sample at 100%; text, inputs, and media are masked/blocked.
+  - `/api/db/health` is excluded from tracing to reduce monitoring noise.
+- **Build Integration**:
+  - Wrapped `next.config.ts` with `withSentryConfig`.
+  - Source maps are uploaded when `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and
+    `SENTRY_PROJECT` exist in the Vercel build environment, then deleted from
+    the deployment output.
+  - Monitoring remains disabled when `NEXT_PUBLIC_SENTRY_DSN` is empty.
+- **Environment Policy**:
+  - Preview should use a non-production Sentry project/environment.
+  - Production should use its own Sentry project/environment.
+  - A controlled Preview error must be verified for issue capture, readable
+    source maps, and privacy masking before Production promotion.
+- **SDK Skill Alignment (Antigravity Update)**:
+  - Added `tunnelRoute: "/monitoring"` to [next.config.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/next.config.ts) to bypass client-side ad-blockers.
+  - Enabled `includeLocalVariables: true` in [sentry.server.config.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/sentry.server.config.ts) to capture server-side variable state.
+  - Enabled `enableLogs: true` in [instrumentation-client.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/instrumentation-client.ts), [sentry.server.config.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/sentry.server.config.ts), and [sentry.edge.config.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/sentry.edge.config.ts).
+  - Created a temporary verification endpoint at [app/api/sentry-test/route.ts](file:///Users/microwen/Desktop/Project_EVT/fleet-dashboard/app/api/sentry-test/route.ts) to trigger unhandled exceptions and verify source map mapping.
+
 

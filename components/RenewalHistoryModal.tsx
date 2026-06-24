@@ -5,6 +5,7 @@ import { CalendarCheck2, Loader2, Search, X } from 'lucide-react';
 import type { VehicleDocumentHistoryRecord } from '@/types';
 import { formatThaiDate, formatThaiDateTime, getDocTypeName, parseDocumentDate } from '@/utils/documentUtils';
 import { listVehicleDocumentRenewalHistoryRecords } from '@/utils/vehicleDocumentApi';
+import { captureHandledError } from '@/utils/sentry';
 
 interface RenewalHistoryModalProps {
   onClose: () => void;
@@ -56,7 +57,8 @@ export default function RenewalHistoryModal({ onClose }: RenewalHistoryModalProp
       try {
         const renewals = await listVehicleDocumentRenewalHistoryRecords(abortController.signal);
         if (!abortController.signal.aborted) setRecords(renewals);
-      } catch {
+      } catch (error) {
+        captureHandledError(error, { operation: 'renewal-history.load' });
         if (!abortController.signal.aborted) setError('โหลดประวัติการต่ออายุจาก Neon ไม่สำเร็จ');
       } finally {
         if (!abortController.signal.aborted) setIsLoading(false);

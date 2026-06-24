@@ -1,4 +1,5 @@
 import { getSql } from '@/db';
+import { captureHandledError } from '@/utils/sentry';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -17,6 +18,11 @@ export async function GET() {
       now: result[0]?.now,
     });
   } catch (error) {
+    captureHandledError(error, {
+      operation: 'database.health-check',
+      route: '/api/db/health',
+    });
+
     return Response.json(
       {
         ok: false,

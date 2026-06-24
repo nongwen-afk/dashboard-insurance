@@ -1,4 +1,5 @@
 import { deleteVehicleDocument, updateVehicleDocument } from '@/db/vehicleDocuments';
+import { captureHandledError } from '@/utils/sentry';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -88,6 +89,11 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
     return Response.json({ document });
   } catch (error) {
+    captureHandledError(error, {
+      operation: 'vehicle-documents.update',
+      route: '/api/vehicle-documents/[id]',
+    });
+
     return Response.json(
       {
         error: error instanceof Error ? error.message : 'Unknown database error',
@@ -111,6 +117,11 @@ export async function DELETE(request: Request, { params }: RouteContext) {
 
     return Response.json({ document });
   } catch (error) {
+    captureHandledError(error, {
+      operation: 'vehicle-documents.delete',
+      route: '/api/vehicle-documents/[id]',
+    });
+
     return Response.json(
       {
         error: error instanceof Error ? error.message : 'Unknown database error',

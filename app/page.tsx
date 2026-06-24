@@ -16,6 +16,7 @@ import type { DocumentAlert, FilterStatus, VehicleDocument, CalendarNote } from 
 import { formatThaiDate, getDaysUntilExpiry, getDocTypeName, getRenewedDocumentDates, isSameDocumentRecord } from '@/utils/documentUtils';
 import { deleteVehicleDocumentRecord, recordVehicleDocumentHistoryEvent, updateVehicleDocumentRecord } from '@/utils/vehicleDocumentApi';
 import { listCalendarNotesRecord, deleteCalendarNoteRecord } from '@/utils/calendarNotesApi';
+import { captureHandledError } from '@/utils/sentry';
 
 export default function DashboardPage() {
   // documents เป็น state หลักของทั้งหน้า: card, chart, alert และ table อ่านจากชุดเดียวกัน
@@ -56,7 +57,8 @@ export default function DashboardPage() {
     try {
       await deleteCalendarNoteRecord(id);
       toast.success('ลบโน้ตเตือนความจำสำเร็จ', { icon: '🗑️' });
-    } catch {
+    } catch (error) {
+      captureHandledError(error, { operation: 'dashboard.calendar-note.delete' });
       setNotes(previousNotes);
       toast.error('ลบโน้ตเตือนความจำไม่สำเร็จ');
     }
@@ -86,6 +88,7 @@ export default function DashboardPage() {
         setDocuments(data.documents ?? []);
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') return;
+        captureHandledError(error, { operation: 'dashboard.vehicle-documents.load' });
         toast.error('โหลดข้อมูลจาก Neon ไม่สำเร็จ');
       } finally {
         if (!abortController.signal.aborted) {
@@ -110,6 +113,7 @@ export default function DashboardPage() {
         setNotes(loadedNotes);
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') return;
+        captureHandledError(error, { operation: 'dashboard.calendar-notes.load' });
         toast.error('โหลดข้อมูลโน้ตปฏิทินไม่สำเร็จ');
       }
     }
@@ -160,7 +164,8 @@ export default function DashboardPage() {
 
       setDocuments(prev => prev.map(d => isSameDocumentRecord(d, doc) ? savedDocument : d));
       toast.success(`รับทราบการแจ้งเตือนรถ ${doc.licensePlate || doc.chassis} เรียบร้อย`, { icon: 'ℹ️' });
-    } catch {
+    } catch (error) {
+      captureHandledError(error, { operation: 'dashboard.vehicle-document.acknowledge' });
       setDocuments(prev => prev.map(d => isSameDocumentRecord(d, optimisticDocument) ? doc : d));
       toast.error(`บันทึกการรับทราบของรถ ${doc.licensePlate || doc.chassis} ไปยัง Neon ไม่สำเร็จ`);
     }
@@ -182,7 +187,8 @@ export default function DashboardPage() {
 
       await deleteVehicleDocumentRecord(doc.id);
       toast.success(`ลบข้อมูล ${doc.licensePlate || doc.chassis} ออกจาก Neon แล้ว`, { icon: '🗑️' });
-    } catch {
+    } catch (error) {
+      captureHandledError(error, { operation: 'dashboard.vehicle-document.delete' });
       setDocuments(prev => {
         if (prev.some(d => isSameDocumentRecord(d, doc))) return prev;
 
@@ -298,7 +304,8 @@ export default function DashboardPage() {
             icon: '✅',
             duration: 4000
           });
-        } catch {
+        } catch (error) {
+          captureHandledError(error, { operation: 'dashboard.vehicle-document.renew' });
           setDocuments(prev => prev.map(d => isSameDocumentRecord(d, optimisticDocument) ? doc : d));
           toast.error(`พบการต่ออายุ แต่บันทึกลง Neon ไม่สำเร็จ`, {
             id: syncToastId,
@@ -312,7 +319,7 @@ export default function DashboardPage() {
             source: 'external_sync',
             scope: 'detail_modal',
           }).catch((error) => {
-            console.error('Unable to record sync history.', error);
+            captureHandledError(error, { operation: 'dashboard.vehicle-document.sync-history' });
           });
         }
 
