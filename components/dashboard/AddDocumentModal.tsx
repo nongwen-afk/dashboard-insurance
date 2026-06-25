@@ -1,11 +1,43 @@
 "use client";
 
 import React, { useState } from 'react';
-import { X, Calendar, FileText } from 'lucide-react';
+import { X, Calendar, FileText, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { VehicleDocType, VehicleDocument } from '@/types';
 import { createVehicleDocumentRecords } from '@/utils/vehicleDocumentApi';
 import { captureHandledError } from '@/utils/sentry';
+import { findChassis, findLicensePlate, findDocNumber, findIssuer, extractDateFromString } from '@/utils/ocrParser';
+import { OCR_TEMPLATES, type OcrTemplate } from '@/utils/ocrTemplates';
+import OcrTemplateStudio from '@/components/dashboard/OcrTemplateStudio';
+import { preprocessOcrImage } from '@/utils/imagePreprocessor';
+
+const getImgSize = (file: File): Promise<{ width: number; height: number }> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      };
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
+};
+
+const getFieldLabel = (field: string) => {
+  switch (field) {
+    case 'issuer': return 'บริษัทผู้รับประกัน';
+    case 'docNumber': return 'เลขที่เอกสาร/กรมธรรม์';
+    case 'issuedDate': return 'วันเริ่มคุ้มครอง';
+    case 'expiryDate': return 'วันหมดอายุ';
+    case 'licensePlate': return 'เลขทะเบียนรถ';
+    case 'chassis': return 'เลขตัวถัง';
+    default: return field;
+  }
+};
 
 interface AddDocumentModalProps {
   isOpen: boolean;
@@ -34,6 +66,156 @@ export default function AddDocumentModal({
   const [note, setNote] = useState('');
   const [hasAttachment, setHasAttachment] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
+  const [scanStatusText, setScanStatusText] = useState('');
+  const [isStudioOpen, setIsStudioOpen] = useState(false);
+
+  const handleOcrScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsScanning(true);
+    setScanProgress(0);
+    setScanStatusText('กำลังตรวจสอบขนาดรูปภาพ...');
+    const loadingToast = toast.loading('กำลังเริ่มสแกนด้วยรูปแบบเทมเพลต...');
+
+    try {
+      // ดึงขนาดของรูปภาพจริง
+      const dimensions = await getImgSize(file);
+      const imgWidth = dimensions.width;
+      const imgHeight = dimensions.height;
+
+      // ดึงข้อมูลคอนฟิกของเอกสารประเภทนี้
+      const docConfig = OCR_TEMPLATES[docType];
+      if (!docConfig) {
+        throw new Error('ไม่พบการตั้งค่าเทมเพลตสำหรับเอกสารประเภทนี้');
+      }
+
+      // ดึง custom templates จาก localstorage (ถ้ามี)
+      const customSaved = localStorage.getItem('custom_ocr_templates');
+      let customTemplates: Record<string, OcrTemplate> = {};
+      if (customSaved) {
+        try {
+          customTemplates = JSON.parse(customSaved);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      // --- ขั้นตอนที่ 1: ตรวจหาบริษัท (Issuer) ด้วยกล่อง Default ---
+      let detectedIssuer = '';
+      const defaultKey = `${docType}_default`;
+      let activeTemplate = customTemplates[defaultKey] || docConfig.default;
+
+      // โหลด Tesseract.js
+      const Tesseract = (await import('tesseract.js')).default;
+      
+      setScanStatusText('กำลังสร้างระบบประมวลผล OCR...');
+      const worker = await Tesseract.createWorker('tha+eng');
+
+      if (activeTemplate.issuer) {
+        setScanStatusText('กำลังตรวจสอบบริษัทผู้รับประกัน...');
+        setScanProgress(5);
+
+        const rect = activeTemplate.issuer;
+        const pixelRect = {
+          left: Math.round(rect.left * imgWidth),
+          top: Math.round(rect.top * imgHeight),
+          width: Math.round(rect.width * imgWidth),
+          height: Math.round(rect.height * imgHeight),
+        };
+
+        const processedImageBase64 = await preprocessOcrImage(file, pixelRect);
+        const result = await worker.recognize(processedImageBase64);
+
+
+        const issuerText = findIssuer(result.data.text);
+        if (issuerText) {
+          setIssuer(issuerText);
+          detectedIssuer = issuerText;
+
+          // ดึงเทมเพลตเฉพาะบริษัท
+          const companyKey = `${docType}_by_${issuerText}`;
+          if (customTemplates[companyKey]) {
+            activeTemplate = customTemplates[companyKey];
+            toast.success(`พบรูปแบบเทมเพลตกำหนดเองของ: ${issuerText}`, { id: loadingToast, duration: 1500 });
+            toast.loading('กำลังสแกนฟิลด์ที่เหลือด้วยเทมเพลตกำหนดเอง...', { id: loadingToast });
+          } else if (docConfig.byIssuer && docConfig.byIssuer[issuerText]) {
+            activeTemplate = docConfig.byIssuer[issuerText];
+            toast.success(`พบรูปแบบเอกสารเฉพาะของ: ${issuerText}`, { id: loadingToast, duration: 1500 });
+            toast.loading('กำลังสแกนฟิลด์ที่เหลือด้วยเทมเพลตเฉพาะบริษัท...', { id: loadingToast });
+          }
+        }
+      }
+
+      // --- ขั้นตอนที่ 2: สแกนฟิลด์อื่นๆ ที่เหลือตามเทมเพลตที่ตรวจจับได้ ---
+      const fields = Object.keys(activeTemplate).filter(f => f !== 'issuer' || !detectedIssuer);
+      let fieldsFoundCount = detectedIssuer ? 1 : 0;
+
+      for (let i = 0; i < fields.length; i++) {
+        const field = fields[i];
+        const rect = activeTemplate[field];
+
+        setScanStatusText(`กำลังสแกนช่อง: ${getFieldLabel(field)}...`);
+        setScanProgress(Math.round(((i + (detectedIssuer ? 1 : 0)) / (fields.length + (detectedIssuer ? 1 : 0))) * 100));
+
+        const pixelRect = {
+          left: Math.round(rect.left * imgWidth),
+          top: Math.round(rect.top * imgHeight),
+          width: Math.round(rect.width * imgWidth),
+          height: Math.round(rect.height * imgHeight),
+        };
+
+        const processedImageBase64 = await preprocessOcrImage(file, pixelRect);
+        const result = await worker.recognize(processedImageBase64);
+
+
+        const rawText = result.data.text;
+        
+        // แยกวิเคราะห์ค่าเฉพาะฟิลด์
+        let cleanedValue: string | null = null;
+        if (field === 'issuer') {
+          cleanedValue = findIssuer(rawText);
+        } else if (field === 'docNumber') {
+          cleanedValue = findDocNumber(rawText) || rawText.trim();
+        } else if (field === 'issuedDate' || field === 'expiryDate') {
+          cleanedValue = extractDateFromString(rawText);
+        } else if (field === 'licensePlate') {
+          cleanedValue = findLicensePlate(rawText) || rawText.trim();
+        } else if (field === 'chassis') {
+          cleanedValue = findChassis(rawText) || rawText.trim();
+        }
+
+        if (cleanedValue) {
+          if (field === 'issuer') setIssuer(cleanedValue);
+          else if (field === 'docNumber') setDocNumber(cleanedValue);
+          else if (field === 'issuedDate') setIssuedDate(cleanedValue);
+          else if (field === 'expiryDate') setExpiryDate(cleanedValue);
+          else if (field === 'licensePlate') setLicensePlate(cleanedValue);
+          else if (field === 'chassis') setChassis(cleanedValue);
+          fieldsFoundCount++;
+        }
+      }
+
+      await worker.terminate();
+
+      if (fieldsFoundCount > 0) {
+        toast.success(`สแกนแบบเทมเพลตสำเร็จ! กรอกข้อมูลออโตฟิลด์ได้ ${fieldsFoundCount} ฟิลด์`, { id: loadingToast });
+      } else {
+        toast.error('สแกนเสร็จสิ้น แต่ไม่พบข้อมูลที่จับคู่ได้ กรุณากรอกด้วยตัวเอง', { id: loadingToast });
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('เกิดข้อผิดพลาดระหว่างสแกนเทมเพลต', { id: loadingToast });
+    } finally {
+      setIsScanning(false);
+      setScanProgress(0);
+      setScanStatusText('');
+      e.target.value = '';
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -103,6 +285,9 @@ export default function AddDocumentModal({
     setDriverName('');
     setNote('');
     setHasAttachment(true);
+    setIsScanning(false);
+    setScanProgress(0);
+    setScanStatusText('');
     onClose();
   };
 
@@ -126,6 +311,85 @@ export default function AddDocumentModal({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
+          {/* ส่วนสแกนเอกสารด้วย OCR */}
+          <div className="p-4 rounded-xl border border-dashed border-[#1a4d2e]/30 bg-emerald-50/20 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-[#1a4d2e] flex items-center gap-1.5">
+                <FileText size={16} /> สแกนเอกสารเพื่อกรอกข้อมูลอัตโนมัติ (ฟรี)
+              </span>
+              {isScanning && scanProgress > 0 && scanProgress < 100 && (
+                <span className="text-xs text-amber-600 font-semibold animate-pulse">
+                  กำลังสแกน... {scanProgress}%
+                </span>
+              )}
+            </div>
+            
+            <div className="flex flex-col gap-2">
+              <input
+                type="file"
+                id="ocr-scan-file"
+                accept="image/*"
+                onChange={handleOcrScan}
+                disabled={isScanning}
+                className="hidden"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={isScanning}
+                  onClick={() => document.getElementById('ocr-scan-file')?.click()}
+                  className="flex-1 h-10 px-4 rounded-xl text-xs font-bold border border-[#1a4d2e] text-[#1a4d2e] hover:bg-[#1a4d2e]/10 disabled:opacity-50 disabled:hover:bg-transparent transition-all flex items-center justify-center gap-2 bg-white cursor-pointer"
+                >
+                  เลือกไฟล์เพื่อสแกน
+                </button>
+                <button
+                  type="button"
+                  disabled={isScanning}
+                  onClick={() => {
+                    const input = document.getElementById('ocr-scan-file') as HTMLInputElement;
+                    if (input) {
+                      input.setAttribute('capture', 'environment');
+                      input.click();
+                    }
+                  }}
+                  className="h-10 px-4 rounded-xl text-xs font-bold bg-[#1a4d2e] text-white hover:bg-[#123620] disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  ถ่ายรูปจากกล้อง
+                </button>
+                {process.env.NODE_ENV === 'development' && (
+                  <button
+                    type="button"
+                    disabled={isScanning}
+                    onClick={() => setIsStudioOpen(true)}
+                    className="h-10 w-10 shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 hover:text-slate-800 transition-all flex items-center justify-center cursor-pointer"
+                    title="ปรับแต่งพิกัดสแกน (OCR Studio)"
+                  >
+                    <Settings size={16} />
+                  </button>
+                )}
+              </div>
+              <p className="text-[10px] text-slate-500 leading-tight">
+                * รองรับรูปถ่าย พ.ร.บ., ป้ายภาษี, กรมธรรม์ หรือเล่มทะเบียน (ประมวลผลบนเบราว์เซอร์อย่างปลอดภัย 100%)
+              </p>
+            </div>
+
+            {/* แสดงสถานะความคืบหน้า */}
+            {isScanning && (
+              <div className="space-y-1.5 pt-1">
+                <div className="flex justify-between text-[10px] text-slate-500 font-medium">
+                  <span className="truncate max-w-[80%]">{scanStatusText}</span>
+                  <span>{scanProgress}%</span>
+                </div>
+                <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                  <div 
+                    className="bg-[#1a4d2e] h-1.5 rounded-full transition-all duration-300"
+                    style={{ width: `${scanProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* ข้อมูลทั่วไป */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -323,6 +587,13 @@ export default function AddDocumentModal({
           </button>
         </div>
       </div>
+      {isStudioOpen && (
+        <OcrTemplateStudio 
+          isOpen={isStudioOpen} 
+          onClose={() => setIsStudioOpen(false)} 
+          initialDocType={docType} 
+        />
+      )}
     </div>
   );
 }

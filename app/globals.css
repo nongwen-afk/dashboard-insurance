@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+@source "../app";
+@source "../components";
+@source not "../node_modules";
+@source not "../.next";
+
 /* ระบบนี้ออกแบบเป็น admin dashboard โหมดสว่าง จึงล็อกพื้นหลังและสีตัวอักษรพื้นฐานไว้ทั้งแอป */
 html, 
 body {
