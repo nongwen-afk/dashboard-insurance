@@ -100,7 +100,7 @@ jobs:
         run: pnpm run build
 
       - name: Run Playwright Smoke Tests
-        run: pnpm exec playwright test tests/smoke.spec.ts
+        run: pnpm exec playwright test e2e/smoke.spec.ts
         env:
           DATABASE_URL: ${{ env.PROD_DATABASE_URL }}
 
