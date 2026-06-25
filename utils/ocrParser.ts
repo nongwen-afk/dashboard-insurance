@@ -221,15 +221,15 @@ export function findChassis(text: string): string | null {
 
 export function findLicensePlate(text: string): string | null {
   // 1. Commercial plate pattern: 7X-XXXX or 8X-XXXX
-  const commRegex = /\b((?:7\d|8\d)-\d{4})(?:\s+([ก-ฮะ-์]{2,}))?/;
-  const commMatch = commRegex.exec(text);
+  const commercialRegex = /(\d{2})\s*-\s*(\d{4})(?:[ \t]+([ก-ฮะ-์]{2,}))?/g;
+  const commMatch = commercialRegex.exec(text);
   if (commMatch) {
-    return commMatch[1] + (commMatch[2] ? ` ${commMatch[2]}` : '');
+    return `${commMatch[1]}-${commMatch[2]}` + (commMatch[3] ? ` ${commMatch[3]}` : '');
   }
 
   // 2. Regular plate pattern (e.g. 1กข 1234 or กข 1234)
   // Use negative lookbehind (?<![\u0e00-\u0e7f]) so we don't match the suffix of words like "ทะเบียนรถ"
-  const regularRegex = /(?<![\u0e00-\u0e7f])([1-9]?[\u0e01-\u0e2e]{2})\s*[-]?\s*(\d{1,4})(?:\s+([ก-ฮะ-์]{2,}))?/g;
+  const regularRegex = /(?<![\u0e00-\u0e7f])([1-9]?[\u0e01-\u0e2e]{2})[ \t]*[-]?[ \t]*(\d{1,4})(?:[ \t]+([ก-ฮะ-์]{2,}))?/g;
   const match = regularRegex.exec(text);
   if (match) {
     return `${match[1]} ${match[2]}` + (match[3] ? ` ${match[3]}` : '');

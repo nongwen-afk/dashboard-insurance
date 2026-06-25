@@ -61,14 +61,14 @@ describe('ocrParser - Chassis / VIN Extraction', () => {
 
 describe('ocrParser - License Plate Extraction', () => {
   it('extracts commercial plate numbers', () => {
-    expect(findLicensePlate('เลขทะเบียนรถ 72-4581 นครปฐม')).toBe('72-4581');
+    expect(findLicensePlate('เลขทะเบียนรถ 72-4581 นครปฐม')).toBe('72-4581 นครปฐม');
     expect(findLicensePlate('รถบรรทุก ทะเบียน 80-1234')).toBe('80-1234');
   });
 
   it('extracts regular Thai plate numbers', () => {
     expect(findLicensePlate('รถยนต์ ทะเบียน 1กข 1234')).toBe('1กข 1234');
     expect(findLicensePlate('ทะเบียนรถ กข 999')).toBe('กข 999');
-    expect(findLicensePlate('เลขทะเบียน รร4700 นท')).toBe('รร 4700');
+    expect(findLicensePlate('เลขทะเบียน รร4700 นท')).toBe('รร 4700 นท');
   });
 });
 
@@ -133,7 +133,7 @@ describe('ocrParser - parseTextToDocument', () => {
     expect(result.issuer).toBe('บริษัท กลางคุ้มครองผู้ประสบภัยจากรถ จำกัด');
     expect(result.docNumber).toBe('8149056264542305');
     expect(result.chassis).toBe('NS110P0020401');
-    expect(result.licensePlate).toBe('รร 4700');
+    expect(result.licensePlate).toBe('รร 4700 นท');
     expect(result.issuedDate).toBe('2013-09-07');
     expect(result.expiryDate).toBe('2014-09-07');
   });
