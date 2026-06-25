@@ -29,7 +29,7 @@ test.describe('Policy Table', () => {
     await page.locator('button', { hasText: 'ตัวกรอง' }).click();
 
     // Click "พ.ร.บ." filter
-    await page.locator('button', { hasText: 'พ.ร.บ.' }).click();
+    await page.getByRole('button', { name: 'พ.ร.บ.', exact: true }).click();
 
     // The table should only show rows with "พ.ร.บ."
     // We check that rows without "พ.ร.บ." but with "ภาษี" are hidden, if they exist
@@ -72,10 +72,10 @@ test.describe('Policy Table', () => {
 
     // The DocumentDetailModal should open
     // Wait for the modal title to appear
-    await expect(page.locator('h3', { hasText: 'รายละเอียดเอกสาร' })).toBeVisible();
+    await expect(page.locator('h3', { hasText: 'รายละเอียดข้อมูลเอกสาร' })).toBeVisible();
 
     // Close the modal
-    await page.locator('button[title="ปิดหน้าต่าง"]').click();
-    await expect(page.locator('h3', { hasText: 'รายละเอียดเอกสาร' })).toBeHidden();
+    await page.locator('button[aria-label="ปิดรายละเอียดเอกสาร"]').click();
+    await expect(page.locator('h3', { hasText: 'รายละเอียดข้อมูลเอกสาร' })).toBeHidden();
   });
 });

@@ -78,7 +78,7 @@ test.describe('Navigation & Sidebar', () => {
     const vehicleMenuBtn = page.locator('button').filter({ hasText: 'ยานพาหนะ' });
     
     // Check submenus are visible initially
-    await expect(page.locator('text=เอกสารยานพาหนะ')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'เอกสารยานพาหนะ' })).toBeVisible();
     await expect(page.locator('text=รุ่นยานพาหนะ')).toBeVisible();
     await expect(page.locator('text=ผู้ให้บริการ GPS')).toBeVisible();
 

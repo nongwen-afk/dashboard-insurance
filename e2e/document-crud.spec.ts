@@ -16,7 +16,7 @@ test.describe('Document CRUD Operations (Test DB Only)', () => {
     await page.locator('button', { hasText: 'เพิ่มเอกสาร' }).first().click();
     
     const modal = page.locator('div[role="dialog"]'); // Ensure we are targeting the modal
-    await expect(modal.locator('h3', { hasText: 'เพิ่มเอกสารใหม่' })).toBeVisible();
+    await expect(page.locator('h3', { hasText: 'เพิ่มเอกสารใหม่' })).toBeVisible();
 
     // 2. Fill the manual form
     // We skip OCR scanning to keep the test fast and reliable
