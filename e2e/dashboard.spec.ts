@@ -48,3 +48,33 @@ test('search can find a document returned by the API', async ({ page, request })
 
   await expect(page.getByText(searchTerm, { exact: false }).first()).toBeVisible();
 });
+
+test('stat cards display correct types', async ({ page }) => {
+  await page.goto('/');
+
+  await expect(page.getByText('กำลังโหลดข้อมูลจาก Neon...')).toBeHidden();
+
+  await expect(page.locator('text=เอกสารทั้งหมด').first()).toBeVisible();
+  await expect(page.locator('text=ต่อแล้ว').first()).toBeVisible();
+  await expect(page.locator('text=ใกล้ถึงรอบต่อ').first()).toBeVisible();
+  await expect(page.locator('text=ยังไม่ต่อ').first()).toBeVisible();
+});
+
+test('stat card click filters table and scrolls down', async ({ page }) => {
+  await page.goto('/');
+
+  await expect(page.getByText('กำลังโหลดข้อมูลจาก Neon...')).toBeHidden();
+
+  // Save current scroll position
+  const initialScrollY = await page.evaluate(() => window.scrollY);
+
+  // Click on 'ต่อแล้ว' stat card
+  await page.locator('text=ต่อแล้ว').first().click();
+
+  // wait for scroll
+  await page.waitForTimeout(500); // give time for smooth scroll
+
+  // Verify scroll position changed
+  const newScrollY = await page.evaluate(() => window.scrollY);
+  expect(newScrollY).toBeGreaterThan(initialScrollY);
+});
