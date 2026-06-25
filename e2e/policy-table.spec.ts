@@ -32,8 +32,8 @@ test.describe('Policy Table', () => {
     await page.getByRole('button', { name: 'พ.ร.บ.', exact: true }).click();
 
     // The table should only show rows with "พ.ร.บ."
-    // We check that rows without "พ.ร.บ." but with "ภาษี" are hidden, if they exist
-    // Alternatively, verify that the active filter is applied
+    // Reopen the filter menu to see the clear filter button
+    await page.locator('button', { hasText: 'ตัวกรอง' }).click();
     await expect(page.getByText('ล้างตัวกรอง')).toBeVisible();
   });
 

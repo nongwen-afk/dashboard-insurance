@@ -226,15 +226,15 @@ export const createVehicleDocuments = async (documents: VehicleDocument[], optio
 
   const rows = documents.map(toNewVehicleDocumentRow);
 
-  return await getDb().transaction(async (tx) => {
-    const insertedRows = await tx
-      .insert(vehicleDocuments)
-      .values(rows)
-      .returning();
+  const insertedRows = await getDb()
+    .insert(vehicleDocuments)
+    .values(rows)
+    .returning();
 
+  if (insertedRows.length > 0) {
     await Promise.all(
       insertedRows.map((row) =>
-        tx.insert(vehicleDocumentHistory).values(
+        getDb().insert(vehicleDocumentHistory).values(
           toHistoryRow(row, 'created', {
             actor: options.actor,
             historyDetails: {
@@ -245,9 +245,9 @@ export const createVehicleDocuments = async (documents: VehicleDocument[], optio
         )
       )
     );
+  }
 
-    return insertedRows.map(toVehicleDocument);
-  });
+  return insertedRows.map(toVehicleDocument);
 };
 
 export const updateVehicleDocument = async (
@@ -255,61 +255,60 @@ export const updateVehicleDocument = async (
   updates: VehicleDocumentUpdate,
   options: VehicleDocumentWriteOptions = {},
 ) => {
-  return await getDb().transaction(async (tx) => {
-    const [beforeDocument] = await tx
-      .select()
-      .from(vehicleDocuments)
-      .where(eq(vehicleDocuments.id, id));
+  const [beforeDocument] = await getDb()
+    .select()
+    .from(vehicleDocuments)
+    .where(eq(vehicleDocuments.id, id));
 
-    if (!beforeDocument) return null;
+  if (!beforeDocument) return null;
 
-    const [updatedRow] = await tx
-      .update(vehicleDocuments)
-      .set({
-        ...updates,
-        updatedAt: new Date(),
-      })
-      .where(eq(vehicleDocuments.id, id))
-      .returning();
+  const [updatedRow] = await getDb()
+    .update(vehicleDocuments)
+    .set({
+      ...updates,
+      updatedAt: new Date(),
+    })
+    .where(eq(vehicleDocuments.id, id))
+    .returning();
 
-    if (!updatedRow) return null;
+  if (!updatedRow) return null;
 
-    await tx.insert(vehicleDocumentHistory).values(
-      toHistoryRow(
-        updatedRow,
-        getHistoryEventForUpdate(beforeDocument, updatedRow, updates),
-        options,
-        beforeDocument,
-        updatedRow
-      )
-    );
+  await getDb().insert(vehicleDocumentHistory).values(
+    toHistoryRow(
+      updatedRow,
+      getHistoryEventForUpdate(beforeDocument, updatedRow, updates),
+      {
+        actor: options.actor,
+        historyDetails: options.historyDetails,
+      },
+      beforeDocument,
+      updatedRow,
+    )
+  );
 
-    return toVehicleDocument(updatedRow);
-  });
+  return toVehicleDocument(updatedRow);
 };
 
 export const deleteVehicleDocument = async (id: string, options: VehicleDocumentWriteOptions = {}) => {
-  return await getDb().transaction(async (tx) => {
-    const [beforeDocument] = await tx
-      .select()
-      .from(vehicleDocuments)
-      .where(eq(vehicleDocuments.id, id));
+  const [beforeDocument] = await getDb()
+    .select()
+    .from(vehicleDocuments)
+    .where(eq(vehicleDocuments.id, id));
 
-    if (!beforeDocument) return null;
+  if (!beforeDocument) return null;
 
-    const [deletedRow] = await tx
-      .delete(vehicleDocuments)
-      .where(eq(vehicleDocuments.id, id))
-      .returning();
+  const [deletedRow] = await getDb()
+    .delete(vehicleDocuments)
+    .where(eq(vehicleDocuments.id, id))
+    .returning();
 
-    if (!deletedRow) return null;
+  if (!deletedRow) return null;
 
-    await tx.insert(vehicleDocumentHistory).values(
-      toHistoryRow(deletedRow, 'deleted', options, beforeDocument, null)
-    );
+  await getDb().insert(vehicleDocumentHistory).values(
+    toHistoryRow(deletedRow, 'deleted', options, beforeDocument, null)
+  );
 
-    return toVehicleDocument(deletedRow);
-  });
+  return toVehicleDocument(deletedRow);
 };
 
 export const recordVehicleDocumentHistoryForId = async (

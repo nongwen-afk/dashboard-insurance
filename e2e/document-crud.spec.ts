@@ -12,18 +12,21 @@ test.describe('Document CRUD Operations (Test DB Only)', () => {
 
     await expect(page.getByText('กำลังโหลดข้อมูลจาก Neon...')).toBeHidden();
 
+    // Listen to console logs
+    page.on('console', msg => console.log('BROWSER CONSOLE:', msg.text()));
+
     // 1. Open Add Document Modal
     await page.locator('button', { hasText: 'เพิ่มเอกสาร' }).first().click();
     
-    const modal = page.locator('div[role="dialog"]'); // Ensure we are targeting the modal
-    await expect(page.locator('h3', { hasText: 'เพิ่มเอกสารใหม่' })).toBeVisible();
+    const modal = page.locator('h3', { hasText: 'เพิ่มเอกสาร / งานต่ออายุใหม่' }); // Ensure we are targeting the modal
+    await expect(page.locator('h3', { hasText: 'เพิ่มเอกสาร / งานต่ออายุใหม่' })).toBeVisible();
 
     // 2. Fill the manual form
     // We skip OCR scanning to keep the test fast and reliable
-    await modal.locator('input#chassis').fill(testChassis);
-    await modal.locator('input#licensePlate').fill(testLicensePlate);
-    await modal.locator('input#project').fill('Playwright Test Project');
-    await modal.locator('select#docType').selectOption('tax');
+    await page.locator('input#chassis').fill(testChassis);
+    await page.locator('input#licensePlate').fill(testLicensePlate);
+    await page.locator('input#project').fill('Playwright Test Project');
+    await page.locator('select#docType').selectOption('tax');
     
     // Fill dates
     const today = new Date();
@@ -34,15 +37,20 @@ test.describe('Document CRUD Operations (Test DB Only)', () => {
     const issuedStr = today.toISOString().split('T')[0];
     const expiryStr = nextYear.toISOString().split('T')[0];
     
-    await modal.locator('input#issuedDate').fill(issuedStr);
-    await modal.locator('input#expiryDate').fill(expiryStr);
-    await modal.locator('input#issuer').fill('Playwright Test Issuer');
+    await page.locator('input#issuedDate').fill(issuedStr);
+    await page.locator('input#expiryDate').fill(expiryStr);
+    await page.locator('input#issuer').fill('Playwright Test Issuer');
 
     // 3. Submit the form
-    await modal.locator('button[type="submit"]', { hasText: 'บันทึกเอกสาร' }).click();
+    const [response] = await Promise.all([
+      page.waitForResponse(res => res.url().includes('/api/vehicle-documents') && res.request().method() === 'POST'),
+      page.getByRole('button', { name: 'บันทึกข้อมูล' }).click()
+    ]);
+    const responseBody = await response.json().catch(() => ({}));
+    console.log('API RESPONSE:', response.status(), responseBody);
 
     // Verify success toast
-    await expect(page.locator('text=เพิ่มเอกสารใหม่เข้าสู่ระบบเรียบร้อย')).toBeVisible();
+    await expect(page.getByText('เพิ่มเอกสารรถยนต์สำเร็จเรียบร้อย')).toBeVisible();
     await expect(modal).toBeHidden();
 
     // 4. Verify it appears in the table
@@ -58,15 +66,13 @@ test.describe('Document CRUD Operations (Test DB Only)', () => {
     // Wait for the new row to be fully stabilized
     await page.waitForTimeout(500);
 
+    // Setup dialog handler to accept window.confirm
+    page.once('dialog', dialog => dialog.accept());
+
     // Click the delete button on the row
     // It's the last button in the row
     await newRow.locator('button').last().click();
-    await page.locator('button', { hasText: 'ลบข้อมูล' }).click();
-
-    // Confirm deletion
-    const confirmModal = page.locator('div[role="dialog"]').filter({ hasText: 'ยืนยันการลบเอกสาร' });
-    await expect(confirmModal).toBeVisible();
-    await confirmModal.locator('button', { hasText: 'ลบข้อมูล' }).click();
+    await page.locator('button', { hasText: 'ลบข้อมูลออกจากระบบ' }).click();
 
     // Verify delete success
     await expect(page.locator(`text=ลบข้อมูล ${testLicensePlate} ออกจาก Neon แล้ว`)).toBeVisible();
