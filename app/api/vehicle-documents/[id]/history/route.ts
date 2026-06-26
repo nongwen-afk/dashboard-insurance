@@ -1,4 +1,5 @@
 import { listVehicleDocumentHistory, recordVehicleDocumentHistoryForId } from '@/db/vehicleDocuments';
+import { requireAuth } from '@/utils/auth';
 import type { VehicleDocumentHistoryEvent } from '@/types';
 import { captureHandledError } from '@/utils/sentry';
 
@@ -43,6 +44,11 @@ export async function GET(_request: Request, { params }: RouteContext) {
 
 export async function POST(request: Request, { params }: RouteContext) {
   try {
+    const auth = requireAuth(request);
+    if (!auth.authorized) {
+      return Response.json({ error: auth.error }, { status: 401 });
+    }
+
     const { id } = await params;
     const payload = await request.json() as VehicleDocumentHistoryPayload;
 
@@ -51,7 +57,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     }
 
     const result = await recordVehicleDocumentHistoryForId(id, payload.eventType as VehicleDocumentHistoryEvent, {
-      actor: typeof payload.actor === 'string' ? payload.actor : 'testuser',
+      actor: auth.actor as string,
       historyDetails: typeof payload.details === 'object' && payload.details !== null ? payload.details as Record<string, unknown> : undefined,
     });
 

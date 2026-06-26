@@ -1,0 +1,199 @@
+Code Review Fix Plan
+Date: 2026-06-26
+
+This file summarizes the fix plan from the latest code review of fleet-dashboard.
+Items are ordered by real production, database, and team workflow risk.
+
+
+Goals
+
+- Lock down Neon write access from public API routes that currently have no authentication guard.
+- Prevent CI/CD from touching production database schema from pull requests or unreviewed schema push commands.
+- Make document mutations and audit history writes atomic.
+- Fix a small calendar-to-add-document modal date state regression.
+- Align CI runtime with the package manager version declared by the repo.
+
+
+Phase 1: Lock Down Write APIs
+Priority: P0
+
+Problem
+
+API routes for create, update, delete, and history logging currently accept direct requests and rely on actor values sent by the client, or fall back to testuser. If the deployment is public and no other auth layer exists, outsiders could write to Neon.
+
+Files to update
+
+- app/api/vehicle-documents/route.ts
+- app/api/vehicle-documents/[id]/route.ts
+- app/api/vehicle-documents/[id]/history/route.ts
+- app/api/calendar-notes/route.ts
+- app/api/calendar-notes/[id]/route.ts
+- app/api/download/route.ts
+- utils/vehicleDocumentApi.ts
+- utils/calendarNotesApi.ts
+
+Tasks
+
+- [ ] Choose the V1 auth strategy, such as an internal shared token, session cookie, or auth provider.
+- [ ] Add a shared server-side guard for write routes.
+- [ ] Stop trusting actor values from client payloads.
+- [ ] Derive actor from server-side session or request context.
+- [ ] Keep intentionally public read-only routes separate from authenticated write routes.
+- [ ] Add tests or route-level assertions for unauthenticated write requests.
+
+Acceptance criteria
+
+- Unauthenticated POST, PATCH, DELETE, and history write requests return 401 or 403.
+- Authenticated dashboard flows can still create, update, delete, sync, and save notes.
+- History records show actor values derived server-side, not from browser payloads.
+
+
+Phase 2: Fix Production Database Workflow
+Priority: P0
+
+Problem
+
+.github/workflows/production.yml runs on pull_request into main and its database migration job uses pnpm exec drizzle-kit push against the production database. This contradicts README.md and docs/deployment.md, which say production should use reviewed migrations and never db:push.
+
+Files to update
+
+- .github/workflows/production.yml
+- .github/workflows/staging.yml
+- scripts/verify-test-database.mjs
+- README.md
+- docs/deployment.md
+
+Tasks
+
+- [ ] Remove production database changes from pull_request events.
+- [ ] Replace production drizzle-kit push with pnpm db:migrate.
+- [ ] Add a production branch/database guard before production migration.
+- [ ] Make staging use committed migrations instead of drizzle-kit push.
+- [ ] Add a migration drift check so schema changes require committed SQL migration files.
+- [ ] Update workflow docs so they match the real workflow.
+
+Acceptance criteria
+
+- Pull requests into main cannot change production schema.
+- Production migration runs only after code quality passes and uses committed migration files.
+- Workflows do not use db:push or drizzle-kit push against production.
+- README.md and docs/deployment.md describe the same commands that workflows actually use.
+
+
+Phase 3: Make Document Writes Atomic With History
+Priority: P1
+
+Problem
+
+createVehicleDocuments, updateVehicleDocument, and deleteVehicleDocument mutate the main vehicle_documents table first, then insert vehicle_document_history separately. If the history insert fails, the API may return an error even though the document row has already changed. That can make optimistic UI rollback disagree with the real database and leave audit gaps.
+
+Files to update
+
+- db/vehicleDocuments.ts
+- app/api/vehicle-documents/route.ts
+- app/api/vehicle-documents/[id]/route.ts
+- utils/vehicleDocumentApi.ts
+- Tests in utils/ or route/db tests, depending on the repo pattern
+
+Tasks
+
+- [ ] Use a Drizzle transaction for create plus history.
+- [ ] Use a Drizzle transaction for update plus history.
+- [ ] Use a Drizzle transaction for delete plus history.
+- [ ] Decide whether history failure should roll back the whole operation or be best-effort without failing the client.
+- [ ] Improve API error handling so validation errors, not found errors, and database failures are distinct.
+- [ ] Add coverage for history insert failure or transaction rollback if it can be tested cleanly.
+
+Acceptance criteria
+
+- No document mutation can unintentionally succeed while its required history record disappears.
+- If the transaction fails, the main document row is unchanged.
+- Optimistic UI rollback matches the actual Neon state.
+
+
+Phase 4: Fix Add Document Modal Date State
+Priority: P2
+
+Problem
+
+AddDocumentModal initializes expiryDate from defaultExpiryDate only on first mount. If the user opens the modal from one calendar date, closes it, and opens it from another date, the old date can remain.
+
+Files to update
+
+- components/dashboard/AddDocumentModal.tsx
+- app/page.tsx
+- components/dashboard/ExpiryChart.tsx, only if trigger behavior needs adjustment
+- e2e/document-crud.spec.ts, or another focused modal date prefill test
+
+Tasks
+
+- [ ] Split an inner form like AddNoteModal and key it by defaultExpiryDate or manual mode.
+- [ ] Or sync state with useEffect when isOpen or defaultExpiryDate changes.
+- [ ] Verify date prefill from Month, Week, Day, and toolbar dropdown entry points.
+- [ ] Add E2E or component-level coverage if the test stack supports it cleanly.
+
+Acceptance criteria
+
+- Open the modal from date A, close it, then open it from date B. The expiry date must show B.
+- Opening from the table create button with no default date must not keep a previous calendar date.
+
+
+Phase 5: Align CI Runtime With Repo Tooling
+Priority: P3
+
+Problem
+
+package.json declares pnpm@11.5.2, but GitHub workflows use pnpm 9 and Node 20. This can make CI install/build behavior drift from local and lockfile expectations.
+
+Files to update
+
+- .github/workflows/production.yml
+- .github/workflows/staging.yml
+- Optionally .nvmrc or package.json engines if the team wants to pin Node
+
+Tasks
+
+- [ ] Change workflow pnpm version to 11.5.2.
+- [ ] Choose the intended Node version for local, CI, and Vercel.
+- [ ] Use frozen lockfile installs in CI if not already enabled.
+- [ ] Verify Playwright cache keys and install steps still work after runtime alignment.
+
+Acceptance criteria
+
+- CI uses the same pnpm version as packageManager.
+- pnpm install --frozen-lockfile passes in CI.
+- lint, typecheck, tests, build, and E2E continue to pass.
+
+
+Verification Plan
+
+Run these before pushing, because this repo is connected to Vercel and pushes may trigger deployment.
+
+pnpm run lint
+pnpm run typecheck
+pnpm test
+pnpm run build
+git diff --check
+
+After Phase 1 to Phase 3, add manual API checks:
+
+curl -i -X POST http://localhost:3000/api/vehicle-documents
+curl -i -X PATCH http://localhost:3000/api/vehicle-documents/mock-001
+curl -i -X DELETE http://localhost:3000/api/vehicle-documents/mock-001
+
+Expected result:
+
+Requests without auth are rejected, and requests with auth still support the full dashboard flow.
+
+
+Suggested Order
+
+1. Phase 2: Fix Production Database Workflow
+2. Phase 1: Lock Down Write APIs
+3. Phase 3: Make Document Writes Atomic With History
+4. Phase 4: Fix Add Document Modal Date State
+5. Phase 5: Align CI Runtime With Repo Tooling
+
+Reason:
+
+Start by stopping the production database workflow risk. Then lock down write APIs, then make the write path itself reliable. The modal date fix and CI runtime alignment can follow after the main risks are controlled.

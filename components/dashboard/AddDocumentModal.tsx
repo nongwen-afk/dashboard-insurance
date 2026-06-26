@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Calendar, FileText, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { VehicleDocType, VehicleDocument } from '@/types';
@@ -71,6 +71,22 @@ export default function AddDocumentModal({
   const [scanProgress, setScanProgress] = useState(0);
   const [scanStatusText, setScanStatusText] = useState('');
   const [isStudioOpen, setIsStudioOpen] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setExpiryDate(defaultExpiryDate || '');
+      setChassis('');
+      setLicensePlate('');
+      setProject('');
+      setIssuedDate('');
+      setIssuer('');
+      setDocNumber('');
+      setDriverName('');
+      setNote('');
+      setHasAttachment(true);
+    }
+  }, [isOpen, defaultExpiryDate]);
 
   const handleOcrScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

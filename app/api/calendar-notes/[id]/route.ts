@@ -1,4 +1,5 @@
 import { deleteCalendarNote } from '@/db/calendarNotes';
+import { requireAuth } from '@/utils/auth';
 import { captureHandledError } from '@/utils/sentry';
 
 export const runtime = 'nodejs';
@@ -10,6 +11,11 @@ type RouteContext = {
 
 export async function DELETE(request: Request, { params }: RouteContext) {
   try {
+    const auth = requireAuth(request);
+    if (!auth.authorized) {
+      return Response.json({ error: auth.error }, { status: 401 });
+    }
+
     const { id } = await params;
     const note = await deleteCalendarNote(id);
 

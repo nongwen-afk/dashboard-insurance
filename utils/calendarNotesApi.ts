@@ -1,5 +1,13 @@
 import type { CalendarNote } from '@/types';
 
+const getAuthHeaders = (contentType?: string) => {
+  const token = process.env.NEXT_PUBLIC_API_SECRET_KEY || 'default-secret-token-for-dev';
+  return {
+    'Authorization': `Bearer ${token}`,
+    ...(contentType ? { 'Content-Type': contentType } : {}),
+  };
+};
+
 export const listCalendarNotesRecord = async (signal?: AbortSignal) => {
   const response = await fetch('/api/calendar-notes', { signal });
   const data = await response.json() as { notes?: CalendarNote[]; error?: string };
@@ -14,9 +22,7 @@ export const listCalendarNotesRecord = async (signal?: AbortSignal) => {
 export const createCalendarNoteRecord = async (noteDate: string, content: string) => {
   const response = await fetch('/api/calendar-notes', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: getAuthHeaders('application/json'),
     body: JSON.stringify({ noteDate, content }),
   });
 
@@ -32,6 +38,7 @@ export const createCalendarNoteRecord = async (noteDate: string, content: string
 export const deleteCalendarNoteRecord = async (id: string) => {
   const response = await fetch(`/api/calendar-notes/${encodeURIComponent(id)}`, {
     method: 'DELETE',
+    headers: getAuthHeaders(),
   });
 
   const data = await response.json() as { note?: CalendarNote; error?: string };

@@ -3,13 +3,19 @@ import { PDFDocument } from 'pdf-lib';
 import { compulsoryInsuranceBase64, taxReceiptBase64 } from '@/utils/documentBase64';
 import { captureHandledError } from '@/utils/sentry';
 import { recordVehicleDocumentHistoryForId } from '@/db/vehicleDocuments';
+import { requireAuth } from '@/utils/auth';
 
 export async function GET(request: NextRequest) {
+  const auth = requireAuth(request);
+  if (!auth.authorized) {
+    return new NextResponse('Unauthorized', { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const fileUrl = searchParams.get('url');
   const filename = searchParams.get('filename');
   const documentId = searchParams.get('documentId');
-  const actor = searchParams.get('actor') || 'testuser';
+  const actor = auth.actor as string;
 
   if (!fileUrl || !filename) {
     return new NextResponse('Missing parameters', { status: 400 });

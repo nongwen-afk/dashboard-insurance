@@ -1,4 +1,5 @@
 import { createCalendarNote, listCalendarNotes } from '@/db/calendarNotes';
+import { requireAuth } from '@/utils/auth';
 import { captureHandledError } from '@/utils/sentry';
 
 export const runtime = 'nodejs';
@@ -31,6 +32,11 @@ type CalendarNotesPostPayload = {
 
 export async function POST(request: Request) {
   try {
+    const auth = requireAuth(request);
+    if (!auth.authorized) {
+      return Response.json({ error: auth.error }, { status: 401 });
+    }
+
     const payload = await request.json() as CalendarNotesPostPayload;
 
     if (typeof payload.noteDate !== 'string') {
