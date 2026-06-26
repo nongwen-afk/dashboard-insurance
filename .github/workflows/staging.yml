@@ -75,7 +75,7 @@ jobs:
         run: pnpm install
 
       - name: Migrate Database Schema (Test DB)
-        run: pnpm db:migrate
+        run: pnpm db:push
         env:
           DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
 

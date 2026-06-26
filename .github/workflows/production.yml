@@ -75,7 +75,7 @@ jobs:
         run: pnpm install
 
       - name: Migrate Database Schema (Production DB)
-        run: pnpm db:migrate
+        run: pnpm db:push
         env:
           DATABASE_URL: ${{ env.PROD_DATABASE_URL }}
 
