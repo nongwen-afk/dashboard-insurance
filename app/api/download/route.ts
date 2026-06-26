@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { PDFDocument } from 'pdf-lib';
 import { compulsoryInsuranceBase64, taxReceiptBase64 } from '@/utils/documentBase64';
 import { captureHandledError } from '@/utils/sentry';
+import { recordVehicleDocumentHistoryForId } from '@/db/vehicleDocuments';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const fileUrl = searchParams.get('url');
   const filename = searchParams.get('filename');
+  const documentId = searchParams.get('documentId');
+  const actor = searchParams.get('actor') || 'testuser';
 
   if (!fileUrl || !filename) {
     return new NextResponse('Missing parameters', { status: 400 });
@@ -54,6 +57,16 @@ export async function GET(request: NextRequest) {
 
     const pdfBytes = await pdfDoc.save();
     const encodedFilename = encodeURIComponent(outputFilename);
+
+    if (documentId) {
+      recordVehicleDocumentHistoryForId(documentId, 'downloaded', {
+        actor,
+        historyDetails: { filename: outputFilename },
+      }).catch((err) => captureHandledError(err, {
+        operation: 'document.download.history',
+        route: '/api/download',
+      }));
+    }
 
     return new NextResponse(new Blob([new Uint8Array(pdfBytes)]), {
       headers: {

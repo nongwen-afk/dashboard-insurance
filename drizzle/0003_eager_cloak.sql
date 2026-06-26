@@ -1,0 +1,1 @@
+ALTER TYPE "public"."vehicle_document_history_event" ADD VALUE 'downloaded';

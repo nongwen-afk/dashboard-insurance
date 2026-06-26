@@ -4,7 +4,7 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   Search, Filter, FileSpreadsheet, Paperclip, MoreHorizontal,
   ChevronLeft, ChevronRight, X, ArrowUpDown,
-  Eye, RefreshCw, Trash2, CheckCircle
+  Eye, RefreshCw, Trash2, CheckCircle, Plus
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import DocumentDetailModal from '@/components/DocumentDetailModal';
@@ -23,6 +23,7 @@ interface PolicyTableProps {
   isLoading?: boolean;
   onAcknowledgeDocument: (document: VehicleDocument) => void | Promise<void>;
   onDeleteDocument: (document: VehicleDocument) => void | Promise<void>;
+  onCreateDocument?: () => void;
 }
 
 // แปลงสถานะจาก helper ให้เป็นข้อความและสีสำหรับคอลัมน์สถานะในตาราง
@@ -119,6 +120,7 @@ export default function PolicyTable({
   isLoading = false,
   onAcknowledgeDocument,
   onDeleteDocument,
+  onCreateDocument,
 }: PolicyTableProps) {
   // searchInput คือค่าที่พิมพ์อยู่ ส่วน activeSearch คือค่าที่ debounce แล้วจึงนำไปกรองจริง
   const [searchInput, setSearchInput] = useState('');
@@ -600,6 +602,14 @@ export default function PolicyTable({
           >
             <FileSpreadsheet size={16} /> นำเข้าข้อมูล
           </button>
+          {onCreateDocument && (
+            <button
+              onClick={onCreateDocument}
+              className="flex h-11 w-full sm:w-auto items-center justify-center gap-2 px-5 text-white bg-[#0f172a] border border-transparent rounded-xl hover:bg-[#1e293b] transition-colors text-sm font-medium shadow-sm shadow-[#0f172a]/20"
+            >
+              <Plus size={16} /> สร้าง
+            </button>
+          )}
         </div>
       </div>
 
@@ -705,7 +715,7 @@ export default function PolicyTable({
                     <td className="px-2 py-3 text-center">
                       {attachmentPreview ? (
                         <a
-                          href={`/api/download?url=${encodeURIComponent(attachmentPreview.src)}&filename=${encodeURIComponent(`${getDocTypeName(doc.docType)}_${getCleanLicensePlate(doc.licensePlate) || doc.chassis}.pdf`)}`}
+                          href={`/api/download?url=${encodeURIComponent(attachmentPreview.src)}&filename=${encodeURIComponent(`${getDocTypeName(doc.docType)}_${getCleanLicensePlate(doc.licensePlate) || doc.chassis}.pdf`)}&documentId=${doc.id}&actor=testuser`}
                           download={`${getDocTypeName(doc.docType)}_${getCleanLicensePlate(doc.licensePlate) || doc.chassis}.pdf`}
                           onClick={(e) => {
                             e.stopPropagation();

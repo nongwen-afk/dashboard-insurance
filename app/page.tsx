@@ -4,7 +4,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Files, CheckCircle2, AlertCircle, XCircle, CalendarCheck2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import DocumentDetailModal from '@/components/DocumentDetailModal';
-import RenewalHistoryModal from '@/components/RenewalHistoryModal';
+import HistoryModal from '@/components/HistoryModal';
 import AlertsModal from '@/components/dashboard/AlertsModal';
 import ExpiryChart from '@/components/dashboard/ExpiryChart';
 import StatCard from '@/components/dashboard/StatCard';
@@ -23,7 +23,7 @@ export default function DashboardPage() {
   const [documents, setDocuments] = useState<VehicleDocument[]>([]);
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(true);
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
-  const [isRenewalHistoryOpen, setIsRenewalHistoryOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [selectedDocForDetail, setSelectedDocForDetail] = useState<VehicleDocument | null>(null);
   const [isAddDocumentOpen, setIsAddDocumentOpen] = useState(false);
   const [selectedDateForAdd, setSelectedDateForAdd] = useState<string | undefined>(undefined);
@@ -346,11 +346,11 @@ export default function DashboardPage() {
           </h1>
           <button
             type="button"
-            onClick={() => setIsRenewalHistoryOpen(true)}
+            onClick={() => setIsHistoryOpen(true)}
             className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#1a4d2e]/20 bg-white px-4 text-sm font-bold text-[#1a4d2e] shadow-sm transition-colors hover:bg-[#f1f7f3] sm:w-auto"
           >
             <CalendarCheck2 size={17} />
-            ประวัติการต่ออายุ
+            ประวัติ
           </button>
         </div>
       </div>
@@ -423,6 +423,10 @@ export default function DashboardPage() {
           isLoading={isLoadingDocuments}
           onAcknowledgeDocument={handleAcknowledgeDocument}
           onDeleteDocument={handleDeleteDocument}
+          onCreateDocument={() => {
+            setSelectedDateForAdd(undefined);
+            setIsAddDocumentOpen(true);
+          }}
         />
       </div>
 
@@ -434,8 +438,8 @@ export default function DashboardPage() {
         />
       )}
 
-      {isRenewalHistoryOpen && (
-        <RenewalHistoryModal onClose={() => setIsRenewalHistoryOpen(false)} />
+      {isHistoryOpen && (
+        <HistoryModal onClose={() => setIsHistoryOpen(false)} />
       )}
 
       <DocumentDetailModal

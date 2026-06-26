@@ -15,6 +15,7 @@ export const vehicleDocumentHistoryEventEnum = pgEnum('vehicle_document_history_
   'sync_no_update',
   'deleted',
   'updated',
+  'downloaded',
 ]);
 
 export const vehicleDocuments = pgTable('vehicle_documents', {

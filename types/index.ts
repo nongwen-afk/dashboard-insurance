@@ -25,7 +25,7 @@ export type DocStatus = 'EXPIRED' | 'WARNING' | 'ACTIVE' | 'NO_EXPIRY';
 export type FilterStatus = 'ALL' | 'ACTIVE' | 'WARNING' | 'EXPIRED';
 export type SortOption = 'RELEVANCE' | 'DATE_ASC' | 'DATE_DESC';
 export type AlertSeverity = 'error' | 'warning';
-export type VehicleDocumentHistoryEvent = 'created' | 'acknowledged' | 'renewed' | 'sync_no_update' | 'deleted' | 'updated';
+export type VehicleDocumentHistoryEvent = 'created' | 'acknowledged' | 'renewed' | 'sync_no_update' | 'deleted' | 'updated' | 'downloaded';
 
 export interface VehicleDocumentHistoryRecord {
   id: string;
