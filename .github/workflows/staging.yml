@@ -57,6 +57,7 @@ jobs:
         with:
           name: nextjs-build-staging
           path: .next
+          include-hidden-files: true
           retention-days: 1
 
   database-migration:
