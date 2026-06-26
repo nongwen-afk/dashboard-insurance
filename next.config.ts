@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
+  // @ts-expect-error - Types might be missing in this Next.js version
   eslint: {
     ignoreDuringBuilds: true,
   },
