@@ -52,6 +52,14 @@ jobs:
       - name: Build Next.js
         run: pnpm run build
 
+      - name: Upload Next.js Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextjs-build-staging
+          path: .next
+          include-hidden-files: true
+          retention-days: 1
+
   database-migration:
     name: 02. Database Migration
     needs: code-quality
@@ -122,16 +130,11 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: pnpm exec playwright install-deps
 
-      - name: Cache Next.js build
-        uses: actions/cache@v4
+      - name: Download Next.js Build
+        uses: actions/download-artifact@v4
         with:
-          path: .next/cache
-          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
-          restore-keys: |
-            ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-
-
-      - name: Build Next.js
-        run: pnpm run build
+          name: nextjs-build-staging
+          path: .next
 
       - name: Run Playwright E2E Tests
         run: pnpm run test:e2e --project=${{ matrix.project }}
