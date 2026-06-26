@@ -9,12 +9,17 @@ type VehicleDocumentUpdatePayload = {
   actor?: string;
 };
 
+const getAuthHeaders = (contentType?: string) => {
+  const token = process.env.NEXT_PUBLIC_API_SECRET_KEY || 'default-secret-token-for-dev';
+  return {
+    'Authorization': `Bearer ${token}`,
+    ...(contentType ? { 'Content-Type': contentType } : {}),
+  };
+};
 export const updateVehicleDocumentRecord = async (id: string, updates: VehicleDocumentUpdatePayload) => {
   const response = await fetch(`/api/vehicle-documents/${encodeURIComponent(id)}`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: getAuthHeaders('application/json'),
     body: JSON.stringify(updates),
   });
 
@@ -38,9 +43,7 @@ export const createVehicleDocumentRecords = async (
 ) => {
   const response = await fetch('/api/vehicle-documents', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: getAuthHeaders('application/json'),
     body: JSON.stringify({
       documents,
       actor: options?.actor || 'testuser',
@@ -58,8 +61,9 @@ export const createVehicleDocumentRecords = async (
 };
 
 export const deleteVehicleDocumentRecord = async (id: string) => {
-  const response = await fetch(`/api/vehicle-documents/${encodeURIComponent(id)}?actor=testuser`, {
+  const response = await fetch(`/api/vehicle-documents/${encodeURIComponent(id)}`, {
     method: 'DELETE',
+    headers: getAuthHeaders(),
   });
 
   const data = await response.json() as { document?: VehicleDocument; error?: string };
@@ -78,9 +82,7 @@ export const recordVehicleDocumentHistoryEvent = async (
 ) => {
   const response = await fetch(`/api/vehicle-documents/${encodeURIComponent(id)}/history`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: getAuthHeaders('application/json'),
     body: JSON.stringify({
       eventType,
       actor: 'testuser',

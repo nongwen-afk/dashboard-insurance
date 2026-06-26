@@ -1,4 +1,5 @@
 import { createVehicleDocuments, listVehicleDocuments } from '@/db/vehicleDocuments';
+import { requireAuth } from '@/utils/auth';
 import type { VehicleDocument } from '@/types';
 import { captureHandledError } from '@/utils/sentry';
 
@@ -33,6 +34,11 @@ type VehicleDocumentsPostPayload = {
 
 export async function POST(request: Request) {
   try {
+    const auth = requireAuth(request);
+    if (!auth.authorized) {
+      return Response.json({ error: auth.error }, { status: 401 });
+    }
+
     const payload = await request.json() as VehicleDocumentsPostPayload;
 
     if (!Array.isArray(payload.documents)) {
@@ -40,7 +46,7 @@ export async function POST(request: Request) {
     }
 
     const documents = await createVehicleDocuments(payload.documents as VehicleDocument[], {
-      actor: typeof payload.actor === 'string' ? payload.actor : 'testuser',
+      actor: auth.actor as string,
       historyDetails: {
         source: typeof payload.source === 'string' ? payload.source : 'document_import',
         importedCount: payload.documents.length,

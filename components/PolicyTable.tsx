@@ -715,7 +715,7 @@ export default function PolicyTable({
                     <td className="px-2 py-3 text-center">
                       {attachmentPreview ? (
                         <a
-                          href={`/api/download?url=${encodeURIComponent(attachmentPreview.src)}&filename=${encodeURIComponent(`${getDocTypeName(doc.docType)}_${getCleanLicensePlate(doc.licensePlate) || doc.chassis}.pdf`)}&documentId=${doc.id}&actor=testuser`}
+                          href={`/api/download?url=${encodeURIComponent(attachmentPreview.src)}&filename=${encodeURIComponent(`${getDocTypeName(doc.docType)}_${getCleanLicensePlate(doc.licensePlate) || doc.chassis}.pdf`)}&documentId=${doc.id}&token=${process.env.NEXT_PUBLIC_API_SECRET_KEY || 'default-secret-token-for-dev'}`}
                           download={`${getDocTypeName(doc.docType)}_${getCleanLicensePlate(doc.licensePlate) || doc.chassis}.pdf`}
                           onClick={(e) => {
                             e.stopPropagation();

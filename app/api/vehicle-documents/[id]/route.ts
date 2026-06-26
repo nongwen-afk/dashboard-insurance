@@ -1,4 +1,5 @@
 import { deleteVehicleDocument, updateVehicleDocument } from '@/db/vehicleDocuments';
+import { requireAuth } from '@/utils/auth';
 import { captureHandledError } from '@/utils/sentry';
 
 export const runtime = 'nodejs';
@@ -44,6 +45,11 @@ const parseOptionalDateOnly = (value: unknown, fieldName: string) => {
 
 export async function PATCH(request: Request, { params }: RouteContext) {
   try {
+    const auth = requireAuth(request);
+    if (!auth.authorized) {
+      return Response.json({ error: auth.error }, { status: 401 });
+    }
+
     const { id } = await params;
     const payload = await request.json() as VehicleDocumentPatchPayload;
     const updates: Parameters<typeof updateVehicleDocument>[1] = {};
@@ -77,7 +83,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     }
 
     const document = await updateVehicleDocument(id, updates, {
-      actor: typeof payload.actor === 'string' ? payload.actor : 'testuser',
+      actor: auth.actor as string,
       historyDetails: {
         fields: Object.keys(updates),
       },
@@ -105,10 +111,14 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
 export async function DELETE(request: Request, { params }: RouteContext) {
   try {
+    const auth = requireAuth(request);
+    if (!auth.authorized) {
+      return Response.json({ error: auth.error }, { status: 401 });
+    }
+
     const { id } = await params;
-    const actor = new URL(request.url).searchParams.get('actor') || 'testuser';
     const document = await deleteVehicleDocument(id, {
-      actor,
+      actor: auth.actor as string,
     });
 
     if (!document) {
