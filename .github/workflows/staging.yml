@@ -80,9 +80,13 @@ jobs:
           DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
 
   e2e-tests:
-    name: 03. E2E Tests
+    name: 03. E2E Tests (${{ matrix.project }})
     needs: database-migration
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium, firefox, webkit]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -130,7 +134,7 @@ jobs:
         run: pnpm run build
 
       - name: Run Playwright E2E Tests
-        run: pnpm run test:e2e
+        run: pnpm run test:e2e --project=${{ matrix.project }}
         env:
           DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
 
