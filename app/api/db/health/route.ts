@@ -1,4 +1,5 @@
-import { getSql } from '@/db';
+import { getDb } from '@/db';
+import { sql } from 'drizzle-orm';
 import { captureHandledError } from '@/utils/sentry';
 
 export const runtime = 'nodejs';
@@ -10,12 +11,12 @@ type HealthCheckRow = {
 
 export async function GET() {
   try {
-    const sql = getSql();
-    const result = await sql`select now() as now` as HealthCheckRow[];
+    const db = getDb();
+    const result = await db.execute(sql`select now() as now`);
 
     return Response.json({
       ok: true,
-      now: result[0]?.now,
+      now: result.rows[0]?.now,
     });
   } catch (error) {
     captureHandledError(error, {

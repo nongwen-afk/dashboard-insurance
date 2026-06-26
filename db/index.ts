@@ -1,8 +1,7 @@
-import { neon } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
+import { Pool } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-serverless';
 import * as schema from './schema';
 
-let cachedSql: ReturnType<typeof neon> | null = null;
 
 const getConnectionString = () => {
   const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
@@ -14,12 +13,15 @@ const getConnectionString = () => {
   return connectionString;
 };
 
-export const getSql = () => {
-  cachedSql ??= neon(getConnectionString());
-  return cachedSql;
+let cachedPool: Pool | null = null;
+
+
+
+const createDb = () => {
+  cachedPool ??= new Pool({ connectionString: getConnectionString() });
+  return drizzle(cachedPool, { schema });
 };
 
-const createDb = () => drizzle(getSql(), { schema });
 let cachedDb: ReturnType<typeof createDb> | null = null;
 
 export const getDb = () => {
