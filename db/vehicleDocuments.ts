@@ -221,6 +221,20 @@ export const listVehicleDocumentRenewalHistory = async () => {
   return rows.map(toVehicleDocumentHistoryRecord);
 };
 
+export const listAllVehicleDocumentHistory = async (eventType?: VehicleDocumentHistoryEvent) => {
+  const db = getDb();
+  let query = db.select().from(vehicleDocumentHistory).$dynamic();
+  
+  if (eventType) {
+    query = query.where(eq(vehicleDocumentHistory.eventType, eventType));
+  }
+  
+  query = query.orderBy(desc(vehicleDocumentHistory.eventAt));
+
+  const rows = await query;
+  return rows.map(toVehicleDocumentHistoryRecord);
+};
+
 export const createVehicleDocuments = async (documents: VehicleDocument[], options: VehicleDocumentWriteOptions = {}) => {
   if (documents.length === 0) return [];
 

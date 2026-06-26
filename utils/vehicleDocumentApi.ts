@@ -118,3 +118,18 @@ export const listVehicleDocumentRenewalHistoryRecords = async (signal?: AbortSig
 
   return data.renewals;
 };
+
+export const listAllVehicleDocumentHistoryRecords = async (
+  eventType?: string,
+  signal?: AbortSignal,
+) => {
+  const url = eventType
+    ? `/api/vehicle-document-history?eventType=${eventType}`
+    : '/api/vehicle-document-history';
+  const response = await fetch(url, { signal });
+  const data = await response.json() as { history?: VehicleDocumentHistoryRecord[]; error?: string };
+  if (!response.ok || !data.history) {
+    throw new Error(data.error || 'Unable to load history.');
+  }
+  return data.history;
+};
