@@ -423,6 +423,10 @@ export default function DashboardPage() {
           isLoading={isLoadingDocuments}
           onAcknowledgeDocument={handleAcknowledgeDocument}
           onDeleteDocument={handleDeleteDocument}
+          onCreateDocument={() => {
+            setSelectedDateForAdd(undefined);
+            setIsAddDocumentOpen(true);
+          }}
         />
       </div>
 
