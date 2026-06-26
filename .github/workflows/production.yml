@@ -80,9 +80,13 @@ jobs:
           DATABASE_URL: ${{ env.PROD_DATABASE_URL }}
 
   smoke-tests:
-    name: 03. Read-Only Tests (Smoke Test)
+    name: 03. Read-Only Tests (${{ matrix.project }})
     needs: database-migration
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium, firefox, webkit]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -130,7 +134,7 @@ jobs:
         run: pnpm run build
 
       - name: Run Playwright Smoke Tests
-        run: pnpm exec playwright test e2e/smoke.spec.ts
+        run: pnpm exec playwright test e2e/smoke.spec.ts --project=${{ matrix.project }}
         env:
           DATABASE_URL: ${{ env.PROD_DATABASE_URL }}
 
